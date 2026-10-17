@@ -1,0 +1,135 @@
+{
+  "viewport": {
+    "name": "w900",
+    "width": 900,
+    "height": 800
+  },
+  "blockedHosts": [
+    "cdn.shopify.com",
+    "fonts.googleapis.com"
+  ],
+  "pageErrors": [],
+  "scrollHeight": 8828,
+  "scrollWidth": 900,
+  "horizontalOverflow": false,
+  "activeAnimations": 14,
+  "canvases": 0,
+  "fonts": [],
+  "sections": [
+    {
+      "tag": "header",
+      "id": "header",
+      "cls": "header",
+      "top": 10,
+      "height": 68,
+      "width": 866
+    },
+    {
+      "tag": "nav",
+      "cls": "nav",
+      "top": 26,
+      "height": 36,
+      "width": 334
+    },
+    {
+      "tag": "section",
+      "id": "top",
+      "cls": "hero",
+      "top": 0,
+      "height": 1020,
+      "width": 900
+    },
+    {
+      "tag": "section",
+      "top": 1020,
+      "height": 126,
+      "width": 900
+    },
+    {
+      "tag": "section",
+      "id": "beneficios",
+      "cls": "section",
+      "top": 1146,
+      "height": 841,
+      "width": 900
+    },
+    {
+      "tag": "section",
+      "id": "conteudo",
+      "cls": "section",
+      "top": 1987,
+      "height": 792,
+      "width": 900
+    },
+    {
+      "tag": "section",
+      "id": "entrega",
+      "cls": "section",
+      "top": 2778,
+      "height": 910,
+      "width": 900
+    },
+    {
+      "tag": "section",
+      "id": "instrutor",
+      "cls": "section",
+      "top": 3689,
+      "height": 722,
+      "width": 900
+    },
+    {
+      "tag": "section",
+      "id": "depoimentos",
+      "cls": "section",
+      "top": 4410,
+      "height": 891,
+      "width": 900
+    },
+    {
+      "tag": "section",
+      "id": "oferta",
+      "cls": "section",
+      "top": 5301,
+      "height": 610,
+      "width": 900
+    },
+    {
+      "tag": "section",
+      "id": "faq",
+      "cls": "section faq",
+      "top": 5911,
+      "height": 700,
+      "width": 900
+    },
+    {
+      "tag": "section",
+      "id": "checkout",
+      "cls": "section checkout-section",
+      "top": 6611,
+      "height": 1057,
+      "width": 900
+    },
+    {
+      "tag": "section",
+      "id": "garantia",
+      "cls": "section",
+      "top": 7668,
+      "height": 455,
+      "width": 900
+    },
+    {
+      "tag": "section",
+      "cls": "section",
+      "top": 8123,
+      "height": 550,
+      "width": 900
+    },
+    {
+      "tag": "footer",
+      "cls": "footer",
+      "top": 8673,
+      "height": 155,
+      "width": 900
+    }
+  ]
+}

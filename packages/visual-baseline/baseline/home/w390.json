@@ -1,0 +1,86 @@
+{
+  "viewport": {
+    "name": "w390",
+    "width": 390,
+    "height": 844
+  },
+  "blockedHosts": [
+    "g0r0t0-50.myshopify.com",
+    "monorail-edge.shopifysvc.com"
+  ],
+  "pageErrors": [
+    "Failed to fetch dynamically imported module: http://g0r0t0-50.myshopify.com/cdn/shopifycloud/shop-js/modules/v2/loader.init-shop-cart-sync.pt-BR.esm.js"
+  ],
+  "scrollHeight": 5639,
+  "scrollWidth": 390,
+  "horizontalOverflow": false,
+  "activeAnimations": 245,
+  "canvases": 3,
+  "fonts": [
+    "Assistant 400 error",
+    "Assistant 700 error",
+    "Assistant 400 error"
+  ],
+  "sections": [
+    {
+      "tag": "nav",
+      "cls": "cb-nav",
+      "top": 19,
+      "height": 66,
+      "width": 350
+    },
+    {
+      "tag": "section",
+      "cls": "cb-hero cb-grid-bg",
+      "top": 0,
+      "height": 1138,
+      "width": 390
+    },
+    {
+      "tag": "section",
+      "id": "profissionais",
+      "cls": "professores cb-dobra2-dc32",
+      "top": 1108,
+      "height": 391,
+      "width": 390
+    },
+    {
+      "tag": "section",
+      "id": "cursos-home",
+      "cls": "cb-section white cb-grid-bg",
+      "top": 1499,
+      "height": 1150,
+      "width": 390
+    },
+    {
+      "tag": "section",
+      "id": "beneficios",
+      "cls": "cb-section dark cb-grid-bg cb-beneficios-layout-final",
+      "top": 2649,
+      "height": 1165,
+      "width": 390
+    },
+    {
+      "tag": "section",
+      "id": "marcas",
+      "cls": "cb-section white cb-marcas-final",
+      "top": 3814,
+      "height": 1024,
+      "width": 390
+    },
+    {
+      "tag": "section",
+      "cls": "cb-cta",
+      "top": 4838,
+      "height": 551,
+      "width": 390
+    },
+    {
+      "tag": "footer",
+      "cls": "cb-footer-fx",
+      "top": 5389,
+      "height": 250,
+      "width": 390
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "name": "@academia/web",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3100",
+    "build": "next build",
+    "start": "next start -p 3100",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "tsx e2e/admin-auth.e2e.mts",
+    "e2e:course": "tsx e2e/course-preview.e2e.mts",
+    "e2e:professional": "tsx e2e/professional-preview.e2e.mts",
+    "e2e:home": "tsx e2e/home-preview.e2e.mts",
+    "e2e:professionals": "tsx e2e/professionals.e2e.mts",
+    "e2e:courses": "tsx e2e/courses.e2e.mts",
+    "e2e:editor": "tsx e2e/editor.e2e.mts"
+  },
+  "dependencies": {
+    "@academia/contracts": "workspace:*",
+    "@academia/design-system": "workspace:*",
+    "@academia/page-renderer": "workspace:*",
+    "@hookform/resolvers": "^5.2.0",
+    "next": "16.4.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-hook-form": "^7.62.0",
+    "server-only": "^0.0.1",
+    "zod": "^4.1.0",
+    "@academia/section-schemas": "workspace:*",
+    "@academia/editor-core": "workspace:*",
+    "@academia/page-schema": "workspace:*"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.0",
+    "@types/node": "^20.19.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "jsdom": "^26.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0",
+    "playwright-core": "1.64.1",
+    "tsx": "^4.20.0"
+  }
+}

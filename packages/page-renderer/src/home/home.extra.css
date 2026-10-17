@@ -1,0 +1,38 @@
+
+/* ==========================================================================
+   Ajustes do renderer sobre o CSS extraído do original
+   ========================================================================== */
+/* D-004 item 4 (mesma regra do Profissional): loops CSS do hero pausam quando o hero sai da tela (classe controlada por HeroTelemetry). */
+.pg-home .cb-hero.is-offscreen *,
+.pg-home .cb-hero.is-offscreen *::before,
+.pg-home .cb-hero.is-offscreen *::after { animation-play-state: paused !important; }
+
+/* ==========================================================================
+   Correções aprovadas em D-004 item 3 (defeitos do snapshot da Home).
+   Só abaixo de 1000px: de 1000px em diante o layout aprovado não muda.
+   `html:not([data-baseline])` permite ao comparador visual desligar as correções (compare --baseline-mode).
+   ========================================================================== */
+/* 1. h1 do hero: um patch antigo (clamp(58px,10vw,82px)) fazia o título CRESCER ao estreitar a tela (38,5px a 900 → 76,8px a 768).
+      Passa a nunca passar de 38,5px (o valor de 900px) e a diminuir com a tela até 34px. */
+@media (max-width: 899px) {
+  html:not([data-baseline]) .pg-home .cb-shell .cb-hero h1 { font-size: clamp(34px, 5.2vw, 38.5px) !important; }
+}
+
+/* 2. Marcas: título (nowrap) e parágrafo (largura fixa) estouravam a tela e ficavam cortados; passam a quebrar linha. */
+@media (max-width: 999px) {
+  html:not([data-baseline]) .pg-home .cb-shell #marcas h2 { white-space: normal !important; width: auto !important; max-width: 100% !important; }
+  html:not([data-baseline]) .pg-home .cb-shell #marcas .cb-section-copy { width: auto !important; max-width: 100% !important; }
+}
+
+/* 3. Card órfão: com 2 colunas e 3 itens, o último ocupa a linha inteira. */
+@media (min-width: 721px) and (max-width: 1024px) {
+  html:not([data-baseline]) .pg-home #cursos-home .cb-courses > .cb-course:last-child:nth-child(odd) { grid-column: 1 / -1 !important; }
+}
+@media (min-width: 681px) and (max-width: 999px) {
+  html:not([data-baseline]) .pg-home #beneficios .cb-benefit-list > .cb-benefit:last-child:nth-child(odd) { grid-column: 1 / -1 !important; }
+}
+
+/* Revisão Fase 5 (M14): sem rolagem suave com reduced-motion. */
+@media (prefers-reduced-motion: reduce) {
+  html:has(.pg-home) { scroll-behavior: auto !important; }
+}

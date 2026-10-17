@@ -1,0 +1,14 @@
+node_modules/
+.next/
+dist/
+build/
+coverage/
+.turbo/
+.env
+.env.*
+!.env.example
+tmp/
+*.log
+.DS_Store
+packages/visual-baseline/output/
+!apps/api/.env.test

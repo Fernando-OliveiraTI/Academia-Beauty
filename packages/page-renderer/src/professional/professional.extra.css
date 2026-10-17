@@ -1,0 +1,31 @@
+
+/* ==========================================================================
+   Ajustes do renderer sobre o CSS extraído do original
+   ========================================================================== */
+/* O wrapper substitui <body>: zera o que o body do painel (globals.css) herdaria. O original usa line-height: normal. */
+.pg-pro { line-height: normal; font-size: 16px; font-weight: 400; }
+
+/* Era style="color:#76601b" inline no HTML. */
+.pg-pro .section-index--courses { color: #76601b; }
+
+/* D-004 item 5 (proposta): o original só tinha 1 card de curso, sem espaçamento entre vários. 20px = gap da galeria de trabalhos. */
+.pg-pro .course-card + .course-card { margin-top: 20px; }
+
+/* D-004 item 4: o ticker respeita reduced-motion (no original a regra era anulada pela ordem da cascata). Mantém o texto estático. */
+@media (prefers-reduced-motion: reduce) {
+  .pg-pro .bio-section .bio-bg { animation: none !important; }
+}
+
+/* D-004 item 4: loops CSS do hero pausam quando o hero sai da tela (classe controlada por HeroTelemetry). */
+.pg-pro .profile-hero.is-offscreen *,
+.pg-pro .profile-hero.is-offscreen *::before,
+.pg-pro .profile-hero.is-offscreen *::after { animation-play-state: paused !important; }
+
+/* Revisão Fase 5 (M14): reduced-motion também para os loops CSS do hero (partículas, linhas, scan, pulso) e rolagem suave. */
+@media (prefers-reduced-motion: reduce) {
+  .pg-pro .profile-hero,
+  .pg-pro .profile-hero *,
+  .pg-pro .profile-hero *::before,
+  .pg-pro .profile-hero *::after { animation: none !important; }
+  html:has(.pg-pro) { scroll-behavior: auto !important; }
+}

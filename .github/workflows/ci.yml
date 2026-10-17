@@ -1,0 +1,42 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root_ci_only
+          MYSQL_DATABASE: academia_test
+          MYSQL_USER: academia
+          MYSQL_PASSWORD: academia_ci_only
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot_ci_only"
+          --health-interval=5s --health-timeout=3s --health-retries=20
+    env:
+      NODE_ENV: test
+      PORT: 3333
+      HOST: localhost
+      APP_KEY: ci-only-app-key-0123456789abcdef
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: academia
+      DB_PASSWORD: academia_ci_only
+      DB_DATABASE: academia_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm --filter @academia/api lint
+      - run: pnpm test
+      - run: pnpm --filter @academia/web build

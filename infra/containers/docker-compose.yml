@@ -1,0 +1,24 @@
+# Desenvolvimento local. Credenciais abaixo são só para dev; produção usa secrets do ambiente.
+name: academia-beauty
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_dev_only
+      MYSQL_DATABASE: academia
+      MYSQL_USER: academia
+      MYSQL_PASSWORD: academia_dev_only
+    ports:
+      - "127.0.0.1:3317:3306"
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot_dev_only"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+volumes:
+  mysql_data:

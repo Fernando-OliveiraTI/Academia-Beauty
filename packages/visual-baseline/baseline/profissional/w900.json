@@ -1,0 +1,75 @@
+{
+  "viewport": {
+    "name": "w900",
+    "width": 900,
+    "height": 800
+  },
+  "blockedHosts": [
+    "cdn.shopify.com",
+    "fonts.googleapis.com"
+  ],
+  "pageErrors": [
+    "reduce is not defined"
+  ],
+  "scrollHeight": 3901,
+  "scrollWidth": 900,
+  "horizontalOverflow": false,
+  "activeAnimations": 86,
+  "canvases": 3,
+  "fonts": [],
+  "sections": [
+    {
+      "tag": "nav",
+      "cls": "cb-nav",
+      "top": 10,
+      "height": 64,
+      "width": 866
+    },
+    {
+      "tag": "header",
+      "cls": "profile-hero cb-hero",
+      "top": 0,
+      "height": 840,
+      "width": 900
+    },
+    {
+      "tag": "section",
+      "cls": "bio-section",
+      "top": 840,
+      "height": 587,
+      "width": 900
+    },
+    {
+      "tag": "section",
+      "id": "trabalhos",
+      "cls": "work-section",
+      "top": 1427,
+      "height": 761,
+      "width": 900
+    },
+    {
+      "tag": "section",
+      "id": "video",
+      "cls": "video-section",
+      "top": 2188,
+      "height": 1042,
+      "width": 900
+    },
+    {
+      "tag": "section",
+      "id": "cursos",
+      "cls": "course-section",
+      "top": 3230,
+      "height": 434,
+      "width": 900
+    },
+    {
+      "tag": "footer",
+      "id": "shopify-section-footer",
+      "cls": "cb-footer-exact",
+      "top": 3664,
+      "height": 237,
+      "width": 900
+    }
+  ]
+}

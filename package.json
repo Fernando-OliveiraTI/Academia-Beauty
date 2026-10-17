@@ -1,0 +1,14 @@
+{
+  "name": "academia-beauty-platform",
+  "private": true,
+  "packageManager": "pnpm@10.23.0",
+  "engines": { "node": ">=20.9.0" },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @academia/web --filter @academia/api dev",
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "lint": "pnpm -r --if-present lint",
+    "baseline": "pnpm --filter @academia/visual-baseline capture"
+  }
+}

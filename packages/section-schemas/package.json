@@ -1,0 +1,26 @@
+{
+  "name": "@academia/section-schemas",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepare": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@academia/page-schema": "workspace:*",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": { "typescript": "^5.9.0", "vitest": "^3.2.0" },
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./course": { "types": "./dist/course.d.ts", "default": "./dist/course.js" },
+    "./home": { "types": "./dist/home.d.ts", "default": "./dist/home.js" },
+    "./professional": { "types": "./dist/professional.d.ts", "default": "./dist/professional.js" }
+  },
+  "files": ["dist"]
+}

@@ -1,0 +1,75 @@
+/* Tokens oficiais — extraídos de references/curso/css/style.css (:root). Não editar valores sem autorização. */
+:root {
+  color-scheme: dark;
+
+  /* Cores ---------------------------------------------------------------- */
+  --color-primary: #e3c98a;          /* dourado da marca (reflexo) */
+  --color-primary-strong: #f3dea6;
+  --color-secondary: #b8864f;        /* caramelo / morena */
+  --color-background: #0b0a09;
+  --color-surface: #151311;
+  --color-surface-2: #1d1a17;
+  --color-text: #f6f2ea;
+  --color-text-secondary: #aaa194;
+  --color-text-muted: #7c7468;
+  --color-border: rgba(246, 242, 234, 0.10);
+  --color-border-strong: rgba(246, 242, 234, 0.22);
+  --color-success: #7fd4a0;
+  --color-error: #f08a7e;
+  --color-warning: #f2c46d;
+  --color-cta: var(--color-primary);
+  --color-cta-text: #17130c;
+  --color-focus: #fff1c4;
+
+  /* Escala de tons (níveis de coloração 4 → 9) */
+  --tone-4: #3b2a1f;
+  --tone-5: #5a3d27;
+  --tone-6: #7f5733;
+  --tone-7: #a97c49;
+  --tone-8: #cfa86c;
+  --tone-9: #ead199;
+  --gradient-tones: linear-gradient(90deg, var(--tone-4), var(--tone-5), var(--tone-6), var(--tone-7), var(--tone-8), var(--tone-9));
+
+  /* Raios ---------------------------------------------------------------- */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  /* Sombras -------------------------------------------------------------- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow-md: 0 12px 32px -12px rgba(0, 0, 0, .6);
+  --shadow-glow: 0 10px 40px -10px rgba(227, 201, 138, .45);
+
+  /* Tipografia ----------------------------------------------------------- */
+  --font-sans: 'Geist', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  --fs-h1: clamp(2.9rem, 1.6rem + 6vw, 6.4rem);
+  --fs-h2: clamp(1.9rem, 1.3rem + 2.4vw, 3.1rem);
+  --fs-h3: clamp(1.1rem, 1rem + .4vw, 1.3rem);
+  --fs-body: 1rem;
+  --fs-lead: clamp(1.05rem, 1rem + .3vw, 1.2rem);
+  --fs-caption: .75rem;
+  --fs-cta: .95rem;
+
+  /* Espaçamento ---------------------------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 72px;
+  --space-9: 112px;
+  --gutter: clamp(16px, 4vw, 40px);
+  --container: 1180px;
+  --header-h: 64px;
+
+  /* Movimento ------------------------------------------------------------ */
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --dur-fast: .18s;
+  --dur-med: .35s;
+  --dur-slow: .7s;
+}

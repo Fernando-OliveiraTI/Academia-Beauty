@@ -1,0 +1,1946 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lukas Campos — Carreira Beauty</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --black:#050505;
+  --black2:#0b0b0b;
+  --white:#f7f6f1;
+  --gold:#E1C986;
+  --gold-deep:#9A7312;
+  --line:rgba(255,255,255,.14);
+  --muted:rgba(255,255,255,.68);
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Geist',Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--black);color:var(--white);
+  font-family:var(--sans);overflow-x:hidden;
+}
+a{color:inherit;text-decoration:none}
+img{display:block;max-width:100%}
+.cb-container{width:min(1180px,calc(100% - 56px));margin:auto}
+
+/* NAV */
+.cb-nav{
+  position:fixed;z-index:50;top:10px;left:50%;transform:translateX(-50%);
+  width:min(1120px,calc(100% - 34px));height:64px;border:1px solid var(--line);
+  border-radius:999px;background:rgba(3,3,3,.88);backdrop-filter:blur(18px);
+  display:flex;align-items:center;justify-content:space-between;padding:0 12px 0 22px;
+}
+.cb-brand{font-size:18px;font-weight:800;letter-spacing:-.04em}
+.cb-brand span{color:var(--gold)}
+.cb-links{display:flex;gap:30px;align-items:center}
+.cb-links a{font-size:11px;font-weight:700;letter-spacing:.08em;color:#aaa;text-transform:uppercase}
+.cb-links a:hover{color:#fff}
+.cb-account{padding:14px 22px;border-radius:999px;background:var(--gold);color:#111;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+
+/* HERO ORIGINAL */
+.profile-hero{
+  min-height:780px;position:relative;overflow:hidden;background:#000;padding-top:120px;
+  isolation:isolate;
+}
+.profile-hero:after{
+  display:none !important;
+}
+
+.hero-grid{
+  min-height:650px;position:relative;z-index:5;
+  display:grid;grid-template-columns:minmax(420px,.82fr) minmax(0,1.18fr);gap:30px;align-items:center;
+}
+.hero-copy{position:relative;z-index:5}
+.eyebrow{
+  display:flex;align-items:center;gap:10px;font:600 10px/1 var(--mono);
+  letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:28px;
+}
+.eyebrow i{width:7px;height:7px;border-radius:50%;background:var(--gold)}
+.hero-name{
+  margin:0;font-size:clamp(78px,7.5vw,122px);line-height:.82;letter-spacing:-.07em;font-weight:800;
+}
+.hero-name span{
+  display:block;color:transparent;-webkit-text-stroke:1.6px var(--gold);
+}
+.hero-sub{
+  max-width:480px;margin:28px 0 0;font-size:17px;line-height:1.6;color:rgba(255,255,255,.82);
+}
+.hero-meta{
+  display:grid;grid-template-columns:1fr 1fr;margin-top:42px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+}
+.meta-item{padding:18px 0}
+.meta-item+ .meta-item{padding-left:24px;border-left:1px solid var(--line)}
+.meta-label{font:500 9px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:#777;margin-bottom:8px}
+.meta-value{font-size:17px;font-weight:700}
+.meta-value.gold{color:var(--gold)}
+
+.hero-portrait{
+  position:absolute;right:-1%;top:74px;bottom:0;width:58%;z-index:4;
+  display:flex;align-items:flex-end;justify-content:center;overflow:hidden;
+}
+.hero-portrait img{
+  width:100%;height:100%;object-fit:contain;object-position:center bottom;
+  filter:grayscale(1) contrast(1.05) brightness(.9);
+  transform:scale(1.04);transform-origin:center bottom;
+}
+.hero-portrait:before{
+  content:"";position:absolute;inset:0;z-index:2;
+  background:linear-gradient(90deg,#000 0%,rgba(0,0,0,.7) 12%,transparent 30%),
+             linear-gradient(180deg,transparent 78%,#000 100%);
+}
+.hero-hud{
+  position:absolute;z-index:7;right:3%;top:130px;width:190px;padding:20px;
+  border:1px solid var(--line);background:rgba(4,4,4,.82);backdrop-filter:blur(12px);
+}
+.hero-hud small{display:block;font:500 9px/1 var(--mono);letter-spacing:.15em;color:#888;text-transform:uppercase;margin-bottom:12px}
+.hero-hud strong{font-size:22px}.hero-hud strong em{font-style:normal;color:var(--gold)}
+
+/* ===== BACKGROUND ANIMADO E EFEITOS DA 1ª DOBRA ===== */
+
+.cb-video-style-fx{
+  position:absolute !important;
+  inset:0 !important;
+  z-index:2 !important;
+  pointer-events:none !important;
+  overflow:hidden !important;
+}
+
+.cb-digital-horizon{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:11%;
+  height:2px;
+  background:
+    linear-gradient(90deg,
+      transparent 0%,
+      rgba(225,201,134,.05) 7%,
+      rgba(225,201,134,.32) 24%,
+      rgba(255,238,177,.95) 48%,
+      rgba(225,201,134,.36) 72%,
+      rgba(225,201,134,.08) 90%,
+      transparent 100%);
+  box-shadow:
+    0 0 8px rgba(255,238,177,.75),
+    0 0 24px rgba(225,201,134,.42),
+    0 0 58px rgba(225,201,134,.22);
+  opacity:.92;
+  animation:cbHorizonPulse 5.6s ease-in-out infinite;
+}
+
+.cb-energy-bed{
+  position:absolute;
+  left:10%;
+  right:8%;
+  bottom:-110px;
+  height:270px;
+  background:
+    radial-gradient(ellipse at 50% 100%,
+      rgba(255,238,177,.30) 0%,
+      rgba(225,201,134,.16) 26%,
+      rgba(154,115,18,.07) 47%,
+      transparent 72%);
+  filter:blur(25px);
+  opacity:.92;
+  animation:cbEnergyBed 6.5s ease-in-out infinite alternate;
+}
+
+.cb-grid-floor{
+  position:absolute;
+  left:-15%;
+  right:-15%;
+  bottom:-30%;
+  height:58%;
+  transform:perspective(620px) rotateX(67deg);
+  transform-origin:center bottom;
+  background-image:
+    linear-gradient(rgba(225,201,134,.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(225,201,134,.09) 1px, transparent 1px);
+  background-size:52px 34px;
+  -webkit-mask-image:linear-gradient(to top,#000 0%,rgba(0,0,0,.8) 48%,transparent 100%);
+  mask-image:linear-gradient(to top,#000 0%,rgba(0,0,0,.8) 48%,transparent 100%);
+  opacity:.48;
+  animation:cbGridDrift 10s linear infinite;
+}
+
+.cb-light-thread{
+  position:absolute;
+  bottom:8%;
+  width:1px;
+  height:55%;
+  background:linear-gradient(
+    to top,
+    rgba(225,201,134,.0),
+    rgba(225,201,134,.28) 28%,
+    rgba(255,238,177,.92) 72%,
+    transparent 100%
+  );
+  filter:drop-shadow(0 0 6px rgba(225,201,134,.45));
+  opacity:.55;
+  transform-origin:bottom center;
+}
+.cb-light-thread.t1{left:46%;transform:rotate(-8deg);animation:cbThread1 6.4s ease-in-out infinite alternate}
+.cb-light-thread.t2{left:67%;height:48%;transform:rotate(6deg);opacity:.38;animation:cbThread2 8s ease-in-out infinite alternate-reverse}
+.cb-light-thread.t3{left:82%;height:42%;transform:rotate(-4deg);opacity:.28;animation:cbThread3 9.5s ease-in-out infinite alternate}
+
+.cb-particle-field{
+  position:absolute;
+  inset:0;
+}
+.cb-particle-field .cb-particle{
+  position:absolute;
+  width:2px;height:2px;border-radius:50%;
+  background:#FFEAAE;
+  box-shadow:0 0 7px rgba(255,234,174,.9),0 0 16px rgba(225,201,134,.4);
+  opacity:0;
+  animation:cbParticleUp var(--dur) linear infinite;
+  animation-delay:var(--delay);
+  left:var(--x);
+  bottom:8%;
+}
+.cb-particle-field .cb-particle.big{
+  width:4px;height:4px;
+}
+
+.cb-pulse-dot{
+  position:absolute;
+  width:8px;height:8px;border-radius:50%;
+  background:#FFF0B6;
+  box-shadow:
+    0 0 10px #FFF0B6,
+    0 0 28px #E1C986,
+    0 0 68px rgba(225,201,134,.55);
+  animation:cbPulseDot 3s ease-in-out infinite;
+}
+.cb-pulse-dot.p1{left:55%;bottom:20%;animation-delay:.4s}
+.cb-pulse-dot.p2{left:73%;bottom:27%;animation-delay:1.2s}
+.cb-pulse-dot.p3{left:88%;bottom:18%;animation-delay:2s}
+
+.cb-telemetry-layer{
+  position:absolute !important;
+  inset:0 !important;
+  z-index:3 !important;
+  pointer-events:none !important;
+  overflow:hidden !important;
+  display:block !important;
+}
+
+#cbTelemetryCanvas{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  opacity:1 !important;
+  mix-blend-mode:screen;
+  filter:brightness(1.45) contrast(1.18);
+}
+
+#cbTelemetryCanvasLeft{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  opacity:1 !important;
+  mix-blend-mode:screen;
+  filter:brightness(1.35) contrast(1.12);
+  pointer-events:none;
+}
+
+#cbTelemetryCanvasBoost{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  opacity:1 !important;
+  mix-blend-mode:screen;
+  pointer-events:none;
+}
+
+.cb-telemetry-horizon{
+  position:absolute;
+  left:0 !important;
+  right:0 !important;
+  bottom:11% !important;
+  height:3px !important;
+  background:
+    linear-gradient(90deg,
+      transparent 0%,
+      rgba(225,201,134,.05) 6%,
+      rgba(225,201,134,.30) 26%,
+      rgba(255,241,189,.95) 49%,
+      rgba(225,201,134,.38) 72%,
+      rgba(225,201,134,.08) 92%,
+      transparent 100%);
+  box-shadow:
+    0 0 10px rgba(255,241,189,1),
+    0 0 28px rgba(225,201,134,.8),
+    0 0 70px rgba(225,201,134,.48),
+    0 0 120px rgba(225,201,134,.28) !important;
+  animation:cbTelemetryHorizon 4.8s ease-in-out infinite;
+  opacity:1 !important;
+}
+
+.cb-telemetry-glow{
+  position:absolute;
+  left:-12% !important;
+  right:-12% !important;
+  bottom:-105px !important;
+  height:340px !important;
+  filter:blur(18px) !important;
+  background:
+    radial-gradient(
+      ellipse at 50% 100%,
+      rgba(255,244,199,.52) 0%,
+      rgba(225,201,134,.34) 22%,
+      rgba(184,135,30,.17) 45%,
+      rgba(154,115,18,.08) 62%,
+      transparent 78%
+    ) !important;
+  animation:cbTelemetryGlow 6s ease-in-out infinite alternate;
+}
+
+.cb-telemetry-layer::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 15% 28%,
+      rgba(225,201,134,.18),
+      transparent 24%),
+    radial-gradient(circle at 37% 63%,
+      rgba(225,201,134,.16),
+      transparent 26%),
+    radial-gradient(circle at 67% 42%,
+      rgba(225,201,134,.15),
+      transparent 24%),
+    radial-gradient(circle at 88% 22%,
+      rgba(225,201,134,.16),
+      transparent 25%) !important;
+  filter:blur(14px) !important;
+  opacity:.95;
+  animation:cbFullTelemetryAtmosphere 7s ease-in-out infinite alternate;
+}
+
+.cb-telemetry-scan{
+  position:absolute;
+  top:12%;
+  bottom:7%;
+  width:2px !important;
+  left:1% !important;
+  background:
+    linear-gradient(
+      to bottom,
+      transparent,
+      rgba(225,201,134,.18) 18%,
+      rgba(255,241,189,.78) 48%,
+      rgba(225,201,134,.16) 78%,
+      transparent);
+  box-shadow:
+    0 0 12px rgba(255,241,189,.9),
+    0 0 34px rgba(225,201,134,.65) !important;
+  opacity:.9 !important;
+  animation:cbTelemetryScanEdgeToEdge 8.5s ease-in-out infinite !important;
+}
+
+.cb-telemetry-layer::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0,0,0,.18) 0%,
+      rgba(0,0,0,.12) 18%,
+      rgba(0,0,0,.06) 34%,
+      transparent 54%
+    ) !important;
+}
+
+/* Keyframes das Animações da Hero */
+@keyframes cbHorizonPulse{
+  0%,100%{opacity:.52;transform:scaleX(.93)}
+  50%{opacity:1;transform:scaleX(1.04)}
+}
+@keyframes cbEnergyBed{
+  from{transform:translateY(10px) scaleX(.92);opacity:.58}
+  to{transform:translateY(-8px) scaleX(1.07);opacity:1}
+}
+@keyframes cbGridDrift{
+  from{background-position:0 0,0 0}
+  to{background-position:0 34px,52px 0}
+}
+@keyframes cbThread1{
+  from{transform:rotate(-10deg) scaleY(.82);opacity:.3}
+  to{transform:rotate(-5deg) scaleY(1.05);opacity:.72}
+}
+@keyframes cbThread2{
+  from{transform:rotate(8deg) scaleY(.78);opacity:.18}
+  to{transform:rotate(3deg) scaleY(1.08);opacity:.5}
+}
+@keyframes cbThread3{
+  from{transform:rotate(-5deg) scaleY(.76);opacity:.12}
+  to{transform:rotate(-1deg) scaleY(1.12);opacity:.36}
+}
+@keyframes cbParticleUp{
+  0%{transform:translate3d(0,10px,0) scale(.7);opacity:0}
+  10%{opacity:.85}
+  70%{opacity:.45}
+  100%{transform:translate3d(var(--dx),-420px,0) scale(1.15);opacity:0}
+}
+@keyframes cbPulseDot{
+  0%,100%{transform:scale(.55);opacity:.28}
+  50%{transform:scale(1.25);opacity:1}
+}
+@keyframes cbTelemetryHorizon{
+  0%,100%{opacity:.65;transform:scaleX(.94)}
+  50%{opacity:1;transform:scaleX(1.03)}
+}
+@keyframes cbTelemetryGlow{
+  from{transform:scaleX(.91) translateY(8px);opacity:.6}
+  to{transform:scaleX(1.08) translateY(-8px);opacity:1}
+}
+@keyframes cbTelemetryScanEdgeToEdge{
+  0%,100%{left:1%;opacity:.10}
+  42%{opacity:.60}
+  50%{left:98%;opacity:.72}
+  58%{opacity:.32}
+}
+@keyframes cbFullTelemetryAtmosphere{
+  from{transform:translate3d(-1%,1%,0) scale(.98);opacity:.62}
+  to{transform:translate3d(2%,-1%,0) scale(1.04);opacity:1}
+}
+
+/* BIO */
+.bio-section{
+  position:relative;padding:70px 0;background:var(--gold);color:#090909;overflow:hidden;
+}
+.bio-bg{
+  position:absolute;top:6px;left:-3vw;white-space:nowrap;
+  font-size:clamp(75px,8vw,130px);font-weight:800;letter-spacing:-.06em;
+  color:#9A7312;opacity:.12;pointer-events:none;
+}
+.bio-grid{display:grid;grid-template-columns:.82fr 1.18fr;gap:60px;position:relative;z-index:2}
+.bio-title{font-size:clamp(46px,4.3vw,68px);line-height:.95;letter-spacing:-.055em;margin:0}
+.bio-text{font-size:16px;line-height:1.68;color:#302916}
+.bio-text p:first-child{margin-top:0}
+.instagram-card{
+  display:flex;justify-content:space-between;align-items:center;margin-top:24px;padding:16px 0;
+  border-top:1px solid rgba(0,0,0,.28);border-bottom:1px solid rgba(0,0,0,.28)
+}
+.instagram-card strong{font-size:22px}.instagram-card small{display:block;margin-top:4px;color:#554820}
+.ig-circle{
+  width:46px;height:46px;border-radius:50%;background:#090909;color:var(--gold);display:grid;place-items:center;font-weight:800
+}
+
+/* WORK (3ª DOBRA) */
+.work-section{
+  padding:72px 0;
+  position:relative;
+  overflow:hidden;
+  background:#ffffff !important;
+  background-image:none !important;
+  color:#111 !important;
+}
+
+.work-section .cb-course-heading-wrap{
+  max-width:820px;
+  margin-bottom:30px;
+}
+
+.work-section .cb-eyebrow{
+  display:inline-flex !important;
+  align-items:center !important;
+  width:max-content !important;
+  padding:6px 15px !important;
+  margin:0 0 12px 0 !important;
+  border:1px solid #000 !important;
+  border-radius:999px !important;
+  color:#111 !important;
+  font:700 9.5px/1 var(--mono) !important;
+  letter-spacing:.18em !important;
+  text-transform:uppercase !important;
+  background:transparent !important;
+}
+
+.work-section h2{
+  font-size:clamp(36px,4.3vw,62px) !important;
+  font-weight:800 !important;
+  line-height:.96 !important;
+  letter-spacing:-.055em !important;
+  text-transform:uppercase !important;
+  color:#111 !important;
+  margin:0 0 12px 0 !important;
+}
+.work-section h2 span{
+  color:var(--gold) !important;
+}
+
+.work-section .cb-section-copy{
+  font-size:15px !important;
+  line-height:1.6 !important;
+  color:#5f5a53 !important;
+  max-width:580px !important;
+  margin:0 !important;
+  font-weight:500 !important;
+}
+
+.work-section .cb-courses{
+  display:grid !important;
+  grid-template-columns:repeat(3, minmax(0,1fr)) !important;
+  gap:20px !important;
+  width:100% !important;
+}
+
+.work-section .cb-course{
+  width:100% !important;
+  display:flex !important;
+  flex-direction:column !important;
+  border-radius:20px !important;
+  overflow:hidden !important;
+  position:relative !important;
+  background:#f9f8f5 !important;
+  border:1px solid rgba(0,0,0,.08) !important;
+  box-shadow:0 10px 30px rgba(0,0,0,.05) !important;
+}
+
+.work-section .cb-course-img-wrap{
+  width:100% !important;
+  height:320px !important;
+  position:relative !important;
+  overflow:hidden !important;
+  background:#eee !important;
+}
+
+.work-section .cb-course-bg{
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover !important;
+  object-position:center top !important;
+  filter:none !important;
+  opacity:1 !important;
+  transition:transform .6s cubic-bezier(.16,1,.3,1) !important;
+}
+.work-section .cb-course:hover .cb-course-bg{
+  transform:scale(1.04) !important;
+}
+
+.work-section .cb-course::before,
+.work-section .cb-course::after{
+  display:none !important;
+}
+
+.work-section .cb-course-content{
+  position:relative !important;
+  inset:auto !important;
+  width:100% !important;
+  padding:20px 22px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  gap:10px !important;
+  background:#ffffff !important;
+  box-sizing:border-box !important;
+}
+
+.work-section .cb-course-meta{
+  display:flex !important;
+  gap:8px !important;
+  flex-wrap:wrap !important;
+  margin:0 !important;
+}
+.work-section .cb-tag{
+  display:inline-flex !important;
+  padding:5px 10px !important;
+  border:1px solid #111 !important;
+  background:transparent !important;
+  color:#111 !important;
+  font:700 8.5px/1 var(--mono) !important;
+  letter-spacing:.12em !important;
+  text-transform:uppercase !important;
+  border-radius:4px !important;
+}
+.work-section .cb-tag.gold{
+  background:var(--gold) !important;
+  color:#111 !important;
+  border-color:var(--gold) !important;
+}
+
+.work-section .cb-course-copy{
+  display:flex !important;
+  flex-direction:column !important;
+  gap:4px !important;
+  padding-right:48px !important;
+}
+.work-section .cb-course-person{
+  font-size:22px !important;
+  font-weight:800 !important;
+  line-height:1.1 !important;
+  letter-spacing:-.03em !important;
+  color:#111 !important;
+}
+.work-section .cb-course-title{
+  font-size:13px !important;
+  line-height:1.3 !important;
+  font-weight:600 !important;
+  color:#666 !important;
+}
+
+.work-section .cb-course .cb-plus{
+  position:absolute !important;
+  right:18px !important;
+  bottom:18px !important;
+  width:44px !important;
+  height:44px !important;
+  border-radius:50% !important;
+  display:grid !important;
+  place-items:center !important;
+  font-size:22px !important;
+  font-weight:400 !important;
+  background:#111 !important;
+  color:#fff !important;
+  border:none !important;
+  transition:all .3s ease !important;
+  text-decoration:none !important;
+}
+.work-section .cb-course:hover .cb-plus{
+  background:var(--gold) !important;
+  color:#111 !important;
+  transform:rotate(90deg) !important;
+}
+
+/* VIDEO */
+.video-section{padding:110px 0;background:#000}
+.video-shell{
+  display:grid;grid-template-columns:.55fr 1.45fr;border:1px solid var(--line);min-height:520px
+}
+.video-info{padding:48px;display:flex;flex-direction:column;justify-content:space-between}
+.video-info h2{font-size:54px;line-height:.94;letter-spacing:-.05em;margin:0}
+.video-info h2 span{color:var(--gold)}
+.video-info p{color:var(--muted);line-height:1.65}
+.video-frame{position:relative;background:#111;min-height:520px}
+.video-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+
+/* DOBRA 5: CURSOS */
+.course-section{
+  padding:60px 0 80px 0 !important;
+  background:#f3f0e7;
+  color:#0a0a0a;
+}
+.course-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:30px;
+  margin-bottom:24px !important;
+}
+.course-head h2{
+  font-size:clamp(40px,3.6vw,56px) !important;
+  letter-spacing:-.055em;
+  line-height:.95;
+  margin:0;
+  font-weight:800;
+}
+.course-head p{
+  max-width:420px;
+  color:#585349;
+  line-height:1.5;
+  font-size:14px !important;
+}
+
+.course-card{
+  min-height:200px !important;
+  height:200px !important;
+  position:relative !important;
+  overflow:hidden !important;
+  background:#050505 !important;
+  color:#fff !important;
+  border-radius:24px !important;
+  border:none !important;
+  padding:28px 36px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  justify-content:space-between !important;
+  isolation:isolate !important;
+}
+
+.course-card-bg{
+  position:absolute !important;
+  inset:0 !important;
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover !important;
+  object-position:right center !important;
+  z-index:1 !important;
+  transition:transform .8s cubic-bezier(.16,1,.3,1) !important;
+}
+.course-card:hover .course-card-bg{
+  transform:scale(1.03) !important;
+}
+
+.course-card-overlay{
+  position:absolute !important;
+  inset:0 !important;
+  z-index:2 !important;
+  background:linear-gradient(90deg, #000 0%, rgba(0,0,0,0.96) 30%, rgba(0,0,0,0.65) 55%, rgba(0,0,0,0.1) 80%, transparent 100%) !important;
+  pointer-events:none !important;
+}
+
+.course-card-body{
+  position:relative !important;
+  z-index:3 !important;
+  display:flex !important;
+  flex-direction:column !important;
+  justify-content:space-between !important;
+  height:100% !important;
+  width:100% !important;
+}
+
+.course-tags{
+  display:flex !important;
+  gap:8px !important;
+  align-items:center !important;
+}
+.tag{
+  padding:5px 9px !important;
+  background:var(--gold) !important;
+  color:#111 !important;
+  font:700 8.5px/1 var(--mono) !important;
+  letter-spacing:.08em !important;
+  text-transform:uppercase !important;
+  border-radius:4px !important;
+}
+.tag.dark{
+  background:transparent !important;
+  color:#fff !important;
+  border:1px solid rgba(255,255,255,.3) !important;
+}
+
+.course-bottom{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  width:100% !important;
+}
+.course-card h3{
+  font-size:clamp(32px,3.2vw,48px) !important;
+  font-weight:800 !important;
+  letter-spacing:-.04em !important;
+  line-height:1 !important;
+  margin:0 !important;
+  color:#ffffff !important;
+}
+.course-card h3 span{
+  color:var(--gold) !important;
+}
+
+.course-plus{
+  width:48px !important;
+  height:48px !important;
+  border-radius:50% !important;
+  display:grid !important;
+  place-items:center !important;
+  background:var(--gold) !important;
+  color:#111 !important;
+  font-size:22px !important;
+  font-weight:400 !important;
+  transition:transform .3s ease !important;
+  flex-shrink:0 !important;
+  box-shadow:0 6px 20px rgba(0,0,0,.25) !important;
+}
+.course-card:hover .course-plus{
+  transform:rotate(90deg) !important;
+}
+
+/* =========================================================
+   ÚLTIMA DOBRA REESTRUTURADA CONFORME A IMAGEM DE REFERÊNCIA
+   ========================================================= */
+.cb-footer-exact {
+  position: relative !important;
+  background: #030303 !important;
+  padding: 60px 20px 40px !important;
+  color: #a0a0a0 !important;
+  overflow: hidden !important;
+  font-family: Arial, sans-serif !important;
+  text-align: center !important;
+}
+
+.cb-footer-bg-fx {
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+}
+
+.cb-glow-ambient {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60%;
+  height: 120%;
+  background: radial-gradient(ellipse at center, rgba(180, 145, 65, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+  filter: blur(40px);
+}
+
+.cb-wave {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(225, 201, 134, 0.25);
+  box-shadow: 0 0 15px rgba(225, 201, 134, 0.08);
+}
+
+.cb-wave.w1 {
+  width: 140vw;
+  height: 600px;
+  bottom: -480px;
+  left: -20vw;
+  transform: rotate(-3deg);
+}
+
+.cb-wave.w2 {
+  width: 120vw;
+  height: 500px;
+  top: -380px;
+  left: -10vw;
+  transform: rotate(2deg);
+  border-color: rgba(225, 201, 134, 0.15);
+}
+
+.cb-dots .dot {
+  position: absolute;
+  border-radius: 50%;
+  background: #e1c986;
+  box-shadow: 0 0 8px #e1c986;
+}
+
+.cb-dots .d1 { width: 4px; height: 4px; left: 8%; bottom: 25%; opacity: 0.8; }
+.cb-dots .d2 { width: 3px; height: 3px; left: 22%; top: 20%; opacity: 0.6; }
+.cb-dots .d3 { width: 5px; height: 5px; left: 38%; bottom: 18%; opacity: 0.9; }
+.cb-dots .d4 { width: 2px; height: 2px; right: 28%; top: 30%; opacity: 0.5; }
+.cb-dots .d5 { width: 4px; height: 4px; right: 10%; bottom: 30%; opacity: 0.8; }
+.cb-dots .d6 { width: 3px; height: 3px; right: 35%; bottom: 15%; opacity: 0.7; }
+
+.cb-footer-content {
+  position: relative !important;
+  z-index: 2 !important;
+  max-width: 900px !important;
+  margin: 0 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+
+.cb-footer-logo {
+  font-size: 26px !important;
+  font-weight: 700 !important;
+  letter-spacing: 2px !important;
+  color: #ffffff !important;
+  margin: 0 0 20px 0 !important;
+  text-transform: uppercase !important;
+}
+
+.cb-footer-logo span {
+  color: #e1c986 !important;
+}
+
+.cb-social-links {
+  display: flex !important;
+  gap: 22px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-bottom: 25px !important;
+}
+
+.cb-social-links a {
+  color: #d1d1d1 !important;
+  transition: color 0.3s ease, transform 0.3s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.cb-social-links a:hover {
+  color: #e1c986 !important;
+  transform: translateY(-2px) !important;
+}
+
+.cb-footer-divider {
+  width: 100% !important;
+  max-width: 700px !important;
+  height: 1px !important;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%) !important;
+  margin-bottom: 25px !important;
+}
+
+.cb-copyright {
+  font-size: 13px !important;
+  color: #888888 !important;
+  margin: 0 !important;
+  letter-spacing: 0.5px !important;
+}
+
+/* reveal */
+.reveal{opacity:0;transform:translateY(35px);transition:opacity .75s ease,transform .9s cubic-bezier(.16,1,.3,1)}
+.reveal.in{opacity:1;transform:none}
+
+/* responsive */
+@media(max-width:900px){
+  .cb-links{display:none}
+  .hero-grid{grid-template-columns:1fr;min-height:720px;align-items:start}
+  .hero-copy{width:100%;padding-top:30px}
+  .hero-portrait{width:100%;right:0;top:320px;height:520px;opacity:.65}
+  .hero-hud{top:330px}
+  .bio-grid,.section-head,.video-shell{grid-template-columns:1fr}
+  .work-grid{grid-template-columns:repeat(2,1fr)}
+  .video-info{min-height:300px}
+}
+@media(max-width:620px){
+  .cb-container{width:calc(100% - 34px)}
+  .cb-account{padding:12px 14px}
+  .profile-hero{min-height:760px}
+  .hero-name{font-size:64px}
+  .hero-sub{font-size:15px}
+  .hero-meta{grid-template-columns:1fr}
+  .meta-item+.meta-item{padding-left:0;border-left:0;border-top:1px solid var(--line)}
+  .hero-portrait{top:380px;height:400px}
+  .hero-hud{display:none}
+  .bio-section{padding:48px 0}
+  .work-section{padding:48px 0 !important}
+  .work-section .cb-courses{grid-template-columns:1fr !important;gap:16px !important}
+  .video-section{padding:72px 0}
+  .course-section{padding:50px 0 !important}
+  .course-head{flex-direction:column;align-items:flex-start;gap:12px}
+  .course-card{min-height:180px !important;height:auto !important;padding:22px !important}
+  .course-bottom{align-items:center !important}
+  .cb-footer-logo { font-size: 20px !important; }
+  .cb-social-links { gap: 16px !important; }
+  .cb-copyright { font-size: 11px !important; }
+}
+</style>
+
+<style id="cb-local-video-player">
+.video-frame video{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  border:0;
+  object-fit:contain;
+  background:#050505;
+}
+</style>
+
+<style id="cb-lukas-hero-centered-v2">
+@media (min-width: 1000px){
+
+  .profile-hero{
+    min-height:780px !important;
+  }
+
+  .profile-hero .hero-grid{
+    width:min(1180px,calc(100% - 56px)) !important;
+    max-width:1180px !important;
+    margin:0 auto !important;
+    grid-template-columns:minmax(410px,500px) minmax(0,1fr) !important;
+  }
+
+  .profile-hero .hero-portrait{
+    right:11% !important;
+    top:78px !important;
+    bottom:0 !important;
+    width:43% !important;
+    max-width:650px !important;
+    justify-content:center !important;
+  }
+
+  .profile-hero .hero-portrait img{
+    width:100% !important;
+    height:100% !important;
+    object-fit:contain !important;
+    object-position:center bottom !important;
+    transform:scale(1.06) !important;
+    transform-origin:center bottom !important;
+  }
+
+  .profile-hero .hero-hud{
+    top:136px !important;
+    right:8.5% !important;
+    width:175px !important;
+    padding:18px 20px !important;
+  }
+
+  .profile-hero .hero-portrait:before{
+    background:
+      linear-gradient(90deg,
+        #000 0%,
+        rgba(0,0,0,.55) 9%,
+        rgba(0,0,0,.10) 20%,
+        transparent 34%),
+      linear-gradient(180deg,
+        transparent 76%,
+        #000 100%) !important;
+  }
+}
+
+@media (min-width: 1500px){
+  .profile-hero .hero-portrait{
+    right:15% !important;
+    width:40% !important;
+  }
+
+  .profile-hero .hero-hud{
+    right:12.5% !important;
+  }
+}
+</style>
+
+<style id="cb-lukas-hero-more-left-v3">
+@media (min-width:1000px){
+  .profile-hero .hero-portrait{
+    right:19% !important;
+    width:43% !important;
+  }
+
+  .profile-hero .hero-hud{
+    right:16.5% !important;
+  }
+}
+
+@media (min-width:1500px){
+  .profile-hero .hero-portrait{
+    right:22% !important;
+    width:40% !important;
+  }
+
+  .profile-hero .hero-hud{
+    right:19.5% !important;
+  }
+}
+</style>
+
+<style id="cb-lukas-trajetoria-ticker-v4">
+.bio-section .section-index{
+  color:#000000 !important;
+  opacity:1 !important;
+}
+
+.bio-section .bio-bg{
+  top:8px !important;
+  left:0 !important;
+  width:max-content !important;
+  white-space:nowrap !important;
+  color:#9A7312 !important;
+  opacity:.14 !important;
+  pointer-events:none !important;
+  will-change:transform;
+  animation:cbLukasMarquee 24s linear infinite !important;
+}
+
+@keyframes cbLukasMarquee{
+  from{
+    transform:translate3d(0,0,0);
+  }
+  to{
+    transform:translate3d(-33.333%,0,0);
+  }
+}
+
+.bio-section:hover .bio-bg{
+  animation-play-state:paused !important;
+}
+
+@media (prefers-reduced-motion:reduce){
+  .bio-section .bio-bg{
+    animation:none !important;
+  }
+}
+</style>
+
+<script id="cb-lukas-trajetoria-ticker-script">
+(function(){
+  function initLukasTicker(){
+    var ticker=document.querySelector('.bio-section .bio-bg');
+    if(!ticker) return;
+
+    var phrase='LUKAS • CARREIRA BEAUTY • ';
+    ticker.textContent=phrase.repeat(8);
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',initLukasTicker,{once:true});
+  }else{
+    initLukasTicker();
+  }
+})();
+</script>
+
+<style id="cb-lukas-ticker-speed-match-home">
+.bio-section .bio-bg{
+  animation:cbLukasMarqueeHome 90s linear infinite !important;
+}
+
+@keyframes cbLukasMarqueeHome{
+  to{
+    transform:translateX(-50%);
+  }
+}
+</style>
+
+<script id="cb-lukas-ticker-content-match-home">
+(function(){
+  function matchHomeTicker(){
+    var ticker=document.querySelector('.bio-section .bio-bg');
+    if(!ticker) return;
+
+    ticker.textContent=
+      'LUKAS • CARREIRA BEAUTY • LUKAS • CARREIRA BEAUTY • ' +
+      'LUKAS • CARREIRA BEAUTY • LUKAS • CARREIRA BEAUTY • ';
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',matchHomeTicker,{once:true});
+  }else{
+    matchHomeTicker();
+  }
+})();
+</script>
+
+</head>
+<body>
+
+<nav class="cb-nav">
+  <a class="cb-brand" href="#">CARREIRA <span>BEAUTY</span></a>
+  <div class="cb-links">
+    <a href="#trabalhos">Trabalhos</a>
+    <a href="#video">Conheça</a>
+    <a href="#cursos">Cursos</a>
+  </div>
+  <a class="cb-account" href="#">Acessar conta ↗</a>
+</nav>
+
+<header class="profile-hero cb-hero">
+  <div class="cb-telemetry-layer" aria-hidden="true">
+    <canvas id="cbTelemetryCanvas"></canvas>
+    <div class="cb-telemetry-horizon"></div>
+    <div class="cb-telemetry-glow"></div>
+    <div class="cb-telemetry-scan"></div>
+  </div>
+  <div class="cb-video-style-fx" aria-hidden="true">
+    <div class="cb-digital-horizon"></div>
+    <div class="cb-energy-bed"></div>
+    <div class="cb-grid-floor"></div>
+    <div class="cb-light-thread t1"></div>
+    <div class="cb-light-thread t2"></div>
+    <div class="cb-light-thread t3"></div>
+    <div class="cb-particle-field"></div>
+    <div class="cb-pulse-dot p1"></div>
+    <div class="cb-pulse-dot p2"></div>
+    <div class="cb-pulse-dot p3"></div>
+  </div>
+  <div class="cb-container hero-grid">
+    <div class="hero-copy">
+      <div class="eyebrow reveal"><i></i> Profissional / Carreira Beauty</div>
+      <h1 class="hero-name reveal">Lukas<span>Campos.</span></h1>
+      <p class="hero-sub reveal">Seus sucessos na carreira e sua jornada profissional.</p>
+
+      <div class="hero-meta reveal">
+        <div class="meta-item">
+          <div class="meta-label">Instagram</div>
+          <div class="meta-value">@lucascam</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-label">Comunidade</div>
+          <div class="meta-value gold">53,6 Mil seguidores</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-portrait">
+    <img src="lukas/lukas_perfil.png" alt="Lukas Campos">
+  </div>
+
+  <div class="hero-hud">
+    <small>Expert / Hair</small>
+    <strong><em>15</em> anos</strong>
+  </div>
+</header>
+
+<section class="bio-section">
+  <div class="bio-bg">LUKAS • CARREIRA BEAUTY • LUKAS •</div>
+  <div class="cb-container bio-grid">
+    <div>
+      <div class="section-index">01 / TRAJETÓRIA</div>
+      <h2 class="bio-title reveal">Uma carreira construída com <strong>técnica.</strong></h2>
+    </div>
+    <div class="bio-text reveal">
+      <p>Lucas Kampos iniciou sua carreira há 15 anos, inspirado por seus tios. Ele começou em um renomado salão na zona sul, onde trabalhou por um longo período.</p>
+      <p>Posteriormente, juntou-se a Romeu Felipe, o que elevou ainda mais sua qualificação profissional. Em apenas dois meses, tornou-se colorista e atendeu celebridades como Tassia Naves, Fernanda Souza, modelos da Victoria's Secret, Ticiane Pinheiro e Munik Nunes. Lucas também ministrou cursos em todo o Brasil e visitou cidades como Moscou, Berlim, Istambul, Londres, além dos EUA e Portugal, acumulando um currículo impressionante. Atualmente, é um dos principais profissionais da equipe ROM CONCEPT.</p>
+
+      <a class="instagram-card" href="https://instagram.com/@lucascam" target="_blank">
+        <div>
+          <strong>@lucascam</strong>
+          <small>53,6 Mil seguidores</small>
+        </div>
+        <div class="ig-circle">↗</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="work-section" id="trabalhos">
+  <div class="cb-container">
+    <div class="cb-course-heading-wrap reveal">
+      <div class="cb-eyebrow">Trabalhos em Destaque</div>
+      <h2>Assinatura que aparece <span style="color:var(--gold)">nos detalhes.</span></h2>
+      <p class="cb-section-copy">Uma seleção exclusiva de trabalhos de Lukas Campos, explorando técnicas avançadas de mechas, iluminação e acabamento.</p>
+    </div>
+
+    <div class="cb-courses">
+      <article class="cb-course reveal">
+        <div class="cb-course-img-wrap">
+          <img class="cb-course-bg" src="lukas/trabLukas01.png" alt="Morena Iluminada" loading="lazy">
+        </div>
+        <div class="cb-course-content">
+          <div class="cb-course-meta">
+            <span class="cb-tag gold">destaques</span>
+            <span class="cb-tag">mechas</span>
+          </div>
+          <div class="cb-course-copy">
+            <div class="cb-course-person">Lukas Campos</div>
+            <div class="cb-course-title">Morena Iluminada – Técnica &amp; Contraste</div>
+          </div>
+          <a class="cb-plus" href="#video" aria-label="Ver detalhes de Morena Iluminada">+</a>
+        </div>
+      </article>
+
+      <article class="cb-course reveal">
+        <div class="cb-course-img-wrap">
+          <img class="cb-course-bg" src="lukas/trabLukas02.png" alt="Loiro Dourado Suave" loading="lazy">
+        </div>
+        <div class="cb-course-content">
+          <div class="cb-course-meta">
+            <span class="cb-tag gold">destaques</span>
+            <span class="cb-tag">loiro</span>
+          </div>
+          <div class="cb-course-copy">
+            <div class="cb-course-person">Lukas Campos</div>
+            <div class="cb-course-title">Loiro Dourado – Transição Natural</div>
+          </div>
+          <a class="cb-plus" href="#video" aria-label="Ver detalhes de Loiro Dourado">+</a>
+        </div>
+      </article>
+
+      <article class="cb-course reveal">
+        <div class="cb-course-img-wrap">
+          <img class="cb-course-bg" src="lukas/trabLukas03.png" alt="Corte e Textura" loading="lazy">
+        </div>
+        <div class="cb-course-content">
+          <div class="cb-course-meta">
+            <span class="cb-tag gold">destaques</span>
+            <span class="cb-tag">corte &amp; cor</span>
+          </div>
+          <div class="cb-course-copy">
+            <div class="cb-course-person">Lukas Campos</div>
+            <div class="cb-course-title">Corte &amp; Textura – Movimento e Brilho</div>
+          </div>
+          <a class="cb-plus" href="#video" aria-label="Ver detalhes de Corte e Textura">+</a>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section class="video-section" id="video">
+  <div class="cb-container video-shell reveal">
+    <div class="video-info">
+      <div>
+        <div class="section-index">03 / CONHEÇA</div>
+        <h2>Conheça<br><span>Lukas Campos.</span></h2>
+      </div>
+      <p>Veja a apresentação do profissional e conheça mais de perto sua trajetória e trabalho.</p>
+    </div>
+    <div class="video-frame">
+      <video controls playsinline autoplay preload="metadata" aria-label="Vídeo de apresentação de Lukas Campos">
+        <source src="lukas/video.mp4" type="video/mp4">
+        Seu navegador não suporta reprodução de vídeo HTML5.
+      </video>
+    </div>
+  </div>
+</section>
+
+<section class="course-section" id="cursos">
+  <div class="cb-container">
+    <div class="course-head">
+      <div>
+        <div class="section-index" style="color:#76601b">04 / CURSOS</div>
+        <h2>Cursos de Lukas.</h2>
+      </div>
+      <p>Conteúdo para aprofundar técnicas e aprender diretamente com o profissional.</p>
+    </div>
+
+    <a class="course-card reveal" href="https://g0r0t0-50.myshopify.com/products/cortes-simples-com-navalha">
+      <img class="course-card-bg" src="https://cdn.shopify.com/s/files/1/0734/9180/8491/files/morena_iluminada_lukas_campos_v2.png?v=1756913692" alt="Morena Iluminada">
+      <div class="course-card-overlay"></div>
+      
+      <div class="course-card-body">
+        <div class="course-tags">
+          <span class="tag">30% OFF</span>
+          <span class="tag dark">Lukas Campos</span>
+        </div>
+        <div class="course-bottom">
+          <h3>Morena <span>Iluminada</span></h3>
+          <span class="course-plus">+</span>
+        </div>
+      </div>
+    </a>
+  </div>
+</section>
+
+<!-- ÚLTIMA DOBRA REESTRUTURADA CONFORME A IMAGEM DE REFERÊNCIA -->
+<footer class="cb-footer-exact" id="shopify-section-footer">
+  <div class="cb-footer-bg-fx" aria-hidden="true">
+    <div class="cb-glow-ambient"></div>
+    <div class="cb-wave w1"></div>
+    <div class="cb-wave w2"></div>
+    <div class="cb-dots">
+      <span class="dot d1"></span>
+      <span class="dot d2"></span>
+      <span class="dot d3"></span>
+      <span class="dot d4"></span>
+      <span class="dot d5"></span>
+      <span class="dot d6"></span>
+    </div>
+  </div>
+
+  <div class="cb-footer-content">
+    <h2 class="cb-footer-logo">ACADEMIA <span>BEAUTY</span></h2>
+    
+    <div class="cb-social-links">
+      <a href="#" aria-label="Facebook">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-4h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
+      </a>
+      <a href="#" aria-label="Instagram">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+      </a>
+      <a href="#" aria-label="YouTube">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+      </a>
+      <a href="#" aria-label="TikTok">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.82.56-1.36 1.52-1.36 2.53-.01 1.01.51 1.97 1.35 2.55.83.58 1.97.68 2.94.28.84-.33 1.52-1.07 1.78-1.93.12-.41.14-.85.14-1.28V.02z"/></svg>
+      </a>
+      <a href="#" aria-label="X">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+      </a>
+    </div>
+
+    <div class="cb-footer-divider"></div>
+
+    <p class="cb-copyright">Todos os direitos reservados © 2026 Academia Beauty</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var els=[].slice.call(document.querySelectorAll('.reveal,.work-card,.cb-course'));
+  if(!('IntersectionObserver' in window)){
+    els.forEach(function(el){el.classList.add('in')});
+    return;
+  }
+  var observer=new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        var parent=entry.target.parentElement;
+        var group=(parent && (parent.classList.contains('work-grid') || parent.classList.contains('cb-courses')))
+          ? [].slice.call(parent.children).indexOf(entry.target) : 0;
+        setTimeout(function(){entry.target.classList.add('in')},Math.max(0,group)*100);
+        observer.unobserve(entry.target);
+      }
+    });
+  },{threshold:.14,rootMargin:'0px 0px -6% 0px'});
+  els.forEach(function(el){observer.observe(el)});
+})();
+</script>
+
+<script id="cb-video-style-hero-fx-script">
+(function(){
+  function initVideoStyleFx(){
+    var field = document.querySelector('.cb-particle-field');
+    if(!field || field.children.length) return;
+
+    for(var i=0; i<72; i++){
+      var p = document.createElement('span');
+      p.className = 'cb-particle' + (i % 10 === 0 ? ' big' : '');
+      p.style.setProperty('--x', (5 + Math.random() * 90).toFixed(2) + '%');
+      p.style.setProperty('--dur', (7 + Math.random() * 8).toFixed(2) + 's');
+      p.style.setProperty('--delay', (-Math.random() * 14).toFixed(2) + 's');
+      p.style.setProperty('--dx', (-42 + Math.random() * 84).toFixed(0) + 'px');
+      field.appendChild(p);
+    }
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', initVideoStyleFx, {once:true});
+  } else {
+    initVideoStyleFx();
+  }
+})();
+</script>
+
+<script id="cb-telemetry-canvas-script">
+(function(){
+  function initTelemetry(){
+    var hero = document.querySelector('.profile-hero') || document.querySelector('.cb-hero');
+    var canvas = document.getElementById('cbTelemetryCanvas');
+    if(!hero || !canvas || canvas.dataset.ready === '1') return;
+    canvas.dataset.ready = '1';
+
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var ctx = canvas.getContext('2d');
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var W = 0, H = 0;
+    var dots = [];
+    var trails = [];
+    var pulses = [];
+    var raf = 0;
+
+    function resize(){
+      var r = hero.getBoundingClientRect();
+      W = Math.max(1, Math.floor(r.width));
+      H = Math.max(1, Math.floor(r.height));
+      canvas.width = Math.floor(W * dpr);
+      canvas.height = Math.floor(H * dpr);
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      if(!dots.length){
+        for(var i = 0; i < 95; i++) dots.push(makeDot(true));
+        for(var j = 0; j < 28; j++) trails.push(makeTrail(true));
+        for(var k = 0; k < 5; k++) pulses.push(makePulse(true));
+      }
+    }
+
+    function makeDot(initial){
+      return {
+        x: Math.random() * W,
+        y: initial ? Math.random() * H : H + 10,
+        vx: (Math.random() - .5) * .16,
+        vy: -.10 - Math.random() * .34,
+        r: .6 + Math.random() * 1.5,
+        a: .14 + Math.random() * .65,
+        tw: Math.random() * Math.PI * 2,
+        life: 300 + Math.random() * 700
+      };
+    }
+
+    function makeTrail(initial){
+      return {
+        x: Math.random() * W,
+        y: initial ? Math.random() * H : H + 30,
+        len: 12 + Math.random() * 54,
+        vy: .18 + Math.random() * .55,
+        a: .12 + Math.random() * .42,
+        w: .45 + Math.random() * .9
+      };
+    }
+
+    function makePulse(initial){
+      return {
+        y: H * (.34 + Math.random() * .52),
+        x: initial ? Math.random() * W : -160,
+        speed: .65 + Math.random() * 1.15,
+        width: 60 + Math.random() * 160,
+        a: .18 + Math.random() * .38,
+        delay: Math.random() * 200
+      };
+    }
+
+    function respawnDot(d){
+      Object.assign(d, makeDot(false));
+    }
+
+    function respawnTrail(t){
+      Object.assign(t, makeTrail(false));
+    }
+
+    function drawBackgroundGrid(time){
+      ctx.save();
+      ctx.globalAlpha = .075;
+      ctx.strokeStyle = 'rgb(225,201,134)';
+      ctx.lineWidth = .5;
+
+      var spacing = 54;
+      var offset = (time * .008) % spacing;
+      for(var x = 0; x < W; x += spacing){
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, H);
+        ctx.stroke();
+      }
+
+      for(var y = -spacing + offset; y < H; y += spacing){
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawConnections(){
+      ctx.save();
+      ctx.lineWidth = .45;
+      for(var i = 0; i < dots.length; i++){
+        var a = dots[i];
+        for(var j = i + 1; j < dots.length; j++){
+          var b = dots[j];
+          var dx = a.x - b.x, dy = a.y - b.y;
+          var dist2 = dx * dx + dy * dy;
+          if(dist2 < 7200){
+            var alpha = (1 - dist2 / 7200) * .075;
+            ctx.strokeStyle = 'rgba(225,201,134,' + alpha.toFixed(3) + ')';
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+          }
+        }
+      }
+      ctx.restore();
+    }
+
+    function draw(time){
+      ctx.clearRect(0, 0, W, H);
+      drawBackgroundGrid(time);
+
+      for(var i = 0; i < trails.length; i++){
+        var t = trails[i];
+        t.y -= t.vy;
+        if(t.y + t.len < 0) respawnTrail(t);
+
+        var g = ctx.createLinearGradient(0, t.y, 0, t.y + t.len);
+        g.addColorStop(0, 'rgba(225,201,134,0)');
+        g.addColorStop(.45, 'rgba(255,240,184,' + t.a + ')');
+        g.addColorStop(1, 'rgba(225,201,134,0)');
+        ctx.strokeStyle = g;
+        ctx.lineWidth = t.w;
+        ctx.beginPath();
+        ctx.moveTo(t.x, t.y);
+        ctx.lineTo(t.x, t.y + t.len);
+        ctx.stroke();
+      }
+
+      for(var dIndex = 0; dIndex < dots.length; dIndex++){
+        var d = dots[dIndex];
+        d.x += d.vx;
+        d.y += d.vy;
+        d.tw += .025;
+        d.life--;
+
+        if(d.y < -8 || d.x < -8 || d.x > W + 8 || d.life <= 0) respawnDot(d);
+
+        var alpha = d.a * (.62 + .38 * Math.sin(d.tw));
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(255,238,177,' + alpha.toFixed(3) + ')';
+        ctx.shadowColor = 'rgba(225,201,134,.62)';
+        ctx.shadowBlur = d.r * 5;
+        ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        if(dIndex % 13 === 0){
+          ctx.strokeStyle = 'rgba(225,201,134,' + (alpha * .55).toFixed(3) + ')';
+          ctx.lineWidth = .7;
+          ctx.strokeRect(d.x - 4, d.y - 4, 8, 8);
+        }
+      }
+
+      drawConnections();
+
+      for(var pIndex = 0; pIndex < pulses.length; pIndex++){
+        var p = pulses[pIndex];
+        if(p.delay > 0){ p.delay--; continue; }
+        p.x += p.speed;
+        if(p.x > W + 200) Object.assign(p, makePulse(false));
+
+        var grad = ctx.createLinearGradient(p.x, 0, p.x + p.width, 0);
+        grad.addColorStop(0, 'rgba(225,201,134,0)');
+        grad.addColorStop(.48, 'rgba(255,240,184,' + p.a + ')');
+        grad.addColorStop(1, 'rgba(225,201,134,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(p.x, p.y, p.width, 1.2);
+      }
+
+      ctx.save();
+      ctx.font = '8px JetBrains Mono, monospace';
+      ctx.fillStyle = 'rgba(225,201,134,.22)';
+      var labels = ['NODE 05', 'SYNC', 'LIVE', 'TRACE', 'DATA', '08:24', 'CB/01'];
+      for(var q = 0; q < 8; q++){
+        var lx = W * (.08 + (q % 4) * .27);
+        var ly = H * (.22 + Math.floor(q / 4) * .52);
+        ctx.fillText(labels[q % labels.length], lx, ly);
+      }
+      ctx.restore();
+
+      if(!reduce) raf = requestAnimationFrame(draw);
+    }
+
+    resize();
+    window.addEventListener('resize', resize, {passive:true});
+
+    if(reduce){
+      draw(0);
+    } else {
+      raf = requestAnimationFrame(draw);
+    }
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', initTelemetry, {once:true});
+  } else {
+    initTelemetry();
+  }
+})();
+</script>
+
+<script id="cb-telemetry-fullwidth-script">
+(function(){
+  function widenTelemetry(){
+    var canvas = document.getElementById('cbTelemetryCanvas');
+    if(!canvas || !canvas.dataset.ready) return;
+
+    var layer = canvas.parentElement;
+    if(!layer || layer.querySelector('#cbTelemetryCanvasLeft')) return;
+
+    var extra = document.createElement('canvas');
+    extra.id = 'cbTelemetryCanvasLeft';
+    extra.style.position = 'absolute';
+    extra.style.inset = '0';
+    extra.style.width = '100%';
+    extra.style.height = '100%';
+    extra.style.opacity = '.78';
+    extra.style.pointerEvents = 'none';
+    layer.insertBefore(extra, canvas);
+
+    var hero = document.querySelector('.profile-hero') || document.querySelector('.cb-hero');
+    var ctx = extra.getContext('2d');
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var W = 0, H = 0;
+    var points = [];
+    var streams = [];
+    var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function resize(){
+      var r = hero.getBoundingClientRect();
+      W = Math.max(1, Math.floor(r.width));
+      H = Math.max(1, Math.floor(r.height));
+      extra.width = Math.floor(W * dpr);
+      extra.height = Math.floor(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      if(!points.length){
+        for(var i = 0; i < 54; i++){
+          points.push({
+            x: Math.random() * W,
+            y: Math.random() * H,
+            vy: .08 + Math.random() * .22,
+            vx: (Math.random() - .5) * .10,
+            r: .5 + Math.random() * 1.2,
+            a: .08 + Math.random() * .38,
+            p: Math.random() * Math.PI * 2
+          });
+        }
+        for(var j = 0; j < 18; j++){
+          streams.push({
+            x: Math.random() * W,
+            y: Math.random() * H,
+            len: 12 + Math.random() * 38,
+            speed: .14 + Math.random() * .32,
+            a: .08 + Math.random() * .26
+          });
+        }
+      }
+    }
+
+    function drawGrid(){
+      ctx.save();
+      ctx.strokeStyle = 'rgba(225,201,134,.055)';
+      ctx.lineWidth = .5;
+      var spacing = 58;
+      for(var x = 0; x < W; x += spacing){
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+      for(var y = 0; y < H; y += spacing){
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function draw(){
+      ctx.clearRect(0, 0, W, H);
+      drawGrid();
+
+      for(var i = 0; i < streams.length; i++){
+        var s = streams[i];
+        s.y -= s.speed;
+        if(s.y + s.len < 0){ s.y = H + 10; s.x = Math.random() * W; }
+
+        var g = ctx.createLinearGradient(0, s.y, 0, s.y + s.len);
+        g.addColorStop(0, 'rgba(225,201,134,0)');
+        g.addColorStop(.5, 'rgba(255,240,184,' + s.a + ')');
+        g.addColorStop(1, 'rgba(225,201,134,0)');
+        ctx.strokeStyle = g;
+        ctx.lineWidth = .7;
+        ctx.beginPath();
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(s.x, s.y + s.len);
+        ctx.stroke();
+      }
+
+      for(var p = 0; p < points.length; p++){
+        var d = points[p];
+        d.x += d.vx;
+        d.y -= d.vy;
+        d.p += .02;
+        if(d.y < -5){ d.y = H + 5; d.x = Math.random() * W; }
+
+        var alpha = d.a * (.7 + .3 * Math.sin(d.p));
+        ctx.fillStyle = 'rgba(255,238,177,' + alpha.toFixed(3) + ')';
+        ctx.shadowColor = 'rgba(225,201,134,.45)';
+        ctx.shadowBlur = d.r * 4;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        if(p % 11 === 0){
+          ctx.strokeStyle = 'rgba(225,201,134,' + (alpha * .42).toFixed(3) + ')';
+          ctx.lineWidth = .5;
+          ctx.strokeRect(d.x - 3, d.y - 3, 6, 6);
+        }
+      }
+
+      if(!reduced) requestAnimationFrame(draw);
+    }
+
+    resize();
+    window.addEventListener('resize', resize, {passive:true});
+    draw();
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){
+      setTimeout(widenTelemetry, 50);
+    }, {once:true});
+  } else {
+    setTimeout(widenTelemetry, 50);
+  }
+})();
+</script>
+
+<script id="cb-telemetry-bold-script">
+(function(){
+  function intensifyTelemetry(){
+    var hero = document.querySelector('.profile-hero') || document.querySelector('.cb-hero');
+    var base = document.getElementById('cbTelemetryCanvas');
+    if(!hero || !base || document.getElementById('cbTelemetryCanvasBoost')) return;
+
+    var layer = base.parentElement;
+    var boost = document.createElement('canvas');
+    boost.id = 'cbTelemetryCanvasBoost';
+    boost.style.position = 'absolute';
+    boost.style.inset = '0';
+    boost.style.width = '100%';
+    boost.style.height = '100%';
+    boost.style.pointerEvents = 'none';
+    boost.style.opacity = '1';
+    boost.style.mixBlendMode = 'screen';
+    layer.insertBefore(boost, base.nextSibling);
+
+    var ctx = boost.getContext('2d');
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var W = 0, H = 0;
+    var particles = [];
+    var packets = [];
+    var streams = [];
+    var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function resize(){
+      var r = hero.getBoundingClientRect();
+      W = Math.max(1, Math.floor(r.width));
+      H = Math.max(1, Math.floor(r.height));
+      boost.width = Math.floor(W * dpr);
+      boost.height = Math.floor(H * dpr);
+      boost.style.width = W + 'px';
+      boost.style.height = H + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      if(!particles.length){
+        for(var i = 0; i < 150; i++){
+          particles.push({
+            x: Math.random() * W,
+            y: Math.random() * H,
+            vx: (Math.random() - .5) * .18,
+            vy: -.12 - Math.random() * .42,
+            r: .7 + Math.random() * 1.8,
+            a: .18 + Math.random() * .68,
+            phase: Math.random() * Math.PI * 2
+          });
+        }
+
+        for(var j = 0; j < 46; j++){
+          streams.push({
+            x: Math.random() * W,
+            y: Math.random() * H,
+            len: 18 + Math.random() * 70,
+            speed: .22 + Math.random() * .7,
+            a: .16 + Math.random() * .46,
+            w: .55 + Math.random() * 1.2
+          });
+        }
+
+        for(var k = 0; k < 9; k++){
+          packets.push({
+            x: Math.random() * W,
+            y: H * (.18 + Math.random() * .72),
+            speed: .9 + Math.random() * 1.8,
+            width: 90 + Math.random() * 220,
+            a: .24 + Math.random() * .5
+          });
+        }
+      }
+    }
+
+    function drawGrid(){
+      ctx.save();
+      ctx.strokeStyle = 'rgba(225,201,134,.10)';
+      ctx.lineWidth = .55;
+      var spacing = 46;
+      for(var x = 0; x < W; x += spacing){
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+      for(var y = 0; y < H; y += spacing){
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawConnections(){
+      ctx.save();
+      ctx.lineWidth = .55;
+      for(var i = 0; i < particles.length; i += 2){
+        var a = particles[i];
+        for(var j = i + 2; j < particles.length; j += 8){
+          var b = particles[j];
+          var dx = a.x - b.x, dy = a.y - b.y;
+          var d2 = dx * dx + dy * dy;
+          if(d2 < 10500){
+            var alpha = (1 - d2 / 10500) * .12;
+            ctx.strokeStyle = 'rgba(225,201,134,' + alpha.toFixed(3) + ')';
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+          }
+        }
+      }
+      ctx.restore();
+    }
+
+    function draw(){
+      ctx.clearRect(0, 0, W, H);
+      drawGrid();
+
+      for(var i = 0; i < streams.length; i++){
+        var s = streams[i];
+        s.y -= s.speed;
+        if(s.y + s.len < 0){
+          s.y = H + 20;
+          s.x = Math.random() * W;
+        }
+        var g = ctx.createLinearGradient(0, s.y, 0, s.y + s.len);
+        g.addColorStop(0, 'rgba(225,201,134,0)');
+        g.addColorStop(.45, 'rgba(255,244,199,' + s.a + ')');
+        g.addColorStop(1, 'rgba(225,201,134,0)');
+        ctx.strokeStyle = g;
+        ctx.lineWidth = s.w;
+        ctx.shadowColor = 'rgba(225,201,134,.45)';
+        ctx.shadowBlur = 5;
+        ctx.beginPath();
+        ctx.moveTo(s.x, s.y);
+        ctx.lineTo(s.x, s.y + s.len);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      for(var p = 0; p < particles.length; p++){
+        var d = particles[p];
+        d.x += d.vx;
+        d.y += d.vy;
+        d.phase += .03;
+
+        if(d.y < -10){ d.y = H + 10; d.x = Math.random() * W; }
+        if(d.x < -10) d.x = W + 10;
+        if(d.x > W + 10) d.x = -10;
+
+        var alpha = d.a * (.68 + .32 * Math.sin(d.phase));
+        ctx.fillStyle = 'rgba(255,244,199,' + alpha.toFixed(3) + ')';
+        ctx.shadowColor = 'rgba(225,201,134,.85)';
+        ctx.shadowBlur = d.r * 7;
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        if(p % 9 === 0){
+          ctx.strokeStyle = 'rgba(225,201,134,' + (alpha * .62).toFixed(3) + ')';
+          ctx.lineWidth = .8;
+          ctx.strokeRect(d.x - 5, d.y - 5, 10, 10);
+        }
+      }
+
+      drawConnections();
+
+      for(var q = 0; q < packets.length; q++){
+        var pk = packets[q];
+        pk.x += pk.speed;
+        if(pk.x > W + 250){ pk.x = -pk.width; pk.y = H * (.18 + Math.random() * .72); }
+
+        var grad = ctx.createLinearGradient(pk.x, 0, pk.x + pk.width, 0);
+        grad.addColorStop(0, 'rgba(225,201,134,0)');
+        grad.addColorStop(.45, 'rgba(255,244,199,' + pk.a + ')');
+        grad.addColorStop(.55, 'rgba(255,244,199,' + Math.min(1, pk.a + .2) + ')');
+        grad.addColorStop(1, 'rgba(225,201,134,0)');
+        ctx.fillStyle = grad;
+        ctx.shadowColor = 'rgba(225,201,134,.65)';
+        ctx.shadowBlur = 8;
+        ctx.fillRect(pk.x, pk.y, pk.width, 1.8);
+        ctx.shadowBlur = 0;
+      }
+
+      if(!reduce) requestAnimationFrame(draw);
+    }
+
+    resize();
+    window.addEventListener('resize', resize, {passive:true});
+    draw();
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){
+      setTimeout(intensifyTelemetry, 80);
+    }, {once:true});
+  } else {
+    setTimeout(intensifyTelemetry, 80);
+  }
+})();
+</script>
+
+</body>
+</html>

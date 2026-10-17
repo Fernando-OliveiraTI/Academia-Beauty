@@ -1,0 +1,174 @@
+{
+  "origin": "local",
+  "generatedAt": "2026-10-17T12:12:47.276Z",
+  "pages": {
+    "home": {
+      "w1440": {
+        "scrollHeight": 3720,
+        "horizontalOverflow": false,
+        "blockedHosts": [
+          "g0r0t0-50.myshopify.com",
+          "monorail-edge.shopifysvc.com"
+        ],
+        "pageErrors": 1
+      },
+      "w1024": {
+        "scrollHeight": 3934,
+        "horizontalOverflow": false,
+        "blockedHosts": [
+          "g0r0t0-50.myshopify.com",
+          "monorail-edge.shopifysvc.com"
+        ],
+        "pageErrors": 1
+      },
+      "w900": {
+        "scrollHeight": 5160,
+        "horizontalOverflow": false,
+        "blockedHosts": [
+          "g0r0t0-50.myshopify.com",
+          "monorail-edge.shopifysvc.com"
+        ],
+        "pageErrors": 1
+      },
+      "w768": {
+        "scrollHeight": 5387,
+        "horizontalOverflow": false,
+        "blockedHosts": [
+          "g0r0t0-50.myshopify.com",
+          "monorail-edge.shopifysvc.com"
+        ],
+        "pageErrors": 1
+      },
+      "w620": {
+        "scrollHeight": 5321,
+        "horizontalOverflow": false,
+        "blockedHosts": [
+          "g0r0t0-50.myshopify.com",
+          "monorail-edge.shopifysvc.com"
+        ],
+        "pageErrors": 1
+      },
+      "w390": {
+        "scrollHeight": 5639,
+        "horizontalOverflow": false,
+        "blockedHosts": [
+          "g0r0t0-50.myshopify.com",
+          "monorail-edge.shopifysvc.com"
+        ],
+        "pageErrors": 1
+      }
+    },
+    "profissional": {
+      "w1440": {
+        "scrollHeight": 3511,
+        "horizontalOverflow": false,
+        "blockedHosts": [
+          "cdn.shopify.com",
+          "fonts.googleapis.com"
+        ],
+        "pageErrors": 1
+      },
+      "w1024": {
+        "scrollHeight": 3574,
+        "horizontalOverflow": false,
+        "blockedHosts": [
+          "cdn.shopify.com",
+          "fonts.googleapis.com"
+        ],
+        "pageErrors": 1
+      },
+      "w900": {
+        "scrollHeight": 3901,
+        "horizontalOverflow": false,
+        "blockedHosts": [
+          "cdn.shopify.com",
+          "fonts.googleapis.com"
+        ],
+        "pageErrors": 1
+      },
+      "w768": {
+        "scrollHeight": 4052,
+        "horizontalOverflow": false,
+        "blockedHosts": [
+          "cdn.shopify.com",
+          "fonts.googleapis.com"
+        ],
+        "pageErrors": 1
+      },
+      "w620": {
+        "scrollHeight": 4777,
+        "horizontalOverflow": false,
+        "blockedHosts": [
+          "cdn.shopify.com",
+          "fonts.googleapis.com"
+        ],
+        "pageErrors": 1
+      },
+      "w390": {
+        "scrollHeight": 5118,
+        "horizontalOverflow": false,
+        "blockedHosts": [
+          "cdn.shopify.com",
+          "fonts.googleapis.com"
+        ],
+        "pageErrors": 1
+      }
+    },
+    "curso": {
+      "w1440": {
+        "scrollHeight": 8625,
+        "horizontalOverflow": false,
+        "blockedHosts": [
+          "cdn.shopify.com",
+          "fonts.googleapis.com"
+        ],
+        "pageErrors": 0
+      },
+      "w1024": {
+        "scrollHeight": 8658,
+        "horizontalOverflow": false,
+        "blockedHosts": [
+          "cdn.shopify.com",
+          "fonts.googleapis.com"
+        ],
+        "pageErrors": 0
+      },
+      "w900": {
+        "scrollHeight": 8828,
+        "horizontalOverflow": false,
+        "blockedHosts": [
+          "cdn.shopify.com",
+          "fonts.googleapis.com"
+        ],
+        "pageErrors": 0
+      },
+      "w768": {
+        "scrollHeight": 11319,
+        "horizontalOverflow": false,
+        "blockedHosts": [
+          "cdn.shopify.com",
+          "fonts.googleapis.com"
+        ],
+        "pageErrors": 0
+      },
+      "w620": {
+        "scrollHeight": 11193,
+        "horizontalOverflow": false,
+        "blockedHosts": [
+          "cdn.shopify.com",
+          "fonts.googleapis.com"
+        ],
+        "pageErrors": 0
+      },
+      "w390": {
+        "scrollHeight": 12245,
+        "horizontalOverflow": false,
+        "blockedHosts": [
+          "cdn.shopify.com",
+          "fonts.googleapis.com"
+        ],
+        "pageErrors": 0
+      }
+    }
+  }
+}

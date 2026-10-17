@@ -1,0 +1,128 @@
+{
+  "viewport": {
+    "name": "w620",
+    "width": 620,
+    "height": 900
+  },
+  "blockedHosts": [
+    "cdn.shopify.com",
+    "fonts.googleapis.com"
+  ],
+  "pageErrors": [],
+  "scrollHeight": 11193,
+  "scrollWidth": 620,
+  "horizontalOverflow": false,
+  "activeAnimations": 14,
+  "canvases": 0,
+  "fonts": [],
+  "sections": [
+    {
+      "tag": "header",
+      "id": "header",
+      "cls": "header",
+      "top": 10,
+      "height": 64,
+      "width": 600
+    },
+    {
+      "tag": "section",
+      "id": "top",
+      "cls": "hero",
+      "top": 0,
+      "height": 1564,
+      "width": 620
+    },
+    {
+      "tag": "section",
+      "top": 1564,
+      "height": 199,
+      "width": 620
+    },
+    {
+      "tag": "section",
+      "id": "beneficios",
+      "cls": "section",
+      "top": 1763,
+      "height": 974,
+      "width": 620
+    },
+    {
+      "tag": "section",
+      "id": "conteudo",
+      "cls": "section",
+      "top": 2737,
+      "height": 985,
+      "width": 620
+    },
+    {
+      "tag": "section",
+      "id": "entrega",
+      "cls": "section",
+      "top": 3722,
+      "height": 1299,
+      "width": 620
+    },
+    {
+      "tag": "section",
+      "id": "instrutor",
+      "cls": "section",
+      "top": 5021,
+      "height": 1122,
+      "width": 620
+    },
+    {
+      "tag": "section",
+      "id": "depoimentos",
+      "cls": "section",
+      "top": 6143,
+      "height": 1074,
+      "width": 620
+    },
+    {
+      "tag": "section",
+      "id": "oferta",
+      "cls": "section",
+      "top": 7217,
+      "height": 776,
+      "width": 620
+    },
+    {
+      "tag": "section",
+      "id": "faq",
+      "cls": "section faq",
+      "top": 7994,
+      "height": 797,
+      "width": 620
+    },
+    {
+      "tag": "section",
+      "id": "checkout",
+      "cls": "section checkout-section",
+      "top": 8790,
+      "height": 1063,
+      "width": 620
+    },
+    {
+      "tag": "section",
+      "id": "garantia",
+      "cls": "section",
+      "top": 9853,
+      "height": 565,
+      "width": 620
+    },
+    {
+      "tag": "section",
+      "cls": "section",
+      "top": 10418,
+      "height": 493,
+      "width": 620
+    },
+    {
+      "tag": "footer",
+      "cls": "footer",
+      "top": 10911,
+      "height": 282,
+      "width": 620
+    }
+  ]
+}

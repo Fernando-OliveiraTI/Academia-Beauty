@@ -1,0 +1,23 @@
+/* Primitivas do painel administrativo. Usam somente os tokens oficiais. */
+.ds-button {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  min-height: 44px; padding: 0 var(--space-5); border-radius: var(--radius-pill);
+  font: 600 var(--fs-cta) var(--font-sans); cursor: pointer;
+  border: 1px solid var(--color-primary); transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast);
+}
+.ds-button[data-variant='primary'] { background: var(--color-cta); color: var(--color-cta-text); }
+.ds-button[data-variant='secondary'] { background: transparent; color: var(--color-primary); }
+.ds-button:hover:not(:disabled) { transform: translateY(-1px); }
+.ds-button:disabled { opacity: .5; cursor: not-allowed; }
+.ds-button:focus-visible, .ds-input:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.ds-field { display: grid; gap: var(--space-2); }
+.ds-label { font: 500 var(--fs-caption) var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--color-text-secondary); }
+.ds-input {
+  min-height: 44px; padding: 0 var(--space-4); border-radius: var(--radius-sm);
+  background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border-strong);
+  font: var(--fs-body) var(--font-sans);
+}
+.ds-input[aria-invalid='true'] { border-color: var(--color-error); }
+.ds-error { color: var(--color-error); font-size: var(--fs-caption); }
+@media (prefers-reduced-motion: reduce) { .ds-button { transition: none; } .ds-button:hover:not(:disabled) { transform: none; } }
+textarea.ds-input { padding: var(--space-3) var(--space-4); resize: vertical; line-height: 1.5; }
