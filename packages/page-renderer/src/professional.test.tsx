@@ -10,16 +10,18 @@ const html = (doc: unknown = professionalOriginalTemplate) => renderToStaticMark
 const clone = () => structuredClone(professionalOriginalTemplate);
 
 describe('template Profissional Original', () => {
-  it('é válido e cobre todas as seções registradas', () => {
+  it('é válido e cobre todas as seções do Original (Números e Chamada pertencem aos outros modelos)', () => {
     registerSections();
     expect(parsePageDocument(professionalOriginalTemplate).ok).toBe(true);
     const types = new Set(professionalOriginalTemplate.sections.map((s) => s.type));
-    expect(PROFESSIONAL_SECTIONS.every((e) => types.has(e.type))).toBe(true);
+    const others = new Set(['professional.stats', 'professional.cta']);
+    expect(PROFESSIONAL_SECTIONS.filter((e) => !others.has(e.type)).every((e) => types.has(e.type))).toBe(true);
+    expect(PROFESSIONAL_SECTIONS.filter((e) => others.has(e.type)).length).toBe(2);
   });
 
   it('renderiza a estrutura do original com a marca Academia Beauty', () => {
     const out = html();
-    expect(out).toContain('<div class="pg-pro">');
+    expect(out).toContain('<div class="pg-pro" data-tpl="professional-original">');
     expect(out).toContain('<nav class="cb-nav">');
     expect(out).toContain('<header class="profile-hero cb-hero">');
     expect(out).toContain('<h1 class="hero-name reveal">Lukas<span>Campos.</span></h1>');

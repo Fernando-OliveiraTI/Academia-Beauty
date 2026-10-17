@@ -31,7 +31,7 @@ function fail(ctx: HttpContext, raw: unknown) {
  */
 export default abstract class BaseDocumentsController {
   protected abstract kind: DocumentKind
-  protected abstract resource: 'professional' | 'course'
+  protected abstract resource: 'professional' | 'course' | 'home'
 
   async show(ctx: HttpContext) {
     try {

@@ -27,6 +27,7 @@ export function toAdmin(p: Professional): AdminProfessional {
     status: p.status,
     revision: p.revision,
     data: p.data,
+    templateKey: p.templateKey,
     homeVisible: p.homeVisible,
     homeOrder: p.homeOrder,
     featured: p.featured,
@@ -48,12 +49,18 @@ async function slugTaken(slug: string, exceptId?: number) {
 }
 
 export default class ProfessionalService {
-  static async create(slug: string, data: ProfessionalData, actorId: number) {
+  static async create(
+    slug: string,
+    data: ProfessionalData,
+    actorId: number,
+    templateKey = PROFESSIONAL_TEMPLATE.key as string
+  ) {
     if (await slugTaken(slug)) throw new DomainError(409, 'slug_taken', 'Este slug já está em uso')
     return Professional.create({
       slug,
       data,
       name: data.name,
+      templateKey,
       status: 'draft',
       revision: 1,
       createdBy: actorId,
@@ -64,7 +71,7 @@ export default class ProfessionalService {
   /** Grava o rascunho com concorrência otimista (`revision`). */
   static async update(
     id: number,
-    input: { slug?: string; data: ProfessionalData; revision: number },
+    input: { slug?: string; data: ProfessionalData; revision: number; templateKey?: string },
     actorId: number
   ) {
     return db.transaction(async (trx) => {
@@ -87,6 +94,17 @@ export default class ProfessionalService {
         if (await slugTaken(input.slug, id))
           throw new DomainError(409, 'slug_taken', 'Este slug já está em uso')
         current.slug = input.slug
+      }
+      if (input.templateKey && input.templateKey !== current.templateKey) {
+        // Documento e modelo andam juntos: trocar de modelo exige voltar a página ao cadastro antes.
+        if (current.document !== null) {
+          throw new DomainError(
+            422,
+            'template_locked',
+            'A página foi personalizada no editor. Use "Restaurar do cadastro" antes de trocar o modelo.'
+          )
+        }
+        current.templateKey = input.templateKey
       }
       current.data = input.data
       current.name = input.data.name
@@ -111,7 +129,9 @@ export default class ProfessionalService {
         throw new DomainError(422, 'not_ready', 'O cadastro está incompleto para publicar', issues)
       }
       // O documento do editor é revalidado na publicação (o schema pode ter mudado desde o salvamento).
-      if (current.document) assertValidDocument(PROFESSIONAL_KIND, current.document)
+      if (current.document) {
+        assertValidDocument(PROFESSIONAL_KIND, current.document, current.templateKey)
+      }
 
       const last = await trx
         .from('professional_versions')
@@ -125,7 +145,7 @@ export default class ProfessionalService {
           version,
           data: current.data,
           document: current.document,
-          templateKey: PROFESSIONAL_TEMPLATE.key,
+          templateKey: current.templateKey,
           templateVersion: PROFESSIONAL_TEMPLATE.version,
           publishedBy: actorId,
         },

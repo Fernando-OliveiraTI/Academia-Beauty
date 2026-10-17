@@ -11,6 +11,8 @@ import {
 } from '@academia/contracts'
 import { Button, Field, TextArea } from '@academia/design-system'
 import { apiSend } from '@/lib/api-client'
+import { PROFESSIONAL_TEMPLATES } from '@academia/section-schemas'
+import { MediaInput } from '@/components/media-input'
 import { canonical, emptyProfessionalData, fieldErrors, groupIssuesByStep, parseTags, STEPS, suggestSlug } from './form-model'
 
 type Loaded = AdminProfessional & { readiness: ReadinessIssue[] }
@@ -20,6 +22,7 @@ const MESSAGES: Record<string, string> = {
   revision_conflict: 'Outra pessoa alterou este cadastro. Recarregue a página para continuar sem perder o trabalho dela.',
   slug_taken: 'Este endereço (slug) já está em uso.',
   slug_locked: 'O endereço não pode mudar depois da primeira publicação.',
+  template_locked: 'A página foi personalizada no editor. Use «Restaurar do cadastro» no editor antes de trocar o modelo.',
   archived: 'Restaure o profissional antes de continuar.',
 }
 
@@ -36,6 +39,7 @@ export function ProfessionalWizard({ initial, permissions }: { initial?: Loaded;
   const [saved, setSaved] = useState<Loaded | undefined>(initial)
   const [data, setData] = useState<ProfessionalData>(initial?.data ?? emptyProfessionalData)
   const [slug, setSlug] = useState(initial?.slug ?? '')
+  const [templateKey, setTemplateKey] = useState<string>(initial?.templateKey ?? 'professional-original')
   const [slugTouched, setSlugTouched] = useState(Boolean(initial))
   const [step, setStep] = useState(0)
   const [busy, setBusy] = useState(false)
@@ -64,8 +68,8 @@ export function ProfessionalWizard({ initial, permissions }: { initial?: Loaded;
     setBusy(true)
     try {
       const res = saved
-        ? await apiSend<Loaded>('PUT', `/admin/professionals/${saved.id}`, { slug: slug !== saved.slug ? slug : undefined, data: parsed.data, revision: saved.revision })
-        : await apiSend<Loaded>('POST', '/admin/professionals', { slug, data: parsed.data })
+        ? await apiSend<Loaded>('PUT', `/admin/professionals/${saved.id}`, { slug: slug !== saved.slug ? slug : undefined, data: parsed.data, revision: saved.revision, templateKey })
+        : await apiSend<Loaded>('POST', '/admin/professionals', { slug, data: parsed.data, templateKey })
       if (!res.ok || !res.data) {
         fail(res.status, res.data as ApiError | null)
         return false
@@ -149,6 +153,19 @@ export function ProfessionalWizard({ initial, permissions }: { initial?: Loaded;
             <Field label="Endereço da página (slug)" value={slug} maxLength={80} disabled={!slugEditable} error={errors.slug}
               onChange={(e) => { setSlugTouched(true); setSlug(e.target.value.toLowerCase()) }} />
             <p className="wizard-hint">A página ficará em <code>/profissionais/{slug || '…'}</code>. O endereço não muda depois da primeira publicação.</p>
+            <fieldset className="template-picker" disabled={!canWrite || Boolean(saved && saved.documentRevision > 0)}>
+              <legend className="ds-label">Modelo da página</legend>
+              {PROFESSIONAL_TEMPLATES.map((t) => (
+                <div className="template-option" key={t.key} data-selected={templateKey === t.key || undefined}>
+                  <label>
+                    <input type="radio" name="templateKey" value={t.key} checked={templateKey === t.key} onChange={() => setTemplateKey(t.key)} />
+                    <span><strong>{t.label}</strong><small>{t.description}</small></span>
+                  </label>
+                  <a className="link-button" href={`/preview/modelos/${t.key}`} target="_blank" rel="noopener" aria-label={`Ver exemplo do modelo ${t.label} (abre em nova aba)`}>Ver exemplo</a>
+                </div>
+              ))}
+              {saved && saved.documentRevision > 0 ? <p className="wizard-hint">A página foi personalizada no editor: para trocar o modelo, use «Restaurar do cadastro» no editor.</p> : <p className="wizard-hint">O modelo define a composição e o visual da página. Você ainda poderá editar cada seção no editor visual.</p>}
+            </fieldset>
           </div>
         ) : null}
 
@@ -166,10 +183,10 @@ export function ProfessionalWizard({ initial, permissions }: { initial?: Loaded;
 
         {step === 2 ? (
           <div className="wizard-grid">
-            <p className="wizard-hint">Informe um caminho do site (<code>/site/…</code>). Endereços externos (<code>https://</code>) não são aceitos para imagem e vídeo até o módulo de mídia (upload e CDN).</p>
-            <Field label="Retrato da página" value={data.portraitSrc} disabled={!canWrite} error={errors.portraitSrc} onChange={(e) => set('portraitSrc', e.target.value)} />
-            <Field label="Foto do cartão na Home" value={data.cardPhotoSrc} disabled={!canWrite} error={errors.cardPhotoSrc} onChange={(e) => set('cardPhotoSrc', e.target.value)} />
-            <Field label="Vídeo de apresentação (opcional, MP4)" value={data.videoSrc} disabled={!canWrite} error={errors.videoSrc} onChange={(e) => set('videoSrc', e.target.value)} />
+            <p className="wizard-hint">Escolha os arquivos na biblioteca de mídia (botão “Biblioteca”, que também envia arquivos novos). Caminhos do site (<code>/site/…</code>) continuam valendo.</p>
+            <MediaInput label="Retrato da página" kind="image" value={data.portraitSrc} disabled={!canWrite} error={errors.portraitSrc} onChange={(v) => set('portraitSrc', v)} />
+            <MediaInput label="Foto do cartão na Home" kind="image" value={data.cardPhotoSrc} disabled={!canWrite} error={errors.cardPhotoSrc} onChange={(v) => set('cardPhotoSrc', v)} />
+            <MediaInput label="Vídeo de apresentação (opcional, MP4)" kind="video" value={data.videoSrc} disabled={!canWrite} error={errors.videoSrc} onChange={(v) => set('videoSrc', v)} />
           </div>
         ) : null}
 
@@ -193,7 +210,7 @@ export function ProfessionalWizard({ initial, permissions }: { initial?: Loaded;
                 return (
                   <div key={i} className="wizard-row wizard-work">
                     <Field label={`Trabalho ${i + 1} · título`} value={work.title} maxLength={120} disabled={!canWrite} error={errors[`works.${i}.title`]} onChange={(e) => update({ title: e.target.value })} />
-                    <Field label="Imagem" value={work.imageSrc} disabled={!canWrite} error={errors[`works.${i}.imageSrc`]} onChange={(e) => update({ imageSrc: e.target.value })} />
+                    <MediaInput label="Imagem" kind="image" value={work.imageSrc} disabled={!canWrite} error={errors[`works.${i}.imageSrc`]} onChange={(v) => update({ imageSrc: v })} />
                     <Field label="Texto alternativo da imagem" value={work.alt} maxLength={300} disabled={!canWrite} error={errors[`works.${i}.alt`]} onChange={(e) => update({ alt: e.target.value })} />
                     <Field key={work.tags.join('|')} label="Etiquetas (até 2, separadas por vírgula)" defaultValue={work.tags.join(', ')} disabled={!canWrite} onBlur={(e) => update({ tags: parseTags(e.target.value) })} />
                     {canWrite ? <Button variant="secondary" onClick={() => set('works', data.works.filter((_, j) => j !== i))}>Remover trabalho {i + 1}</Button> : null}

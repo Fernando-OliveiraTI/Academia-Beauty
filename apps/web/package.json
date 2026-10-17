@@ -14,7 +14,10 @@
     "e2e:home": "tsx e2e/home-preview.e2e.mts",
     "e2e:professionals": "tsx e2e/professionals.e2e.mts",
     "e2e:courses": "tsx e2e/courses.e2e.mts",
-    "e2e:editor": "tsx e2e/editor.e2e.mts"
+    "e2e:editor": "tsx e2e/editor.e2e.mts",
+    "e2e:media": "tsx e2e/media.e2e.mts",
+    "e2e:home-editor": "tsx e2e/home-editor.e2e.mts",
+    "e2e:templates": "tsx e2e/templates.e2e.mts"
   },
   "dependencies": {
     "@academia/contracts": "workspace:*",

@@ -9,6 +9,8 @@ import type { NextFn } from '@adonisjs/core/types/http'
 export default class ForceJsonResponseMiddleware {
   async handle({ request }: HttpContext, next: NextFn) {
     const headers = request.headers()
+    // A entrega de mídia negocia o formato (AVIF/WebP) pelo Accept original do navegador.
+    headers['x-original-accept'] = headers.accept
     headers.accept = 'application/json'
 
     return next()

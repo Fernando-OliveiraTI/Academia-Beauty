@@ -69,4 +69,14 @@ export default await Env.create(new URL('../', import.meta.url), {
   |----------------------------------------------------------
   */
   TRUSTED_PROXIES: Env.schema.string.optional(),
+
+  /*
+  |----------------------------------------------------------
+  | Mídia (Fase 7A). MEDIA_STORAGE_PATH: pasta dos arquivos enviados (padrão: storage/media na API).
+  | MEDIA_CDN_HOST: host(s) https (vírgula) aceitos como URL de mídia externa; o site libera o mesmo
+  | host no CSP. Vazio = só mídia do próprio site (/site e /media).
+  |----------------------------------------------------------
+  */
+  MEDIA_STORAGE_PATH: Env.schema.string.optional(),
+  MEDIA_CDN_HOST: Env.schema.string.optional(),
 })

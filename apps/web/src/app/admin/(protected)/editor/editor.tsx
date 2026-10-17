@@ -14,7 +14,7 @@ import { useAutosave, type SaveState } from './use-autosave'
 import { SchemaForm, type JsonSchema } from '@/components/schema-form'
 import { EDITOR_MESSAGE } from '@/components/live-preview'
 
-type Kind = 'professional' | 'course'
+type Kind = 'professional' | 'course' | 'home'
 export type EditorProps = {
   kind: Kind
   id: number
@@ -74,7 +74,7 @@ export function Editor(props: EditorProps) {
   const { kind, id, library, templateKey } = props
   const editable = props.canWrite && props.status !== 'archived'
   const rules = useMemo(() => editorRules(templateKey), [templateKey])
-  const base = kind === 'professional' ? `/admin/professionals/${id}` : `/admin/courses/${id}`
+  const base = kind === 'professional' ? `/admin/professionals/${id}` : kind === 'course' ? `/admin/courses/${id}` : '/admin/home'
 
   const [history, setHistory] = useState<History>(() => createHistory(props.initial))
   const doc = history.present
@@ -222,10 +222,10 @@ export function Editor(props: EditorProps) {
     }
   }
   const resetToRegistry = () => replaceOnServer(() => apiSend('DELETE', `${base}/document`, { revision: autosave.revisionRef.current }))
-  const restoreVersion = (version: number) => replaceOnServer(() => apiSend('POST', `${base}/document/versions/${version}/restore`, { revision: autosave.revisionRef.current, dataRevision: props.cadastroRevision }))
+  const restoreVersion = (version: number) => replaceOnServer(() => apiSend('POST', `${base}/document/versions/${version}/restore`, { revision: autosave.revisionRef.current, ...(kind === 'home' ? {} : { dataRevision: props.cadastroRevision }) }))
 
   const frameWidth = viewport === 'desktop' ? '100%' : viewport === 'tablet' ? '820px' : '390px'
-  const previewSrc = `/admin/preview/${kind === 'professional' ? 'profissionais' : 'cursos'}/${id}/live`
+  const previewSrc = kind === 'home' ? '/admin/preview/home/live' : `/admin/preview/${kind === 'professional' ? 'profissionais' : 'cursos'}/${id}/live`
   const blockedBanner: Partial<Record<SaveState, ReactNode>> = {
     conflict: <>Outra pessoa alterou esta página no editor. Suas alterações não foram salvas. <button type="button" className="link-button" onClick={() => window.location.reload()}>Recarregar</button></>,
     auth: <>Sua sessão expirou e as alterações ainda não foram salvas. <a href="/admin/login" target="_blank" rel="noreferrer">Entrar novamente (nova aba)</a> e depois <button type="button" className="link-button" onClick={autosave.retry}>tentar salvar</button>.</>,
@@ -249,7 +249,7 @@ export function Editor(props: EditorProps) {
           ))}
         </div>
         <button type="button" className="admin-button secondary" aria-expanded={panel === 'history'} onClick={() => { if (panel !== 'history') void loadVersions(); setPanel(panel === 'history' ? 'none' : 'history') }}>Histórico</button>
-        {editable ? <button type="button" className="admin-button secondary" disabled={busy} onClick={() => setConfirm({ kind: 'reset' })}>Restaurar do cadastro</button> : null}
+        {editable ? <button type="button" className="admin-button secondary" disabled={busy} onClick={() => setConfirm({ kind: 'reset' })}>{kind === 'home' ? 'Restaurar padrão' : 'Restaurar do cadastro'}</button> : null}
         {props.canPublish && props.status !== 'archived' ? <button type="button" className="admin-button" onClick={publish} disabled={busy || saveState === 'conflict' || !validation.ok}>{busy ? 'Aguarde…' : 'Publicar'}</button> : null}
       </div>
 
@@ -258,7 +258,9 @@ export function Editor(props: EditorProps) {
       {publishMsg ? <p role="status" className="ed-banner ed-banner-info">{publishMsg}</p> : null}
       {confirm ? (
         <ConfirmBar
-          title={confirm.kind === 'reset' ? 'Descartar as edições do editor e voltar à página gerada pelo cadastro?' : `Voltar o rascunho à versão ${confirm.version}? O cadastro também volta ao que estava nessa versão.`}
+          title={confirm.kind === 'reset'
+            ? (kind === 'home' ? 'Descartar as edições do editor e voltar à Home original?' : 'Descartar as edições do editor e voltar à página gerada pelo cadastro?')
+            : (kind === 'home' ? `Voltar o rascunho à versão ${confirm.version}?` : `Voltar o rascunho à versão ${confirm.version}? O cadastro também volta ao que estava nessa versão.`)}
           busy={busy}
           onConfirm={() => (confirm.kind === 'reset' ? resetToRegistry() : restoreVersion(confirm.version))}
           onCancel={() => setConfirm(null)}
@@ -330,7 +332,7 @@ export function Editor(props: EditorProps) {
                 <ul className="ed-versions">
                   {versions.map((v) => (
                     <li key={v.version}>
-                      <span>Versão {v.version}{v.current ? ' (no ar)' : ''}<small> · {new Date(v.createdAt).toLocaleString('pt-BR')}{v.hasDocument ? '' : ' · gerada pelo cadastro'}</small></span>
+                      <span>Versão {v.version}{v.current ? ' (no ar)' : ''}<small> · {new Date(v.createdAt).toLocaleString('pt-BR')}{v.hasDocument ? '' : kind === 'home' ? ' · Home original' : ' · gerada pelo cadastro'}</small></span>
                       {editable ? <button type="button" className="link-button" onClick={() => setConfirm({ kind: 'restore', version: v.version })}>Restaurar no rascunho</button> : null}
                     </li>
                   ))}

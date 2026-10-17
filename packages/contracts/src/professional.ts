@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isSafeMediaPath } from '@academia/page-schema';
 
 /** Texto simples: sem marcação (mesma regra do documento de página). */
 const plain = (max: number) =>
@@ -13,13 +14,24 @@ const safeUrl = z
 
 const optionalUrl = z.union([z.literal(''), safeUrl]);
 
-/** Mídia: só caminho interno do site (`/site/...`) até haver upload/CDN (Fase 7). */
-const mediaPath = z
-  .string()
-  .trim()
-  .max(2048)
-  .refine((v) => !/[\u0000-\u0020\u007f-\u009f\\]/.test(v) && /^\/(?!\/)/.test(v), 'Use um caminho interno do site (/site/...)');
+/** Mídia: arquivo do site, da biblioteca (`/media/<id>`) ou https de host de CDN autorizado (ver `isSafeMediaPath`). */
+const mediaPath = z.string().trim().max(2048).refine(isSafeMediaPath, 'Use um arquivo da biblioteca de mídia ou um caminho /site/...');
 const optionalMedia = z.union([z.literal(''), mediaPath]);
+
+/**
+ * Modelos de página do Profissional (Fase 7C). A lista com rótulos e descrições vive em `@academia/section-schemas`
+ * (`PROFESSIONAL_TEMPLATES`); um teste no renderer garante que as duas listas são iguais.
+ */
+export const PROFESSIONAL_TEMPLATE_KEYS = [
+  'professional-original',
+  'professional-authority',
+  'professional-video',
+  'professional-conversion',
+  'professional-immersive',
+  'professional-premium',
+] as const;
+export const professionalTemplateKeySchema = z.enum(PROFESSIONAL_TEMPLATE_KEYS);
+export type ProfessionalTemplateKey = z.infer<typeof professionalTemplateKeySchema>;
 
 export const PROFESSIONAL_STATUSES = ['draft', 'published', 'archived'] as const;
 export type ProfessionalStatus = (typeof PROFESSIONAL_STATUSES)[number];
@@ -77,6 +89,8 @@ export type ProfessionalDataInput = z.input<typeof professionalDataSchema>;
 export const createProfessionalSchema = z.object({
   slug: slugSchema,
   data: professionalDataSchema,
+  /** Modelo da página; padrão: Original. */
+  templateKey: professionalTemplateKeySchema.default('professional-original'),
 });
 export type CreateProfessionalInput = z.infer<typeof createProfessionalSchema>;
 
@@ -85,6 +99,8 @@ export const updateProfessionalSchema = z.object({
   slug: slugSchema.optional(),
   data: professionalDataSchema,
   revision: z.number().int().positive(),
+  /** Trocar o modelo só é possível enquanto a página não foi personalizada no editor. */
+  templateKey: professionalTemplateKeySchema.optional(),
 });
 export type UpdateProfessionalInput = z.infer<typeof updateProfessionalSchema>;
 
@@ -162,6 +178,7 @@ export const adminProfessionalSchema = z.object({
   status: z.enum(PROFESSIONAL_STATUSES),
   revision: z.number().int().positive(),
   data: professionalDataSchema,
+  templateKey: z.string(),
   homeVisible: z.boolean(),
   homeOrder: z.number().int(),
   featured: z.boolean(),

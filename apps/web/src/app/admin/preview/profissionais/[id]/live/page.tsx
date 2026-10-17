@@ -24,5 +24,5 @@ export default async function ProfessionalLivePreview({ params }: { params: Prom
   if (!professional || !state) notFound()
   const published = await publicGet<{ courses?: unknown }>(`/professionals/${encodeURIComponent(professional.slug)}`, ['professionals', `professional:${professional.slug}`])
   const courseCards = z.array(courseCardSchema).catch([]).parse(published?.courses ?? [])
-  return <LivePreview kind="professional" initial={(state.document ?? null) as PageDocument | null} data={professionalDataSchema.parse(professional.data)} courseCards={courseCards} />
+  return <LivePreview kind="professional" initial={(state.document ?? null) as PageDocument | null} data={professionalDataSchema.parse(professional.data)} courseCards={courseCards} templateKey={state.templateKey} />
 }

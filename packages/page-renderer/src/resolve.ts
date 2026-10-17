@@ -1,7 +1,9 @@
 import type { PageDocument } from '@academia/page-schema';
-import type { CourseCard, CourseData, ProfessionalData } from '@academia/contracts';
+import type { CourseCard, CourseData, HomeCourseCard, ProfessionalData, ShowcaseItem } from '@academia/contracts';
 import { buildProfessionalDocument } from './professional/build';
 import { buildCourseDocument, professionalCourseCards } from './course/build';
+import { homeCourseItems, homeProfessionalItems } from './home/build';
+import { homeOriginalTemplate } from './home/template';
 
 /**
  * Documento da página do profissional. Sem `document` (página nunca personalizada no editor) segue o
@@ -13,9 +15,11 @@ export function resolveProfessionalDocument(input: {
   data: ProfessionalData;
   document?: PageDocument | null;
   courseCards?: readonly CourseCard[];
+  /** Modelo da página (padrão: Original). Só vale quando a página ainda não foi personalizada no editor. */
+  templateKey?: string;
 }): PageDocument {
-  const { data, document, courseCards = [] } = input;
-  if (!document) return buildProfessionalDocument(data, { courseCards });
+  const { data, document, courseCards = [], templateKey } = input;
+  if (!document) return buildProfessionalDocument(data, { courseCards, templateKey });
 
   const doc = structuredClone(document);
   const cards = professionalCourseCards(courseCards, data.name);
@@ -38,4 +42,26 @@ export function resolveCourseDocument(input: {
 }): PageDocument {
   if (input.document) return structuredClone(input.document);
   return buildCourseDocument({ data: input.data, professional: input.professional });
+}
+
+/**
+ * Documento da Home. Sem `document` (Home nunca personalizada) vale o template original. Com `document`, vale o que o
+ * editor gravou, exceto as vitrines do catálogo, que são sempre reinjetadas: profissionais publicados e cursos
+ * publicados da vitrine (cada seção só aparece se houver itens). Nada dinâmico fica congelado no JSON editado.
+ */
+export function resolveHomeDocument(input: {
+  document?: PageDocument | null;
+  professionals?: readonly ShowcaseItem[];
+  courses?: readonly HomeCourseCard[];
+}): PageDocument {
+  const { document, professionals = [], courses = [] } = input;
+  const doc = structuredClone(document ?? homeOriginalTemplate);
+  const people = homeProfessionalItems(professionals);
+  const cards = homeCourseItems(courses);
+  doc.sections = doc.sections.map((s) => {
+    if (s.type === 'home.professionals') return { ...s, visibility: { enabled: people.length > 0 }, content: { ...s.content, items: people } };
+    if (s.type === 'home.courses') return { ...s, visibility: { enabled: cards.length > 0 }, content: { ...s.content, items: cards } };
+    return s;
+  });
+  return doc;
 }

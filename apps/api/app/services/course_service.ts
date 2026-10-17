@@ -12,6 +12,7 @@ import {
   type CommercialView,
   type CourseCard,
   type CourseData,
+  type HomeCourseCard,
   type PublicCourse,
   type UpdateCommercialInput,
 } from '@academia/contracts'
@@ -390,6 +391,41 @@ export default class CourseService {
         coverSrc: data.coverSrc,
         coverAlt: data.coverAlt,
         discountPct: commercial.discountPct,
+      }
+    })
+  }
+
+  /**
+   * Cursos da vitrine da Home: publicados, marcados para a vitrine e de profissional publicado. Lê só
+   * snapshots. O nome do profissional vem do snapshot dele; o site monta os cartões e os links.
+   */
+  static async homeCards(): Promise<HomeCourseCard[]> {
+    const rows = await db
+      .from('courses as c')
+      .join('course_versions as v', (join) =>
+        join.on('v.course_id', 'c.id').andOn('v.version', 'c.published_version')
+      )
+      .join('professionals as p', 'p.id', 'c.professional_id')
+      .join('professional_versions as pv', (join) =>
+        join.on('pv.professional_id', 'p.id').andOn('pv.version', 'p.published_version')
+      )
+      .where('c.status', 'published')
+      .where('c.showcase_visible', true)
+      .where('p.status', 'published')
+      .orderBy([{ column: 'c.showcase_order' }, { column: 'c.title' }])
+      .limit(12)
+      .select('c.slug', 'c.featured', 'v.data as course_data', 'pv.data as professional_data')
+    return rows.map((row) => {
+      const data = parse<CourseData>(row.course_data)
+      const professional = parse<{ name: string }>(row.professional_data)
+      return {
+        slug: row.slug as string,
+        title: data.title,
+        person: professional.name,
+        coverSrc: data.coverSrc,
+        coverAlt: data.coverAlt,
+        featured: Boolean(row.featured),
+        modality: data.modality,
       }
     })
   }

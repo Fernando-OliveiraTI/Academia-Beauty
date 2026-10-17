@@ -3,12 +3,15 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { z } from 'zod'
 import { SECTION_META } from '@academia/section-schemas'
-import { courseOriginalTemplate, homeOriginalTemplate, professionalOriginalTemplate } from '@academia/page-renderer'
+import { buildProfessionalDocument, courseOriginalTemplate, homeOriginalTemplate, professionalOriginalTemplate } from '@academia/page-renderer'
 import { SchemaForm, defaultFor, type JsonSchema } from './schema-form'
 
 const jsonOf = (schema: z.ZodType) => z.toJSONSchema(schema, { unrepresentable: 'any', io: 'input' }) as JsonSchema
 
-const templateSections = [...courseOriginalTemplate.sections, ...professionalOriginalTemplate.sections, ...homeOriginalTemplate.sections]
+// Números e Chamada só existem nos modelos novos de Profissional: vêm de um deles, montado com dados de exemplo.
+const sample = { name: 'Ana Souza', specialty: 'Hair', tagline: 'Técnica.', experienceYears: 10, instagramHandle: '@ana', instagramFollowers: '10 mil', instagramUrl: 'https://instagram.com/ana', portraitSrc: '/site/a.png', cardPhotoSrc: '/site/b.png', bio: ['Dez anos.'], works: [], videoSrc: '', metaDescription: '' }
+const premium = buildProfessionalDocument(sample, { templateKey: 'professional-premium' })
+const templateSections = [...courseOriginalTemplate.sections, ...professionalOriginalTemplate.sections, ...homeOriginalTemplate.sections, ...premium.sections.filter((s) => s.id === 'stats' || s.id === 'cta')]
 
 describe('SchemaForm com as seções reais', () => {
   it('toda seção do catálogo converte para JSON Schema e renderiza com o conteúdo do template, sem quebrar', () => {

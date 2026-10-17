@@ -18,6 +18,8 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           <Link href="/admin">Dashboard</Link>
           {user.permissions.includes('professionals.read') ? <Link href="/admin/profissionais">Profissionais</Link> : null}
           {user.permissions.includes('courses.read') ? <Link href="/admin/cursos">Cursos</Link> : null}
+          {user.permissions.includes('pages.read') ? <Link href="/admin/editor/home">Home</Link> : null}
+          {user.permissions.includes('media.manage') ? <Link href="/admin/midia">Mídia</Link> : null}
         </nav>
         <div className="admin-user">
           <span>{user.fullName ?? user.email}</span>

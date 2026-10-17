@@ -88,13 +88,18 @@ export default class AdminProfessionalsController {
     if (!input) return
     const actor = ctx.auth.getUserOrFail()
     try {
-      const p = await ProfessionalService.create(input.slug, input.data, actor.id)
+      const p = await ProfessionalService.create(
+        input.slug,
+        input.data,
+        actor.id,
+        input.templateKey
+      )
       await AuditService.record(ctx, {
         action: 'professional.create',
         actorId: actor.id,
         resourceType: 'professional',
         resourceId: p.id,
-        metadata: { slug: p.slug },
+        metadata: { slug: p.slug, templateKey: p.templateKey },
       })
       return ctx.response.created({ ...toAdmin(p), readiness: publishReadiness(p.data) })
     } catch (error) {

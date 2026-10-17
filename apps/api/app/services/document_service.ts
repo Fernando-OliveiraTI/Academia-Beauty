@@ -5,9 +5,9 @@ import { DomainError } from '#services/domain_error'
 
 /** Descreve a tabela dona de um documento de página (profissional ou curso). */
 export type DocumentKind = {
-  table: 'professionals' | 'courses'
-  versions: 'professional_versions' | 'course_versions'
-  fk: 'professional_id' | 'course_id'
+  table: 'professionals' | 'courses' | 'home_pages'
+  versions: 'professional_versions' | 'course_versions' | 'home_versions'
+  fk: 'professional_id' | 'course_id' | 'home_id'
   /** Coluna de nome copiada de `data` (name/title). */
   nameColumn: 'name' | 'title'
   nameField: 'name' | 'title'
@@ -34,6 +34,22 @@ export const COURSE_KIND: DocumentKind = {
   templateKey: 'course-original',
   label: 'Curso',
 }
+
+/** A Home é uma página única (id 1), sem cadastro: `data` fixo, só o documento muda. */
+export const HOME_ID = 1
+export const HOME_KIND: DocumentKind = {
+  table: 'home_pages',
+  versions: 'home_versions',
+  fk: 'home_id',
+  nameColumn: 'name',
+  nameField: 'name',
+  templateKey: 'home-original',
+  label: 'Home',
+}
+
+/** Profissionais têm modelo próprio (coluna `template_key`); curso e Home usam o fixo do tipo. */
+const templateOf = (kind: DocumentKind, row: { template_key?: string | null }) =>
+  row.template_key ?? kind.templateKey
 
 const parse = (value: unknown) => (typeof value === 'string' ? JSON.parse(value) : (value ?? null))
 
@@ -64,7 +80,11 @@ async function lock(kind: DocumentKind, id: number, trx: TransactionClientContra
 }
 
 /** Validação autoritativa: schema de cada seção, template do tipo certo e tamanho razoável. */
-export function assertValidDocument(kind: DocumentKind, input: unknown) {
+export function assertValidDocument(
+  kind: DocumentKind,
+  input: unknown,
+  expectedTemplateKey: string = kind.templateKey
+) {
   const result = validatePageDocument(input)
   if (!result.ok) {
     throw new DomainError(
@@ -74,9 +94,9 @@ export function assertValidDocument(kind: DocumentKind, input: unknown) {
       result.errors.slice(0, 50).map((message) => ({ field: 'document', message }))
     )
   }
-  if (result.document.template.key !== kind.templateKey) {
+  if (result.document.template.key !== expectedTemplateKey) {
     throw new DomainError(422, 'invalid_document', 'Template incompatível com esta página', [
-      { field: 'document.template.key', message: `Esperado ${kind.templateKey}` },
+      { field: 'document.template.key', message: `Esperado ${expectedTemplateKey}` },
     ])
   }
   return result.document
@@ -118,7 +138,7 @@ export default class DocumentService {
     return {
       document: parse(row.document),
       documentRevision: row.document_revision,
-      templateKey: kind.templateKey,
+      templateKey: templateOf(kind, row),
       status: row.status,
       revision: row.revision,
     }
@@ -131,10 +151,10 @@ export default class DocumentService {
     input: { document: unknown; revision: number },
     actorId: number
   ) {
-    const document = assertValidDocument(kind, input.document)
     return db.transaction(async (trx) => {
       const row = await lock(kind, id, trx)
       assertRevision(row.document_revision, input.revision)
+      const document = assertValidDocument(kind, input.document, templateOf(kind, row))
       const next = row.document_revision + 1
       await trx
         .from(kind.table)
@@ -219,7 +239,9 @@ export default class DocumentService {
       if (!snap) throw new DomainError(404, 'version_not_found', 'Versão não encontrada')
       const data = parse(snap.data) as Record<string, unknown>
       const document = parse(snap.document)
-      if (document !== null) assertValidDocument(kind, document)
+      // O modelo volta junto com o documento (profissional): a versão restaurada pode ter outro modelo.
+      const snapTemplate = (snap.template_key as string | undefined) ?? templateOf(kind, row)
+      if (document !== null) assertValidDocument(kind, document, snapTemplate)
       await trx
         .from(kind.table)
         .where('id', id)
@@ -227,6 +249,7 @@ export default class DocumentService {
           data: JSON.stringify(data),
           [kind.nameColumn]: String(data[kind.nameField] ?? row[kind.nameColumn]),
           revision: row.revision + 1,
+          ...(kind.table === 'professionals' ? { template_key: snapTemplate } : {}),
           document: document === null ? null : JSON.stringify(document),
           document_revision: row.document_revision + 1,
           updated_by: actorId,

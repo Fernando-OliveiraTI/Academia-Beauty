@@ -64,7 +64,7 @@ describe('profissional', () => {
       expect.arrayContaining(['tagline', 'experienceYears', 'portraitSrc', 'cardPhotoSrc', 'bio', 'instagramUrl'])
     );
     const full = professionalDataSchema.parse({
-      ...base, tagline: 'x', experienceYears: 3, portraitSrc: '/a.png', cardPhotoSrc: '/b.png',
+      ...base, tagline: 'x', experienceYears: 3, portraitSrc: '/site/a.png', cardPhotoSrc: '/site/b.png',
       bio: ['texto'], instagramHandle: '@ana', instagramUrl: 'https://instagram.com/ana',
     });
     expect(publishReadiness(full)).toEqual([]);

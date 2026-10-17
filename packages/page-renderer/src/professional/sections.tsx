@@ -1,6 +1,7 @@
 import { HeroTelemetry } from '../fx/HeroTelemetry';
 import type { RenderContext } from '../offer';
-import type { BioContent, CoursesContent, HeroContent, NavContent, VideoContent, WorksContent } from './schemas';
+import type { BioContent, CoursesContent, CtaContent, HeroContent, NavContent, StatsContent, VideoContent, WorksContent } from './schemas';
+import { mediaSrc } from '../media';
 
 type Props<C> = { content: C; ctx: RenderContext };
 
@@ -35,7 +36,7 @@ export function Hero({ content: c }: Props<HeroContent>) {
       </div>
 
       <div className="hero-portrait">
-        <img src={c.portrait.src} alt={c.portrait.alt} />
+        <img src={mediaSrc(c.portrait.src, 960)} alt={c.portrait.alt} />
       </div>
 
       <div className="hero-hud">
@@ -86,7 +87,7 @@ export function Works({ content: c }: Props<WorksContent>) {
           {c.items.map((w, ix) => (
             <article className="cb-course reveal" key={`${ix}-${w.title}`}>
               <div className="cb-course-img-wrap">
-                <img className="cb-course-bg" src={w.image.src} alt={w.image.alt} loading="lazy" />
+                <img className="cb-course-bg" src={mediaSrc(w.image.src, 640)} alt={w.image.alt} loading="lazy" />
               </div>
               <div className="cb-course-content">
                 <div className="cb-course-meta">
@@ -144,7 +145,7 @@ export function Courses({ content: c }: Props<CoursesContent>) {
 
         {c.cards.map((card, ix) => (
           <a className="course-card reveal" href={card.href} key={`${ix}-${card.href}`}>
-            <img className="course-card-bg" src={card.image.src} alt={card.image.alt} loading="lazy" decoding="async" />
+            <img className="course-card-bg" src={mediaSrc(card.image.src, 640)} alt={card.image.alt} loading="lazy" decoding="async" />
             <div className="course-card-overlay" />
             <div className="course-card-body">
               <div className="course-tags">
@@ -158,6 +159,42 @@ export function Courses({ content: c }: Props<CoursesContent>) {
             </div>
           </a>
         ))}
+      </div>
+    </section>
+  );
+}
+
+/** Faixa de números: o valor aparece em destaque e o rótulo logo abaixo (a ordem no DOM é rótulo → valor, como leitores de tela esperam em `dl`). */
+export function Stats({ content: c }: Props<StatsContent>) {
+  return (
+    <section className="stats-section" id="numeros">
+      <div className="cb-container">
+        <div className="section-index">{c.sectionIndex}</div>
+        <h2 className="stats-title reveal">{c.title}</h2>
+        <dl className="stats-grid">
+          {c.items.map((item, ix) => (
+            <div className="stat reveal" key={`${ix}-${item.label}`}>
+              <dt>{item.label}</dt>
+              <dd>{item.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </section>
+  );
+}
+
+export function Cta({ content: c }: Props<CtaContent>) {
+  const external = /^https:\/\//i.test(c.cta.href);
+  return (
+    <section className="cta-section" id="chamada">
+      <div className="cb-container cta-shell reveal">
+        <div className="cta-copy">
+          <div className="section-index">{c.sectionIndex}</div>
+          <h2>{c.title}</h2>
+          <p>{c.text}</p>
+        </div>
+        <a className="cta-button" href={c.cta.href} {...(external ? { target: '_blank', rel: 'noopener' } : {})}>{c.cta.label}</a>
       </div>
     </section>
   );

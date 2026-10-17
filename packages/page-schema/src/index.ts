@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+// Sem @types/node: só `process.env` é lido (e protegido por try/catch) para a lista de hosts de CDN.
+declare const process: { env: Record<string, string | undefined> } | undefined;
+
 /** Versão do envelope do documento. Mudanças incompatíveis exigem migração. */
 export const DOCUMENT_SCHEMA_VERSION = 1;
 
@@ -12,11 +15,56 @@ export function isSafeUrl(v: string): boolean {
 }
 export const safeUrlSchema = z.string().max(2048).refine(isSafeUrl, 'URL não permitida');
 
-/** Mídia (imagem, vídeo, logo): só caminho interno do site (`/site/...`) até haver upload/CDN (Fase 7). */
-export function isSafeMediaPath(v: string): boolean {
-  return v.length <= 2048 && !UNSAFE_CHARS.test(v) && /^\/(?![\/])/.test(v);
+/**
+ * Hosts https permitidos para mídia externa (CDN). Vem de `MEDIA_CDN_HOST` (lista separada por vírgula)
+ * na API e no servidor do site, ou de `NEXT_PUBLIC_MEDIA_CDN_HOST` no navegador. Vazio = só mídia do próprio site.
+ * `setMediaHosts` existe para testes e para quem quiser fixar a lista por código.
+ */
+let mediaHostsOverride: readonly string[] | null = null;
+export function setMediaHosts(hosts: readonly string[] | null): void {
+  mediaHostsOverride = hosts && hosts.map((h) => h.trim().toLowerCase()).filter(Boolean);
 }
-export const safeMediaSchema = z.string().max(2048).refine(isSafeMediaPath, 'Use um caminho interno do site (/site/...)');
+export function allowedMediaHosts(): readonly string[] {
+  if (mediaHostsOverride) return mediaHostsOverride;
+  let raw = '';
+  try {
+    // Referências literais: o Next só substitui `process.env.NEXT_PUBLIC_*` escrito assim.
+    raw = (typeof process !== 'undefined' && process.env.MEDIA_CDN_HOST) || (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_MEDIA_CDN_HOST) || '';
+  } catch {
+    raw = '';
+  }
+  return raw.split(',').map((h) => h.trim().toLowerCase()).filter(Boolean);
+}
+
+/** Id de um arquivo da biblioteca de mídia (Fase 7): 32 hexadecimais. */
+export const MEDIA_ID_PATTERN = /^[0-9a-f]{32}$/;
+/** Caminho público de um arquivo da biblioteca. */
+export const mediaLibraryPath = (id: string): string => `/media/${id}`;
+/** Extrai o id de `/media/<id>` (com ou sem `?w=`), ou null. */
+export function mediaIdOf(src: string): string | null {
+  const m = /^\/media\/([0-9a-f]{32})(?:\?w=\d{2,4})?$/.exec(src);
+  return m ? (m[1] as string) : null;
+}
+
+/**
+ * Mídia (imagem, vídeo, logo): arquivo estático do site (`/site/...`), arquivo da biblioteca (`/media/<id>`)
+ * ou `https://` de um host da lista de CDN configurada. Nunca `//host`, `data:` nem outros caminhos.
+ */
+export function isSafeMediaPath(v: string): boolean {
+  if (v.length > 2048 || UNSAFE_CHARS.test(v)) return false;
+  if (/^\/site\/[^?#]+$/.test(v)) return !v.includes('..');
+  if (mediaIdOf(v)) return true;
+  if (/^https:\/\//i.test(v)) {
+    try {
+      const url = new URL(v);
+      return !url.username && !url.password && allowedMediaHosts().includes(url.hostname.toLowerCase());
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+export const safeMediaSchema = z.string().max(2048).refine(isSafeMediaPath, 'Use um arquivo da biblioteca de mídia ou um caminho /site/...');
 
 /** Texto simples: sem marcação. Rich text futuro terá estrutura própria, nunca HTML. */
 export const plainTextSchema = (max: number) =>

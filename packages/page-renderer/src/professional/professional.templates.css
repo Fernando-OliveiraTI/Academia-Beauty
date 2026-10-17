@@ -1,0 +1,107 @@
+/* ==========================================================================
+   Modelos de página do Profissional (Fase 7C).
+   Seções novas (Números, Chamada) valem para qualquer modelo que as inclua; cada modelo ajusta o tema por
+   `data-tpl` no wrapper `.pg-pro`. O Original não tem regras aqui: o CSS aprovado continua intocado.
+   ========================================================================== */
+
+/* ---- Seção Números ---- */
+.pg-pro .stats-section { position: relative; padding: 72px 0; background: var(--black2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.pg-pro .stats-section .section-index,
+.pg-pro .cta-section .section-index { font: 600 10px/1 var(--mono); letter-spacing: 0.18em; color: var(--gold); text-transform: uppercase; }
+.pg-pro .stats-title { margin: 14px 0 36px; font-size: clamp(32px, 3.4vw, 52px); line-height: 0.95; letter-spacing: -0.055em; font-weight: 800; }
+.pg-pro .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1px; margin: 0; background: var(--line); border: 1px solid var(--line); }
+.pg-pro .stat { display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: 14px; margin: 0; padding: 34px 28px; background: var(--black2); }
+.pg-pro .stat dt { font: 600 10px/1.5 var(--mono); letter-spacing: 0.16em; color: var(--muted); text-transform: uppercase; }
+.pg-pro .stat dd { margin: 0; font-size: clamp(36px, 3.9vw, 58px); font-weight: 800; letter-spacing: -0.06em; line-height: 0.9; color: var(--gold); overflow-wrap: anywhere; }
+
+/* ---- Seção Chamada ---- */
+.pg-pro .cta-section { padding: 84px 0; background: var(--gold); color: #0a0a0a; }
+.pg-pro .cta-shell { display: flex; align-items: center; justify-content: space-between; gap: 40px; flex-wrap: wrap; }
+.pg-pro .cta-copy { max-width: 660px; min-width: 0; }
+.pg-pro .cta-section .section-index { color: rgba(10, 10, 10, 0.62); }
+.pg-pro .cta-copy h2 { margin: 12px 0 18px; font-size: clamp(36px, 4.2vw, 64px); line-height: 0.92; letter-spacing: -0.055em; font-weight: 800; }
+.pg-pro .cta-copy p { margin: 0; font-size: 14px; line-height: 1.6; color: rgba(10, 10, 10, 0.78); }
+.pg-pro .cta-button { display: inline-flex; align-items: center; justify-content: center; min-height: 58px; padding: 0 36px; background: #0a0a0a; color: var(--gold); font: 700 12px/1 var(--mono); letter-spacing: 0.14em; text-decoration: none; text-transform: uppercase; border: 1px solid #0a0a0a; transition: transform 0.25s ease, background 0.25s ease, color 0.25s ease; }
+.pg-pro .cta-button:hover, .pg-pro .cta-button:focus-visible { transform: translateY(-2px); background: transparent; color: #0a0a0a; outline: none; }
+.pg-pro .cta-button:focus-visible { box-shadow: 0 0 0 3px rgba(10, 10, 10, 0.4); }
+
+/* ---- Autoridade: números logo após o topo, bio logo depois ---- */
+.pg-pro[data-tpl='professional-authority'] .stats-section { border-top: 0; }
+.pg-pro[data-tpl='professional-authority'] .hero-hud strong em { text-shadow: 0 0 24px rgba(225, 201, 134, 0.35); }
+
+/* ---- Vídeo: tela grande logo após o topo ---- */
+.pg-pro[data-tpl='professional-video'] .video-section { padding: 56px 0 72px; }
+.pg-pro[data-tpl='professional-video'] .video-shell { grid-template-columns: 1fr; min-height: 0; }
+.pg-pro[data-tpl='professional-video'] .video-info { flex-direction: row; align-items: flex-end; justify-content: space-between; gap: 40px; padding: 34px 40px; border-bottom: 1px solid var(--line); }
+.pg-pro[data-tpl='professional-video'] .video-info p { max-width: 460px; margin: 0; }
+.pg-pro[data-tpl='professional-video'] .video-frame { min-height: 0; aspect-ratio: 16 / 9; }
+
+/* ---- Conversão: cursos em destaque e chamada logo em seguida ---- */
+.pg-pro[data-tpl='professional-conversion'] .course-section { padding: 84px 0 56px !important; }
+.pg-pro[data-tpl='professional-conversion'] .course-card { min-height: 300px !important; height: 300px !important; }
+.pg-pro[data-tpl='professional-conversion'] .course-head h2 { font-size: clamp(44px, 4.6vw, 72px) !important; }
+.pg-pro[data-tpl='professional-conversion'] .cta-section { background: #050505; color: var(--white); }
+.pg-pro[data-tpl='professional-conversion'] .cta-section .section-index { color: var(--gold); }
+.pg-pro[data-tpl='professional-conversion'] .cta-copy p { color: var(--muted); }
+.pg-pro[data-tpl='professional-conversion'] .cta-button { background: var(--gold); color: #0a0a0a; border-color: var(--gold); }
+.pg-pro[data-tpl='professional-conversion'] .cta-button:hover,
+.pg-pro[data-tpl='professional-conversion'] .cta-button:focus-visible { background: transparent; color: var(--gold); }
+
+/* ---- Imersivo: galeria escura, imagens grandes, pouco texto ---- */
+.pg-pro[data-tpl='professional-immersive'] .work-section { padding: 96px 0 !important; background: #050505 !important; color: var(--white) !important; }
+.pg-pro[data-tpl='professional-immersive'] .work-section h2 { color: var(--white) !important; }
+.pg-pro[data-tpl='professional-immersive'] .work-section .cb-section-copy { color: var(--muted) !important; }
+.pg-pro[data-tpl='professional-immersive'] .work-section .cb-courses { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 6px !important; }
+.pg-pro[data-tpl='professional-immersive'] .work-section .cb-course { border-radius: 0 !important; border: 0 !important; background: #0b0b0b !important; box-shadow: none !important; }
+.pg-pro[data-tpl='professional-immersive'] .work-section .cb-course-img-wrap { height: 560px !important; background: #0b0b0b !important; }
+.pg-pro[data-tpl='professional-immersive'] .work-section .cb-course:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.pg-pro[data-tpl='professional-immersive'] .work-section .cb-course:last-child:nth-child(odd) .cb-course-img-wrap { height: 640px !important; }
+.pg-pro[data-tpl='professional-immersive'] .work-section .cb-course-content,
+.pg-pro[data-tpl='professional-premium'] .work-section .cb-course-content { background: #0b0b0b !important; }
+.pg-pro[data-tpl='professional-immersive'] .work-section .cb-tag,
+.pg-pro[data-tpl='professional-premium'] .work-section .cb-tag { color: var(--white) !important; border-color: rgba(247, 246, 241, 0.4) !important; background: transparent !important; }
+.pg-pro[data-tpl='professional-immersive'] .work-section .cb-tag.gold,
+.pg-pro[data-tpl='professional-premium'] .work-section .cb-tag.gold { color: var(--gold) !important; border-color: var(--gold) !important; }
+.pg-pro[data-tpl='professional-immersive'] .work-section .cb-plus,
+.pg-pro[data-tpl='professional-premium'] .work-section .cb-plus { background: var(--gold) !important; color: #050505 !important; }
+.pg-pro[data-tpl='professional-immersive'] .work-section .cb-course-person,
+.pg-pro[data-tpl='professional-immersive'] .work-section .cb-course-title { color: var(--white) !important; }
+@media (max-width: 900px) {
+  .pg-pro[data-tpl='professional-immersive'] .work-section .cb-courses { grid-template-columns: 1fr !important; }
+  .pg-pro[data-tpl='professional-immersive'] .work-section .cb-course-img-wrap,
+  .pg-pro[data-tpl='professional-immersive'] .work-section .cb-course:last-child:nth-child(odd) .cb-course-img-wrap { height: 420px !important; }
+}
+
+/* ---- Premium: preto e dourado sóbrio, traço fino ---- */
+.pg-pro[data-tpl='professional-premium'] { --gold: #c9a96b; --gold-deep: #8a6b2a; }
+.pg-pro[data-tpl='professional-premium'] .hero-name { font-weight: 300; letter-spacing: -0.045em; }
+.pg-pro[data-tpl='professional-premium'] .hero-name span { -webkit-text-stroke: 1px var(--gold); }
+.pg-pro[data-tpl='professional-premium'] .stats-section { background: #050505; }
+.pg-pro[data-tpl='professional-premium'] .stat { background: #050505; }
+.pg-pro[data-tpl='professional-premium'] .stat dd { font-weight: 300; letter-spacing: -0.05em; }
+.pg-pro[data-tpl='professional-premium'] .stats-title { font-weight: 300; }
+.pg-pro[data-tpl='professional-premium'] .bio-title { font-weight: 300; }
+.pg-pro[data-tpl='professional-premium'] .cta-section { background: #050505; color: var(--white); border-top: 1px solid var(--gold); border-bottom: 1px solid var(--gold); }
+.pg-pro[data-tpl='professional-premium'] .cta-section .section-index { color: var(--gold); }
+.pg-pro[data-tpl='professional-premium'] .cta-copy h2 { font-weight: 300; }
+.pg-pro[data-tpl='professional-premium'] .cta-copy p { color: var(--muted); }
+.pg-pro[data-tpl='professional-premium'] .cta-button { background: transparent; color: var(--gold); border-color: var(--gold); }
+.pg-pro[data-tpl='professional-premium'] .cta-button:hover,
+.pg-pro[data-tpl='professional-premium'] .cta-button:focus-visible { background: var(--gold); color: #050505; }
+.pg-pro[data-tpl='professional-premium'] .work-section { background: #0b0b0b !important; color: var(--white) !important; }
+.pg-pro[data-tpl='professional-premium'] .work-section h2 { color: var(--white) !important; font-weight: 300 !important; }
+.pg-pro[data-tpl='professional-premium'] .work-section .cb-section-copy { color: var(--muted) !important; }
+.pg-pro[data-tpl='professional-premium'] .work-section .cb-course { background: #050505 !important; border: 1px solid rgba(201, 169, 107, 0.35) !important; border-radius: 0 !important; box-shadow: none !important; }
+.pg-pro[data-tpl='professional-premium'] .work-section .cb-course-person,
+.pg-pro[data-tpl='professional-premium'] .work-section .cb-course-title { color: var(--white) !important; }
+
+/* Selo "Trabalhos em destaque": no fundo escuro do Imersivo e do Premium precisa de contraste. */
+.pg-pro[data-tpl='professional-immersive'] .work-section .cb-eyebrow,
+.pg-pro[data-tpl='professional-premium'] .work-section .cb-eyebrow { color: var(--gold) !important; border-color: rgba(201, 169, 107, 0.55) !important; background: transparent !important; }
+
+@media (max-width: 760px) {
+  .pg-pro .stats-section, .pg-pro .cta-section { padding: 52px 0; }
+  .pg-pro .stat { padding: 26px 20px; }
+  .pg-pro .cta-button { width: 100%; }
+  .pg-pro[data-tpl='professional-video'] .video-info { flex-direction: column; align-items: flex-start; padding: 24px 20px; gap: 16px; }
+}

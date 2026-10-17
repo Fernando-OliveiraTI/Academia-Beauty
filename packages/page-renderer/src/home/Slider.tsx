@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useReducedMotion } from '../hooks';
+import { mediaSrc } from '../media';
 
 const AUTOPLAY_MS = 4000;
 const GAP = 24; // mesmo gap do CSS (.professores-slider)
@@ -67,7 +68,7 @@ export function ProfessionalsSlider({
         {items.map((p, ix) => (
           <a className="professor-card-link" href={p.href} key={`${ix}-${p.href}`}>
             <div className="professor-item">
-              <div className="professor-imagem"><img alt={p.name} src={p.photo} loading="lazy" decoding="async" /></div>
+              <div className="professor-imagem"><img alt={p.name} src={mediaSrc(p.photo, 480)} loading="lazy" decoding="async" /></div>
               <div className="professor-info"><h3>{p.name}</h3><span>{cardLabel}</span></div>
             </div>
           </a>

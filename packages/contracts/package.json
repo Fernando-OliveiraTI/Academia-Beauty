@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@academia/page-schema": "workspace:*",
     "zod": "^4.1.0"
   },
   "devDependencies": {

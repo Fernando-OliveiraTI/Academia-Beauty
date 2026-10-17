@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { validatePageDocument, SECTION_META } from '@academia/section-schemas';
 import { ALL_SECTIONS } from './registry';
-import { NO_OFFER, PageRenderer, buildProfessionalDocument, professionalOriginalTemplate, resolveProfessionalDocument, courseOriginalTemplate, homeOriginalTemplate } from './index';
+import { NO_OFFER, PageRenderer, buildProfessionalDocument, professionalOriginalTemplate, resolveProfessionalDocument, resolveHomeDocument, courseOriginalTemplate, homeOriginalTemplate } from './index';
 import { sampleOffer } from './fixtures';
 
 const data = {
@@ -62,5 +62,53 @@ describe('resolveProfessionalDocument', () => {
     expect(none.sections.find((s) => s.id === 'courses')!.visibility.enabled).toBe(false);
     expect(edited.sections.find((s) => s.id === 'courses')!.visibility.enabled).toBe(false); // entrada não é mutada
     void sampleOffer;
+  });
+});
+
+describe('resolveHomeDocument', () => {
+  const people = [{ slug: 'ana', name: 'Ana Souza', cardPhotoSrc: '/site/home/lukas-campos.png' }];
+  const courses = [
+    { slug: 'curso-um', title: 'Curso Um', person: 'Ana Souza', coverSrc: '/site/home/curso-classic-bob.png', coverAlt: '', featured: true, modality: 'online' as const },
+    { slug: 'curso-dois', title: 'Curso Dois', person: 'Ana Souza', coverSrc: '/site/home/curso-classic-bob.png', coverAlt: 'Capa dois', featured: false, modality: 'hibrido' as const },
+  ];
+  const sectionOf = (doc: ReturnType<typeof resolveHomeDocument>, type: string) => doc.sections.find((s) => s.type === type)!;
+
+  it('sem documento parte do template e injeta as vitrines do catálogo', () => {
+    const doc = resolveHomeDocument({ professionals: people, courses });
+    expect(validatePageDocument(doc).ok).toBe(true);
+    const items = sectionOf(doc, 'home.courses').content.items as { href: string; tags: { label: string; gold?: boolean }[]; person: string; plusLabel: string; image: { alt: string } }[];
+    expect(items.map((i) => i.href)).toEqual(['/cursos/curso-um', '/cursos/curso-dois']);
+    expect(items[0]?.tags).toEqual([{ label: 'destaques', gold: true }, { label: 'online' }]);
+    expect(items[1]?.tags).toEqual([{ label: 'híbrido' }]);
+    expect(items[0]?.image.alt).toBe('Curso Um');
+    expect(items[0]?.plusLabel).toBe('Ver curso Curso Um');
+    expect(sectionOf(doc, 'home.professionals').content.items).toEqual([{ name: 'Ana Souza', photo: '/site/home/lukas-campos.png', href: '/profissionais/ana' }]);
+  });
+
+  it('sem cursos ou profissionais publicados a seção correspondente some (nada de link para 404)', () => {
+    const doc = resolveHomeDocument({});
+    expect(sectionOf(doc, 'home.courses').visibility.enabled).toBe(false);
+    expect(sectionOf(doc, 'home.professionals').visibility.enabled).toBe(false);
+    const html = renderToStaticMarkup(<PageRenderer document={doc} ctx={ctx} />);
+    expect(html).not.toContain('/cursos/');
+  });
+
+  it('com documento do editor, o texto editado vale e as vitrines continuam do catálogo', () => {
+    const edited = structuredClone(homeOriginalTemplate);
+    (sectionOf(edited, 'home.hero').content as { kicker: string }).kicker = 'Texto do editor';
+    (sectionOf(edited, 'home.courses').content as { items: unknown[] }).items = [{ congelado: true }];
+    const doc = resolveHomeDocument({ document: edited, professionals: people, courses });
+    expect((sectionOf(doc, 'home.hero').content as { kicker: string }).kicker).toBe('Texto do editor');
+    expect(JSON.stringify(sectionOf(doc, 'home.courses').content.items)).not.toContain('congelado');
+    expect(sectionOf(doc, 'home.courses').visibility.enabled).toBe(true);
+    expect(edited.sections.length).toBe(homeOriginalTemplate.sections.length);
+  });
+
+  it('mais cursos que o limite do schema e textos longos continuam válidos', () => {
+    const many = Array.from({ length: 30 }, (_, i) => ({ ...courses[0]!, slug: `c-${i}`, title: 'T'.repeat(200), person: 'P'.repeat(200), coverAlt: 'A'.repeat(500) }));
+    const doc = resolveHomeDocument({ professionals: people, courses: many });
+    const r = validatePageDocument(doc);
+    expect(r.ok, JSON.stringify(r)).toBe(true);
+    expect((sectionOf(doc, 'home.courses').content.items as unknown[]).length).toBe(12);
   });
 });

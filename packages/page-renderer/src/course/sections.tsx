@@ -10,6 +10,7 @@ import type {
   FooterContent, GuaranteeContent, HeaderContent, HeroContent, InstructorContent, OfferContent, ProofContent,
   StickyCtaContent,
 } from './schemas';
+import { mediaSrc } from '../media';
 
 type Props<C> = { content: C; ctx: RenderContext };
 
@@ -76,7 +77,7 @@ export function Hero({ content: c, ctx }: Props<HeroContent>) {
 
         <div className="hero-visual load-in--visual">
           <figure className="product-frame">
-            <img src={c.image.src} alt={c.image.alt} width={800} height={1000} fetchPriority="high" />
+            <img src={mediaSrc(c.image.src, 960)} alt={c.image.alt} width={800} height={1000} fetchPriority="high" />
             <figcaption className="frame-label">
               <div>
                 <span className="caption">{c.frameKicker}</span>
@@ -195,7 +196,7 @@ export function Instructor({ content: c }: Props<InstructorContent>) {
       <div className="container instructor">
         <div className="instructor-portrait reveal">
           <span className="monogram" aria-hidden="true">{c.monogram}</span>
-          {c.photo && <img src={c.photo.src} alt={c.photo.alt} loading="lazy" />}
+          {c.photo && <img src={mediaSrc(c.photo.src, 640)} alt={c.photo.alt} loading="lazy" />}
           <span className="badge badge--gold">{c.handle}</span>
         </div>
         <div className="instructor-copy reveal">

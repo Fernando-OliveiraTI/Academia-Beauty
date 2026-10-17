@@ -52,6 +52,8 @@
   },
   "dependencies": {
     "@academia/contracts": "workspace:*",
+    "@academia/page-schema": "workspace:*",
+    "@academia/section-schemas": "workspace:*",
     "@adonisjs/auth": "^9.4.0",
     "@adonisjs/core": "^6.18.0",
     "@adonisjs/cors": "^2.2.1",
@@ -60,12 +62,12 @@
     "@adonisjs/session": "7.7.1",
     "@adonisjs/shield": "^8.2.0",
     "@vinejs/vine": "^3.0.1",
+    "file-type": "^22.2.0",
     "luxon": "^3.7.2",
     "mysql2": "^3.24.6",
     "reflect-metadata": "^0.2.2",
-    "zod": "^4.6.7",
-    "@academia/section-schemas": "workspace:*",
-    "@academia/page-schema": "workspace:*"
+    "sharp": "^0.35.5",
+    "zod": "^4.6.7"
   },
   "hotHook": {
     "boundaries": [

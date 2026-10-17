@@ -4,6 +4,7 @@ import type { RenderContext } from '../offer';
 import type {
   BenefitsContent, BrandsContent, CoursesContent, CtaContent, FooterContent, HeroContent, NavContent, ProfessionalsContent,
 } from './schemas';
+import { mediaSrc } from '../media';
 
 type Props<C> = { content: C; ctx: RenderContext };
 
@@ -42,7 +43,7 @@ export function Hero({ content: c }: Props<HeroContent>) {
         </div>
         <div className="cb-visual cb-reveal cb-delay-2 cb-in">
           <span className="cb-cross c1" /><span className="cb-cross c2" />
-          <div className="cb-portrait-stage"><img src={c.image.src} alt={c.image.alt} /><div className="cb-scanline" /></div>
+          <div className="cb-portrait-stage"><img src={mediaSrc(c.image.src, 960)} alt={c.image.alt} /><div className="cb-scanline" /></div>
         </div>
       </div>
     </section>
@@ -83,7 +84,7 @@ export function Courses({ content: c }: Props<CoursesContent>) {
         <div className="cb-courses">
           {c.items.map((it, i) => (
             <article className={`cb-course cb-reveal${DELAY[i] ?? ''}${i < ABOVE_THE_FOLD ? ' cb-in' : ''}`} key={`${i}-${it.href}`}>
-              <img className="cb-course-bg" src={it.image.src} alt={it.image.alt} loading="lazy" />
+              <img className="cb-course-bg" src={mediaSrc(it.image.src, 640)} alt={it.image.alt} loading="lazy" />
               <div className="cb-course-content">
                 <div className="cb-course-meta">
                   {it.tags.map((t, ix) => <span key={`${ix}-${t.label}`} className={t.gold ? 'cb-tag gold' : 'cb-tag'}>{t.label}</span>)}
@@ -135,7 +136,7 @@ export function Brands({ content: c }: Props<BrandsContent>) {
           <p className="cb-section-copy cb-reveal cb-delay-1">{c.copy}</p>
         </div>
         <div className="cb-brands-stage cb-reveal">
-          {c.logos.map((l, ix) => <div className="cb-brand-cell" key={`${ix}-${l.src}`}><img src={l.src} alt={l.alt} loading="lazy" decoding="async" /></div>)}
+          {c.logos.map((l, ix) => <div className="cb-brand-cell" key={`${ix}-${l.src}`}><img src={mediaSrc(l.src, 320)} alt={l.alt} loading="lazy" decoding="async" /></div>)}
         </div>
       </div>
     </section>

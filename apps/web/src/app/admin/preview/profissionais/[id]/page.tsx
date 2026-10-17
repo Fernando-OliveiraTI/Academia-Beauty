@@ -33,6 +33,6 @@ export default async function ProfessionalDraftPreview({ params }: { params: Pro
       </main>
     )
   }
-  const document = resolveProfessionalDocument({ data: parsed, document: draftDocument })
+  const document = resolveProfessionalDocument({ data: parsed, document: draftDocument, templateKey: data.templateKey })
   return <PageRenderer document={document} ctx={{ offer: NO_OFFER, year: new Date().getFullYear() }} />
 }

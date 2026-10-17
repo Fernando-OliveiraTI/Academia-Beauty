@@ -108,3 +108,34 @@ Mídia por upload (Fase 7), Home com documento próprio (Fase 7), agendamento, e
 
 # review-context — Revisão e correções (Fases 0–5)
 Relatório: `review/review-fases-0-5.md` (achados, status de cada um e o que ficou de fora). Decisões: D-019 (escrita na revisão) e D-022. Para uma nova revisão independente: conferir (a) validação do documento no servidor (`section-schemas/src/index.ts`) e revalidação no publicar, (b) `use-autosave.ts` e seus testes, (c) builders com `clip` e `limits.test.ts`, (d) `concurrency.spec.ts` (usa `truncate`: não rodar duas suítes ao mesmo tempo), (e) política de mídia (`/site/`) e de links externos (auditoria dos hosts), (f) `TRUSTED_PROXIES` em produção.
+
+
+---
+
+# review-context — Fase 7 (Mídia, Home como documento, modelos de página)
+
+## Objetivo e aceite
+Biblioteca de mídia com upload, Home gerenciável no editor com vitrine de cursos dinâmica e modelos adicionais de página do Profissional (plan.md §11, item 7; D-023 a D-027). Resultados reais: progress.md. Fora do escopo: agendamento de publicação, provedor real de storage/CDN (Fase 8), modelos de Curso/Home.
+
+## Escopo (arquivos/módulos)
+- **7A mídia** — API: migração `..._create_media_tables`; `services/media_service.ts`, `services/media/storage.ts` (interface + local); `controllers/admin_media_controller.ts` e `public_media_controller.ts`; `start/media.ts` (preload com `MEDIA_CDN_HOST`); `force_json_response_middleware` (preserva `x-original-accept`); `config/bodyparser.ts` (`processManually: ['/admin/media']`). Pacotes: `page-schema` (`isSafeMediaPath`, `allowedMediaHosts`), `contracts/media.ts`, `page-renderer/media.ts` (`mediaSrc`). Web: `components/media-library.tsx`, `media-input.tsx`, `schema-form.tsx` (campos `src`), `/admin/midia`, `next.config.ts` (rewrite `/media/:id`, CSP, `proxyClientMaxBodySize`).
+- **7B Home** — API: migração `..._create_home_tables`; `services/home_service.ts`; `controllers/admin_home_controller.ts`, `public_home_controller.ts`; `document_service.ts` (`HOME_KIND`, `HOME_ID`); `course_service.ts` (`homeCards`). Pacotes: `contracts/home.ts`; `page-renderer` (`resolveHomeDocument`, `homeCourseItems`). Web: `lib/home-data.ts`, `app/page.tsx`, `editor/home`, `admin/preview/home/live`, `editor.tsx` (kind `home`), `live-preview.tsx`.
+- **7C modelos** — `section-schemas` (`PROFESSIONAL_TEMPLATES`, `statsSchema`, `ctaSchema`, `TEMPLATE_PREFIX`); `contracts` (`PROFESSIONAL_TEMPLATE_KEYS`, `templateKey` em criar/atualizar/admin); API: migração `..._add_professional_template_key`, `professional_service.ts`, `document_service.ts` (`templateOf`); renderer: `professional/build.ts` (composição, números, chamada), `professional/sections.tsx` (Stats, Cta), `professional.templates.css`, `templates.tsx` (shell com `data-tpl`), `resolve.ts`; web: seletor no `wizard.tsx`, `/preview/modelos/[key]`.
+- **Testes**: `media.spec`, `home.spec`, `templates.spec`; `tests/helpers.ts` (`truncateAll`); renderer `templates.test.tsx`, `resolve.test.tsx`, `media.test.ts`; web `media-input.test.tsx`; E2E `media`, `home-editor`, `templates`.
+
+## Migrações (3, todas reversíveis)
+`create_media_tables` (`media_assets`, `media_variants`), `create_home_tables` (`home_pages` com a linha 1, `home_versions`), `add_professional_template_key` (padrão `professional-original`). Variáveis novas: `MEDIA_STORAGE_PATH`, `MEDIA_CDN_HOST` (API e site).
+
+## Contratos alterados
+`POST/PUT /admin/professionals` aceitam `templateKey`; `AdminProfessional.templateKey`; novos `/admin/media*`, `/media/:id`, `/admin/home*`, `/public/home`; `isSafeMediaPath` agora aceita só `/site/…`, `/media/<id>` e https de `MEDIA_CDN_HOST` (antes: qualquer caminho interno — pode recusar dados antigos fora de `/site`; o seed e os testes conferem).
+
+## Pontos para o revisor
+- **Upload (segurança)**: tipo por assinatura (`file-type`), imagem decodificada por completo com limite de lado/pixels, SVG recusado, nome higienizado, chaves de storage validadas contra a raiz, original nunca servido, `nosniff`, cache imutável; corpo lido manualmente (limite 60 MB + 1 MB) e `proxyClientMaxBodySize: 70mb` no Next. Sem rate limit específico de envio nem varredura antivírus.
+- **CSP/host de mídia**: o host de `MEDIA_CDN_HOST` precisa ser o mesmo na API e no build do site (`NEXT_PUBLIC_MEDIA_CDN_HOST` é inlinado no build).
+- **Uso de mídia calculado sob demanda** (varre rascunhos + snapshots vigentes de profissionais, cursos e Home): custo cresce com o volume; versões antigas não protegem contra exclusão (D-024).
+- **Home**: `ensureHomeRow` (insert ignore) em todo acesso; snapshot publicado inválido cai no template; seções automáticas reinjetadas; confirme se "sem cursos → seção some" é a decisão de produto desejada.
+- **Modelos**: `template_locked` e validação do documento contra o modelo do profissional (`templateOf`); restauração de versão troca o modelo; o CSS dos modelos usa `!important` onde o CSS extraído do original já usava (D-013).
+- **Testes**: a causa da intermitência (D-027) e a correção (`truncateAll`); conferir que nenhuma outra suíte depende de `testUtils.db().truncate()`.
+
+## Riscos e pendências
+Provedor real de storage/CDN e poster/transcodificação de vídeo (Fase 8); rate limit e antivírus no upload; modelos de Curso/Home; revisão visual humana dos 6 modelos; `/preview/*` públicas; agendamento; Fase 6 (The Members) continua não autorizada; pendências de negócio e ativos do handoff.

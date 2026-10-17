@@ -35,6 +35,10 @@ export default class Professional extends BaseModel {
   @column()
   declare name: string
 
+  /** Modelo da página (ver PROFESSIONAL_TEMPLATES). */
+  @column()
+  declare templateKey: string
+
   @column(bool)
   declare homeVisible: boolean
 

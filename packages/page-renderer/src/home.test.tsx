@@ -65,7 +65,7 @@ describe('template Home Original', () => {
   it('mais de 5 profissionais continuam renderizando em ordem', () => {
     const doc = clone();
     const c = sectionOf(doc, 'professionals').content as { items: { name: string; photo: string; href: string }[] };
-    c.items.push({ name: 'Novo Nome', photo: '/x.png', href: '/profissionais/novo-nome' });
+    c.items.push({ name: 'Novo Nome', photo: '/site/x.png', href: '/profissionais/novo-nome' });
     const out = html(doc);
     expect(out.match(/class="professor-card-link"/g)).toHaveLength(6);
     expect(out.indexOf('Novo Nome')).toBeGreaterThan(out.indexOf('Miro Rodrigues'));

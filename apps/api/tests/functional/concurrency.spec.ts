@@ -1,7 +1,6 @@
 import { test } from '@japa/runner'
-import testUtils from '@adonisjs/core/services/test_utils'
 import db from '@adonisjs/lucid/services/db'
-import { makeUser } from '#tests/helpers'
+import { makeUser, truncateAll } from '#tests/helpers'
 
 type Client = import('@japa/api-client').ApiClient
 type User = Awaited<ReturnType<typeof makeUser>>
@@ -61,7 +60,7 @@ let seq = 0
 const slug = () => `conc-${Date.now()}-${++seq}`
 
 test.group('Concorrência real', (group) => {
-  group.each.teardown(() => testUtils.db().truncate())
+  group.each.teardown(() => truncateAll())
 
   test('dois salvamentos de documento com a mesma revisão: exatamente um vence, o outro recebe 409', async ({
     client,

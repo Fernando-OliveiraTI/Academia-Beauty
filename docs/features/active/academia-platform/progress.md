@@ -168,3 +168,39 @@ Relatório e status item a item: `review/review-fases-0-5.md`. Decisões: D-019 
 | E2E Chrome: admin-auth 8 · curso 14 · profissional 11 · home 15 · profissionais 14 · cursos 15 · editor 20 | passando; publicar → página atualizada na hora com ISR (`s-maxage=300`) |
 | `pnpm audit --prod` | 4 avisos (1 alto `braces`, 3 moderados AdonisJS): dependem de decisão |
 Limitações: ver "Não feito" em D-022 e no relatório (gatilhos MySQL, AdonisJS 7, CLS, pausa do autoplay, axe, Firefox/Safari).
+
+
+## Fase 7 — CMS da Home e mídia (autorizada em 2026-10-17; escopo em D-023) · subfase 7A **concluída**
+**7A — Biblioteca de mídia** (D-024). Entregue: migração `media_assets`/`media_variants`; `MediaStorage` local; `MediaService` (tipo real, decodificação, derivados WebP/AVIF, uso sob demanda); `POST/GET/DELETE /admin/media`, `GET /media/:id` (Accept, `?w=`, cache imutável, Range); `isSafeMediaPath` único (`/site`, `/media/<id>`, https de `MEDIA_CDN_HOST`); CSP/rewrite/limite de corpo no Next; `mediaSrc` no renderer; `/admin/midia`, `MediaInput`/`MediaPicker` no `SchemaForm` e nos assistentes.
+
+| Verificação | Resultado |
+| --- | --- |
+| `pnpm typecheck` e `pnpm lint` (workspace) | sem erros |
+| page-schema | 34 testes (caminhos de mídia: aceitos, recusados, hosts de CDN) |
+| contracts 31 · page-renderer 74 (`mediaSrc`) · web 56 (picker, envio, recusa, 403, `SchemaForm`) | passando |
+| api (MySQL real) | 85 testes (12 novos de mídia: RBAC, CSRF, tipo falso/SVG/corrompido/vazio/grande, derivados, nome higienizado, Accept/`?w=`/304, Range, QuickTime, uso bloqueia exclusão, caminhos aceitos/recusados nos cadastros, storage contra `..`) |
+| E2E Chrome `e2e:media` (API + web em produção) | 11 verificações: envio pelo navegador, WebP/AVIF/`?w=`/cache pelo proxy do site, vídeo de 28 MB com Range, arquivo falso recusado, escolher no assistente → salvar → publicar, página pública com `/media/<id>?w=` carregando sem violação de CSP, detalhes de uso, exclusão bloqueada e exclusão livre, 390px, CSRF 403 |
+| E2E anteriores reexecutados (professionals 14, courses 15, editor 20) | passando |
+
+Defeitos achados pelos testes e corrigidos: (1) Next cortava o corpo do proxy em 10 MB (`proxyClientMaxBodySize`); (2) o vídeo atual é QuickTime e era recusado; (3) `getByLabel` ambíguo pelo `aria-label` do botão; (4) overflow a 390px por coluna de grid e `input` com largura intrínseca.
+Limitações: vídeo sem poster nem transcodificação (sem ffmpeg); original nunca servido; histórico antigo não protege contra exclusão; sem rate limit específico de envio; derivados síncronos (imagem de 12000 px pode levar segundos).
+
+
+## Fase 7 — subfases 7B, 7C e 7D **concluídas, aguardando revisão** (2026-10-17)
+**7B — Home como documento + cursos dinâmicos** (D-025). Entregue: migração `home_pages`/`home_versions`; `HomeService` (estado, publicar, leitura pública, `ensureHomeRow`); `AdminHomeController` (reusa as ações de documento) e `PublicHomeController`; rotas `/admin/home/*` e `/public/home`; `CourseService.homeCards`; contracts `home.ts`; renderer `resolveHomeDocument`/`homeCourseItems`; `/` lendo o snapshot com fallback ao template; editor `/admin/editor/home` + quadro `/admin/preview/home/live`; menu "Home".
+**7C — Modelos de página do Profissional** (D-026). Entregue: seções `professional.stats` e `professional.cta`; 6 modelos (Original, Autoridade, Vídeo, Conversão, Imersivo, Premium) com composição, textos padrão e tema (`professional.templates.css`, `data-tpl`); coluna `professionals.template_key`; `DocumentService` valida o documento contra o modelo do profissional; troca de modelo só antes de personalizar (`template_locked`); restaurar versão restaura o modelo; seletor com "Ver exemplo" no assistente; `/preview/modelos/[key]`.
+**7D — Validação**: ver tabela. Conferência visual dos 6 modelos em 1440 e 390 px por capturas (ver "Limitações").
+
+| Verificação | Resultado |
+| --- | --- |
+| `pnpm typecheck` e `pnpm lint` (workspace) | sem erros |
+| page-schema 34 · contracts 31 · section-schemas 8 · editor-core 19 · design-system 4 | passando |
+| page-renderer 93 (novos: `resolveHomeDocument` ×4, modelos ×16: documento válido e render por modelo, composição prometida, Original idêntico ao caminho antigo, números só do cadastro, chamada com/sem cursos, textos longos, modelo desconhecido, link externo com `rel`) | passando |
+| web 56 | passando |
+| api (MySQL real) | **97 passando, 8 execuções seguidas na suíte inteira + 3 após o fechamento** (novos: `home.spec` ×7, `templates.spec` ×5, `media.spec` ×12) |
+| E2E Chrome (API + web em produção): admin-auth, course 14, professional 11, home 15, professionals 14, courses 15, editor (20), **media 11, home-editor 14, templates 11** | todos passando |
+| `pnpm audit --prod` | os mesmos 4 avisos de antes (1 alto `braces`, 3 moderados AdonisJS); `sharp` e `file-type` sem avisos |
+
+E2E `home-editor` (14): editor da Home com prévia ao vivo e autosave, regras (hero obrigatório, profissionais/cursos automáticos), publicar → `/` muda na hora, curso publicado aparece na Home com link que abre, despublicar tira o cartão, rascunho não muda o público, histórico/restaurar versão, "Restaurar padrão", CSRF 403, 390px. E2E `templates` (11): exemplos dos 6 modelos com `data-tpl`, escolher Premium no assistente e criar, um profissional publicado por modelo com composição conferida na página pública, troca de modelo no rascunho, editor com Números/Chamada, bloqueio após personalizar, "Restaurar do cadastro" libera, 390px nos 6 exemplos e no assistente.
+Defeitos achados pelos testes e corrigidos: (1) `testUtils.db().truncate()` deixava a suíte de API intermitente (D-027); (2) linha da Home sumia com `truncate` → `ensureHomeRow`; (3) texto escuro sobre cartão branco no Premium/Imersivo, grade do Imersivo com buraco, CTA da Conversão dourada colada na bio dourada, selo "Trabalhos em destaque" ilegível no fundo escuro (ajustados por inspeção das capturas); (4) E2E de mídia dependia de um texto ambíguo ("publicad") e corria contra a publicação.
+Limitações: Curso e Home não ganharam modelos adicionais; o tema dos modelos foi validado por inspeção de capturas e por testes de estrutura, **não por comparação de pixel** (não há original para comparar) — espere ajustes após a sua conferência em tela; `/preview/modelos/*` e `/preview/*` são públicas (noindex) até a Fase 8; sem axe/Lighthouse nem Firefox/Safari; Home sem agendamento; vídeo sem poster; nenhum teste de carga; o seed `lukas-campos` continua no modelo Original.

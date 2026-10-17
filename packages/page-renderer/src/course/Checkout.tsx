@@ -6,6 +6,7 @@ import { BUYER_FIELDS, masks, rules, type BuyerField } from './checkout-logic';
 import type { CheckoutContent } from './schemas';
 import { DESKTOP_QUERY, useCourse, useMediaQuery, useReducedMotion } from './state';
 import { installmentLabel, offerTexts, type OfferView } from '../offer';
+import { mediaSrc } from '../media';
 
 type Method = 'card' | 'pix' | 'boleto';
 type FieldState = { value: string; status: 'idle' | 'valid' | 'invalid'; error: string };
@@ -178,7 +179,7 @@ export function Checkout({ content, offer }: { content: CheckoutContent; offer: 
               </button>
               <div className="summary-body" id="summary-body" hidden={!isSummaryOpen}>
                 <div className="summary-product">
-                  <img src={content.productImage.src} alt="" width={64} height={64} loading="lazy" />
+                  <img src={mediaSrc(content.productImage.src, 320)} alt="" width={64} height={64} loading="lazy" />
                   <div><strong>{content.productName}</strong><span className="caption">{content.productCaption}</span></div>
                 </div>
                 <dl className="summary-lines">

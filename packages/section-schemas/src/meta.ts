@@ -43,6 +43,8 @@ export const SECTION_META: readonly SectionMeta[] = [
   m('professional.bio', 'Trajetória', 'main', pro.bioSchema),
   m('professional.works', 'Trabalhos em destaque', 'main', pro.worksSchema),
   m('professional.video', 'Vídeo', 'main', pro.videoSchema),
+  m('professional.stats', 'Números', 'main', pro.statsSchema),
+  m('professional.cta', 'Chamada', 'main', pro.ctaSchema),
   m('professional.courses', 'Cursos', 'main', pro.coursesSchema),
   m('professional.footer', 'Rodapé', 'contentinfo', pro.professionalFooterSchema),
   m('home.nav', 'Navegação', 'banner', home.navSchema),
@@ -55,11 +57,27 @@ export const SECTION_META: readonly SectionMeta[] = [
   m('home.footer', 'Rodapé', 'contentinfo', home.footerSchema),
 ];
 
+/**
+ * Modelos de página do Profissional (Fase 7C). Todos usam as seções `professional.*`; mudam a composição
+ * (quais seções e em que ordem), os textos padrão e o tema visual. O Original é a página aprovada.
+ */
+export const PROFESSIONAL_TEMPLATES = [
+  { key: 'professional-original', label: 'Original', description: 'A página aprovada: apresentação, trajetória, trabalhos, vídeo e cursos.' },
+  { key: 'professional-authority', label: 'Autoridade', description: 'Abre com números e trajetória para construir credibilidade antes dos trabalhos e cursos.' },
+  { key: 'professional-video', label: 'Vídeo', description: 'O vídeo de apresentação vem logo após o topo, em tela grande. Sem vídeo, segue como o Original.' },
+  { key: 'professional-conversion', label: 'Conversão', description: 'Cursos e chamada para ação em primeiro plano, para quem quer vender com a página.' },
+  { key: 'professional-immersive', label: 'Imersivo', description: 'Trabalhos em galeria grande e escura, com pouco texto: a imagem conduz a página.' },
+  { key: 'professional-premium', label: 'Premium', description: 'Visual sóbrio e refinado, com números e chamada discreta, em preto e dourado.' },
+] as const;
+export type ProfessionalTemplateKey = (typeof PROFESSIONAL_TEMPLATES)[number]['key'];
+export const PROFESSIONAL_TEMPLATE_KEYS = PROFESSIONAL_TEMPLATES.map((t) => t.key) as readonly string[];
+export const isProfessionalTemplate = (key: string): key is ProfessionalTemplateKey => PROFESSIONAL_TEMPLATE_KEYS.includes(key);
+
 /** Prefixo dos tipos de seção aceitos por cada template. */
 export const TEMPLATE_PREFIX: Readonly<Record<string, string>> = {
   'course-original': 'course.',
-  'professional-original': 'professional.',
   'home-original': 'home.',
+  ...Object.fromEntries(PROFESSIONAL_TEMPLATES.map((t) => [t.key, 'professional.'])),
 };
 
 export const metaFor = (type: string) => SECTION_META.find((s) => s.type === type);

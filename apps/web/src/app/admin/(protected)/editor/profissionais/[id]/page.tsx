@@ -40,8 +40,8 @@ export default async function ProfessionalEditorPage({ params }: { params: Promi
   const published = await publicGet<{ courses?: unknown }>(`/professionals/${encodeURIComponent(professional.slug)}`, ['professionals', `professional:${professional.slug}`])
   const courseCards = z.array(courseCardSchema).catch([]).parse(published?.courses ?? [])
 
-  const library = resolveProfessionalDocument({ data, courseCards })
-  const initial = resolveProfessionalDocument({ data, document: state.document as PageDocument | null, courseCards })
+  const library = resolveProfessionalDocument({ data, courseCards, templateKey: state.templateKey })
+  const initial = resolveProfessionalDocument({ data, document: state.document as PageDocument | null, courseCards, templateKey: state.templateKey })
   if (!validatePageDocument(initial).ok) {
     return <main><p role="alert" className="form-error">O documento salvo desta página está inválido. Use “Restaurar do cadastro” pelo painel ou contate o suporte.</p><Link href={back}>Voltar</Link></main>
   }

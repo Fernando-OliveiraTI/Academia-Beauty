@@ -55,3 +55,5 @@ export function permissionsForRoles(roles: readonly Role[]): Permission[] {
 export * from './professional.js';
 export * from './course.js';
 export * from './document.js';
+export * from './media.js';
+export * from './home.js';

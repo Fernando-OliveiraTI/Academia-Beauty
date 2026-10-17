@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isSafeMediaPath } from '@academia/page-schema';
 import { professionalDataSchema, slugSchema, type ReadinessIssue } from './professional.js';
 
 const plain = (max: number) =>
@@ -11,12 +12,8 @@ const safeUrl = z
   .refine((v) => v.length <= 2048 && !/[\u0000-\u0020\u007f-\u009f\\]/.test(v) && /^(https:\/\/|\/(?!\/))/i.test(v), 'Use https:// ou um caminho interno iniciado por /');
 const optionalUrl = z.union([z.literal(''), safeUrl]);
 
-/** Mídia: só caminho interno do site (`/site/...`) até haver upload/CDN (Fase 7). */
-const mediaPath = z
-  .string()
-  .trim()
-  .max(2048)
-  .refine((v) => !/[\u0000-\u0020\u007f-\u009f\\]/.test(v) && /^\/(?!\/)/.test(v), 'Use um caminho interno do site (/site/...)');
+/** Mídia: arquivo do site, da biblioteca (`/media/<id>`) ou https de host de CDN autorizado (ver `isSafeMediaPath`). */
+const mediaPath = z.string().trim().max(2048).refine(isSafeMediaPath, 'Use um arquivo da biblioteca de mídia ou um caminho /site/...');
 const optionalMedia = z.union([z.literal(''), mediaPath]);
 
 export const COURSE_STATUSES = ['draft', 'published', 'archived'] as const;

@@ -3,14 +3,15 @@
 import { Component, useEffect, useState, type ReactNode } from 'react'
 import type { PageDocument } from '@academia/page-schema'
 import { validatePageDocument } from '@academia/section-schemas'
-import type { CourseCard, CourseData, ProfessionalData } from '@academia/contracts'
-import { NO_OFFER, PageRenderer, resolveCourseDocument, resolveProfessionalDocument, type OfferView } from '@academia/page-renderer'
+import type { CourseCard, CourseData, HomeCourseCard, ProfessionalData, ShowcaseItem } from '@academia/contracts'
+import { NO_OFFER, PageRenderer, resolveCourseDocument, resolveHomeDocument, resolveProfessionalDocument, type OfferView } from '@academia/page-renderer'
 
 export const EDITOR_MESSAGE = 'academia-editor-document'
 
 type Props =
-  | { kind: 'professional'; initial: PageDocument | null; data: ProfessionalData; courseCards: CourseCard[] }
+  | { kind: 'professional'; initial: PageDocument | null; data: ProfessionalData; courseCards: CourseCard[]; templateKey: string }
   | { kind: 'course'; initial: PageDocument | null; data: CourseData; professional: ProfessionalData; offer: OfferView }
+  | { kind: 'home'; initial: PageDocument | null; professionals: ShowcaseItem[]; courses: HomeCourseCard[] }
 
 class Boundary extends Component<{ children: ReactNode; resetKey: unknown }, { failed: boolean }> {
   state = { failed: false }
@@ -46,7 +47,10 @@ export function LivePreview(props: Props) {
   let ctx: Parameters<typeof PageRenderer>[0]['ctx']
   let doc: PageDocument
   if (props.kind === 'professional') {
-    doc = resolveProfessionalDocument({ data: props.data, document, courseCards: props.courseCards })
+    doc = resolveProfessionalDocument({ data: props.data, document, courseCards: props.courseCards, templateKey: props.templateKey })
+    ctx = { offer: NO_OFFER, year: new Date().getFullYear() }
+  } else if (props.kind === 'home') {
+    doc = resolveHomeDocument({ document, professionals: props.professionals, courses: props.courses })
     ctx = { offer: NO_OFFER, year: new Date().getFullYear() }
   } else {
     doc = resolveCourseDocument({ data: props.data, professional: props.professional, document })

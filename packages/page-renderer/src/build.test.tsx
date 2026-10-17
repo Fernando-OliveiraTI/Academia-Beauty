@@ -88,7 +88,7 @@ describe('buildHomeDocument', () => {
 
   it('vitrine vazia não renderiza a seção de profissionais e limita a 24', () => {
     expect(html(buildHomeDocument([]))).not.toContain('id="profissionais"');
-    const many = Array.from({ length: 40 }, (_, i) => ({ slug: `p-${i}`, name: `P${i}`, cardPhotoSrc: '/x.png' }));
+    const many = Array.from({ length: 40 }, (_, i) => ({ slug: `p-${i}`, name: `P${i}`, cardPhotoSrc: '/site/x.png' }));
     expect(parsePageDocument(buildHomeDocument(many)).ok).toBe(true);
   });
 });

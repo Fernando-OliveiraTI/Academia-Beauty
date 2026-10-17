@@ -15,6 +15,7 @@ import {
 } from '@academia/contracts'
 import { Button, Field, TextArea } from '@academia/design-system'
 import { apiSend } from '@/lib/api-client'
+import { MediaInput } from '@/components/media-input'
 import { canonical, centsToInput, emptyCourseData, emptyLines, fieldErrors, groupIssuesByStep, parseBRLToCents, STEPS, suggestSlug } from './form-model'
 
 type Loaded = AdminCourse & { readiness: ReadinessIssue[] }
@@ -241,8 +242,8 @@ export function CourseWizard({ initial, professionals, permissions }: { initial?
         {step === 1 ? (
           <div className="wizard-grid">
             <TextArea label="Descrição do curso" value={data.lead} maxLength={400} rows={3} disabled={!canWrite} error={errors.lead} onChange={(e) => set('lead', e.target.value)} />
-            <p className="wizard-hint">Informe um caminho do site (<code>/site/…</code>). Endereços externos (<code>https://</code>) não são aceitos para imagem e vídeo até o módulo de mídia (upload e CDN).</p>
-            <Field label="Imagem de capa" value={data.coverSrc} disabled={!canWrite} error={errors.coverSrc} onChange={(e) => set('coverSrc', e.target.value)} />
+            <p className="wizard-hint">Escolha a capa na biblioteca de mídia (botão “Biblioteca”, que também envia arquivos novos). Caminhos do site (<code>/site/…</code>) continuam valendo.</p>
+            <MediaInput label="Imagem de capa" kind="image" value={data.coverSrc} disabled={!canWrite} error={errors.coverSrc} onChange={(v) => set('coverSrc', v)} />
             <Field label="Descrição da capa (texto alternativo)" value={data.coverAlt} maxLength={300} disabled={!canWrite} error={errors.coverAlt} onChange={(e) => set('coverAlt', e.target.value)} />
 
             <fieldset className="wizard-fieldset">

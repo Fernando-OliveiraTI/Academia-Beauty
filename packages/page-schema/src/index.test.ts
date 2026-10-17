@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
-  clearRegistryForTests, parsePageDocument, plainTextSchema, registerSection, safeUrlSchema,
+  clearRegistryForTests, isSafeMediaPath, mediaIdOf, parsePageDocument, plainTextSchema, registerSection, safeUrlSchema, setMediaHosts,
 } from './index';
 
 const doc = (sections: unknown[]) => ({ schemaVersion: 1, template: { key: 't', version: 1 }, sections });
@@ -53,5 +53,30 @@ describe('safeUrlSchema', () => {
   });
   it.each(['javascript:alert(1)', 'data:text/html,x', 'http://inseguro.com', '//evil.com', 'JaVaScRiPt:1'])('rejeita %s', (u) => {
     expect(safeUrlSchema.safeParse(u).success).toBe(false);
+  });
+});
+
+describe('isSafeMediaPath', () => {
+  const id = 'a'.repeat(32);
+  afterEach(() => setMediaHosts(null));
+  it.each(['/site/home/foto.png', `/media/${id}`, `/media/${id}?w=640`])('aceita %s', (u) => {
+    expect(isSafeMediaPath(u)).toBe(true);
+  });
+  it.each(['/admin/x', '/outro/foto.png', '//evil.com/a.png', '/site/../admin', '/media/curto', `/media/${id}/x`, `/media/${'g'.repeat(32)}`,
+    'javascript:alert(1)', 'data:image/png;base64,AAAA', 'http://cdn.exemplo.com/a.png', 'https://cdn.exemplo.com/a.png', '/\\evil.com', '/site/a b.png'])('rejeita %s', (u) => {
+    expect(isSafeMediaPath(u)).toBe(false);
+  });
+  it('aceita https só dos hosts de CDN configurados', () => {
+    setMediaHosts(['cdn.exemplo.com']);
+    expect(isSafeMediaPath('https://cdn.exemplo.com/a/b.webp')).toBe(true);
+    expect(isSafeMediaPath('https://CDN.exemplo.com/a.webp')).toBe(true);
+    expect(isSafeMediaPath('https://outro.exemplo.com/a.webp')).toBe(false);
+    expect(isSafeMediaPath('https://cdn.exemplo.com.evil.com/a.webp')).toBe(false);
+    expect(isSafeMediaPath('https://user:pw@cdn.exemplo.com/a.webp')).toBe(false);
+    expect(isSafeMediaPath('http://cdn.exemplo.com/a.webp')).toBe(false);
+  });
+  it('mediaIdOf extrai o id', () => {
+    expect(mediaIdOf(`/media/${id}?w=320`)).toBe(id);
+    expect(mediaIdOf('/site/a.png')).toBeNull();
   });
 });

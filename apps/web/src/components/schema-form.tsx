@@ -1,6 +1,8 @@
 'use client'
 
 import { useId, type ReactNode } from 'react'
+import type { MediaAsset } from '@academia/contracts'
+import { MediaInput } from './media-input'
 
 /**
  * Formulário gerado do JSON Schema (derivado do schema Zod da seção). Só edita valores de campos
@@ -23,7 +25,7 @@ export type JsonSchema = {
 
 const LABELS: Record<string, string> = {
   eyebrow: 'Sobrecabeçalho', title: 'Título', titleLead: 'Título (início)', titleAccent: 'Título (destaque)', titleStrong: 'Título (negrito)',
-  text: 'Texto', copy: 'Texto de apoio', sub: 'Subtítulo', lead: 'Chamada', label: 'Rótulo', href: 'Link', src: 'Arquivo (URL)', alt: 'Texto alternativo',
+  text: 'Texto', copy: 'Texto de apoio', sub: 'Subtítulo', lead: 'Chamada', label: 'Rótulo', href: 'Link', src: 'Arquivo', alt: 'Texto alternativo',
   name: 'Nome', nameFirst: 'Nome', nameAccent: 'Sobrenome (destaque)', brandLead: 'Marca (início)', brandAccent: 'Marca (destaque)',
   links: 'Links', items: 'Itens', cards: 'Cartões', tags: 'Etiquetas', paragraphs: 'Parágrafos', meta: 'Informações', gold: 'Destaque dourado',
   image: 'Imagem', portrait: 'Retrato', video: 'Vídeo', account: 'Conta', instagram: 'Instagram', handle: 'Perfil', followers: 'Seguidores',
@@ -54,13 +56,13 @@ export function defaultFor(raw: JsonSchema): unknown {
 
 const isUrlKey = (key: string) => /(^|[a-z])(href|url)$/i.test(key) || key === 'src' || key === 'Src'
 
-type NodeProps = { schema: JsonSchema; value: unknown; onChange: (next: unknown) => void; name: string; depth?: number; labelText?: string; optional?: boolean }
+type NodeProps = { schema: JsonSchema; value: unknown; onChange: (next: unknown) => void; name: string; depth?: number; labelText?: string; optional?: boolean; mediaKind?: 'image' | 'video'; onPickAsset?: (asset: MediaAsset) => void }
 
 export function SchemaForm({ schema, value, onChange }: { schema: JsonSchema; value: Record<string, unknown>; onChange: (next: Record<string, unknown>) => void }) {
   return <div className="sf-root"><ObjectFields schema={resolve(schema)} value={value} onChange={onChange as (v: unknown) => void} depth={0} /></div>
 }
 
-function ObjectFields({ schema, value, onChange, depth }: { schema: JsonSchema; value: unknown; onChange: (v: unknown) => void; depth: number }) {
+function ObjectFields({ schema, value, onChange, depth, mediaKind }: { schema: JsonSchema; value: unknown; onChange: (v: unknown) => void; depth: number; mediaKind?: 'image' | 'video' }) {
   const obj = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>
   const required = schema.required ?? []
   return (
@@ -73,6 +75,9 @@ function ObjectFields({ schema, value, onChange, depth }: { schema: JsonSchema; 
           value={obj[key]}
           depth={depth}
           optional={!required.includes(key)}
+          mediaKind={mediaKind}
+          // Escolher um vídeo da biblioteca também ajusta o tipo MIME do `<source>`, quando a seção tem esse campo.
+          onPickAsset={key === 'src' && schema.properties?.type ? (asset) => onChange({ ...obj, src: asset.path, type: asset.mime }) : undefined}
           // `undefined` remove a chave (campo opcional limpo/removido): o JSON volta a ser válido sem valor vazio inventado.
           onChange={(next) => {
             const copy = { ...obj }
@@ -86,7 +91,7 @@ function ObjectFields({ schema, value, onChange, depth }: { schema: JsonSchema; 
   )
 }
 
-function Node({ schema: raw, value, onChange, name, depth = 0, labelText, optional = false }: NodeProps): ReactNode {
+function Node({ schema: raw, value, onChange, name, depth = 0, labelText, optional = false, mediaKind, onPickAsset }: NodeProps): ReactNode {
   const id = useId()
   const schema = resolve(raw)
   const label = labelText ?? humanize(name)
@@ -122,6 +127,9 @@ function Node({ schema: raw, value, onChange, name, depth = 0, labelText, option
       </div>
     )
   }
+  if (schema.type === 'string' && name === 'src') {
+    return <MediaInput id={id} label={label} value={typeof value === 'string' ? value : ''} kind={mediaKind} onChange={(next) => onChange(next)} onPickAsset={onPickAsset} />
+  }
   if (schema.type === 'string') {
     const text = typeof value === 'string' ? value : ''
     const long = (schema.maxLength ?? 0) > 150
@@ -142,7 +150,7 @@ function Node({ schema: raw, value, onChange, name, depth = 0, labelText, option
     return (
       <fieldset className="sf-group" data-depth={depth}>
         <legend>{label}</legend>
-        <ObjectFields schema={schema} value={value} onChange={onChange} depth={depth + 1} />
+        <ObjectFields schema={schema} value={value} onChange={onChange} depth={depth + 1} mediaKind={name === 'video' ? 'video' : 'image'} />
         {optional ? <button type="button" className="link-button" onClick={() => onChange(undefined)}>Remover {label.toLowerCase()}</button> : null}
       </fieldset>
     )

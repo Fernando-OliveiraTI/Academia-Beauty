@@ -42,7 +42,8 @@ const bodyParserConfig = defineConfig({
      */
     autoProcess: true,
     convertEmptyStringsToNull: true,
-    processManually: [],
+    // O envio de mídia lê o arquivo por conta própria (limite próprio por tipo, imagem 15 MB / vídeo 60 MB).
+    processManually: ['/admin/media'],
 
     /**
      * Maximum limit of data to parse including all files

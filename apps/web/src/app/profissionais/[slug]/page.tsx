@@ -38,6 +38,6 @@ export default async function ProfessionalPage({ params }: Params) {
   const professional = await load(slug)
   if (!professional) notFound()
   // `document` nulo = página derivada do cadastro; com documento do editor, os cursos publicados são reinjetados.
-  const document = resolveProfessionalDocument({ data: professional.data, document: professional.document as PageDocument | null, courseCards: professional.courses })
+  const document = resolveProfessionalDocument({ data: professional.data, document: professional.document as PageDocument | null, courseCards: professional.courses, templateKey: professional.templateKey })
   return <PageRenderer document={document} ctx={{ offer: NO_OFFER, year: new Date().getFullYear() }} />
 }

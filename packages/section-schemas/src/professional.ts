@@ -68,12 +68,29 @@ export const coursesSchema = z.object({
   })).max(12),
 });
 
+/** Faixa de números (anos, comunidade, trabalhos, cursos): prova de autoridade dos modelos Autoridade e Premium. */
+export const statsSchema = z.object({
+  sectionIndex: text(40),
+  title: text(80),
+  items: z.array(z.object({ value: text(24), label: text(48) })).min(1).max(4),
+});
+
+/** Chamada para ação (ver cursos ou seguir no Instagram) dos modelos de Conversão e Premium. */
+export const ctaSchema = z.object({
+  sectionIndex: text(40),
+  title: text(80),
+  text: text(240),
+  cta: link,
+});
+
 export type NavContent = z.infer<typeof navSchema>;
 export type HeroContent = z.infer<typeof heroSchema>;
 export type BioContent = z.infer<typeof bioSchema>;
 export type WorksContent = z.infer<typeof worksSchema>;
 export type VideoContent = z.infer<typeof videoSchema>;
 export type CoursesContent = z.infer<typeof coursesSchema>;
+export type StatsContent = z.infer<typeof statsSchema>;
+export type CtaContent = z.infer<typeof ctaSchema>;
 
 
 export const SOCIAL_ICONS = ['facebook', 'instagram', 'youtube', 'tiktok', 'x'] as const;

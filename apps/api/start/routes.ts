@@ -11,6 +11,10 @@ const AdminCourseDocumentsController = () =>
   import('#controllers/admin_course_documents_controller')
 const PublicCoursesController = () => import('#controllers/public_courses_controller')
 const PublicProfessionalsController = () => import('#controllers/public_professionals_controller')
+const AdminHomeController = () => import('#controllers/admin_home_controller')
+const PublicHomeController = () => import('#controllers/public_home_controller')
+const AdminMediaController = () => import('#controllers/admin_media_controller')
+const PublicMediaController = () => import('#controllers/public_media_controller')
 
 router.get('/health', async ({ response }) => {
   try {
@@ -32,6 +36,7 @@ router
 // Leitura pública (somente publicados).
 router
   .group(() => {
+    router.get('/home', [PublicHomeController, 'show'])
     router.get('/professionals', [PublicProfessionalsController, 'showcase'])
     router.get('/professionals/:slug', [PublicProfessionalsController, 'show'])
     router.get('/courses/:slug', [PublicCoursesController, 'show'])
@@ -136,6 +141,44 @@ router
   .prefix('/admin/courses')
   .where('id', router.matchers.number())
   .where('version', router.matchers.number())
+
+// Home (Fase 7B): documento único. Leitura exige `pages.read`; salvar/restaurar, `pages.write`; publicar, `pages.publish`.
+router
+  .group(() => {
+    router
+      .get('/', [AdminHomeController, 'state'])
+      .use(middleware.can({ permission: 'pages.read' }))
+    router
+      .get('/document', [AdminHomeController, 'show'])
+      .use(middleware.can({ permission: 'pages.read' }))
+    router
+      .get('/document/versions', [AdminHomeController, 'versions'])
+      .use(middleware.can({ permission: 'pages.read' }))
+    const write = middleware.can({ permission: 'pages.write' })
+    router.put('/document', [AdminHomeController, 'save']).use(write)
+    router.delete('/document', [AdminHomeController, 'clear']).use(write)
+    router
+      .post('/document/versions/:version/restore', [AdminHomeController, 'restoreVersion'])
+      .use(write)
+    router
+      .post('/publish', [AdminHomeController, 'publish'])
+      .use(middleware.can({ permission: 'pages.publish' }))
+  })
+  .prefix('/admin/home')
+  .where('version', router.matchers.number())
+
+// Biblioteca de mídia (Fase 7A). Entrega pública por id imutável; administração exige `media.manage`.
+router.get('/media/:id', [PublicMediaController, 'show']).where('id', /^[0-9a-f]{32}$/)
+router
+  .group(() => {
+    router.get('/', [AdminMediaController, 'index'])
+    router.post('/', [AdminMediaController, 'store'])
+    router.get('/:id', [AdminMediaController, 'show'])
+    router.delete('/:id', [AdminMediaController, 'destroy'])
+  })
+  .prefix('/admin/media')
+  .where('id', /^[0-9a-f]{32}$/)
+  .use(middleware.can({ permission: 'media.manage' }))
 
 /** Exemplo mínimo de rota protegida por permissão; os módulos reais entram nas fases 3 e 4. */
 router

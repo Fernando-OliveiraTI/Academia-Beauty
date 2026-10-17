@@ -45,6 +45,31 @@ export async function apiSend<T>(method: 'POST' | 'PUT' | 'PATCH' | 'DELETE', pa
   }
 }
 
+/** Envio de arquivo (multipart) com CSRF. Nunca lança; `data` traz o corpo JSON (sucesso ou erro da API). */
+export async function apiUpload<T>(path: string, file: File): Promise<ApiResult<T>> {
+  try {
+    const token = await ensureXsrfToken()
+    const form = new FormData()
+    form.append('file', file)
+    const res = await fetch(`/api${path}`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { accept: 'application/json', ...(token ? { 'x-xsrf-token': token } : {}) },
+      body: form,
+    })
+    const text = await res.text()
+    let data: T | null = null
+    try {
+      data = text ? (JSON.parse(text) as T) : null
+    } catch {
+      data = null
+    }
+    return { ok: res.ok, status: res.status, data }
+  } catch {
+    return { ok: false, status: 0, data: null }
+  }
+}
+
 /** GET autenticado (cookie de sessão) no navegador. Nunca lança. */
 export async function apiGet<T>(path: string): Promise<ApiResult<T>> {
   try {
