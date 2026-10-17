@@ -36,7 +36,7 @@
 
 ## Pendências
 - D-017 a D-022 e a revisão independente **aprovadas** (D-023); ajustes virão após teste em tela do usuário.
-- **Fase 7 implementada e validada por testes (progress.md); falta a sua conferência em tela** (principalmente o visual dos 6 modelos em `/preview/modelos/<key>`, o editor da Home, a biblioteca de mídia) e a revisão independente. As Fases 7B/7C ainda **não foram commitadas** (git: `main`, remote `origin` configurado; só o commit inicial foi enviado).
+- **Fase 7 implementada e validada por testes (progress.md); falta a sua conferência em tela** (principalmente o visual dos 6 modelos em `/preview/modelos/<key>`, o editor da Home, a biblioteca de mídia) e a revisão independente. A Fase 7 foi commitada e enviada (`0b803d5`, `origin/main`). Revisão do código feita em 2026-10-17 sem bloqueios; riscos baixos: upload em memória (até 60 MB) e janela de concorrência entre checagem de uso e exclusão de mídia (rever na Fase 8).
 - Decidir (D-026): rótulos/descrições dos modelos, se Curso e Home também terão modelos, e se `/preview/modelos/*` e `/preview/*` saem do ar já (hoje públicas, noindex).
 - Decidir (D-025): Home sem curso publicado esconde a seção (em vez de mostrar cartões fixos); confirmar.
 - Mídia: escolher provedor real de storage/CDN na Fase 8 (hoje local); vídeo sem poster/transcodificação.
@@ -49,7 +49,7 @@
 - Conteúdo do Curso que precisa de decisão do negócio: garantia de 7 dias, FAQ, depoimentos de exemplo, "30% de desconto" no título, nomes de celebridades (ver `analysis/03-curso.md`).
 - Ativos: foto do instrutor (`lukas-perfil.jpg`) e capa definitiva do curso (hoje SVG local), vídeo de 28,6 MB (otimizar/hospedar), PNGs de até 2990×3397, logo oficial.
 - `/preview/*` são públicas (noindex): remover/proteger na Fase 8. Os cartões de curso da Home ainda são estáticos: só `/cursos/morena-iluminada` existe; os demais levam a 404.
-- Projeto sem repositório git; `ci.yml` nunca foi executado. Confirmar se devo inicializar o git.
+- Repositório git ativo (`main`, remote `origin` no GitHub); `ci.yml` ainda não foi confirmado como executado no GitHub Actions.
 
 ## Próximo passo
 Decididas pelo usuário: AdonisJS 7/`braces` depois se necessário; gatilhos MySQL não; pausa do autoplay e CLS aguardam a verificação visual dele; **nova rodada de comparação visual (`compare --max-diff`) a combinar**. Depois da sua conferência da Fase 7: Fase 6 (The Members, depende de documentação oficial) e Fase 8 (produção: SEO, CDN/storage real, observabilidade, remover/proteger `/preview/*`). Seguem abertas as pendências de negócio (conteúdo real, ativos, git).

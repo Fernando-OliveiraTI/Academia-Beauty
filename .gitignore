@@ -13,3 +13,4 @@ tmp/
 packages/visual-baseline/output/
 !apps/api/.env.test
 apps/api/storage/
+*.tsbuildinfo
