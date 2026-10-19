@@ -51,7 +51,15 @@ export type CheckoutMode =
   | { mode: 'demo' }
   | { mode: 'redirect'; url: string | null }
   /** Checkout hospedado da The Members embutido num iframe; `url: null` = compra indisponível. */
-  | { mode: 'embed'; url: string | null };
+  | {
+      mode: 'embed';
+      url: string | null;
+      /**
+       * Rota pública que informa a situação do pagamento da visita (`GET <statusUrl>?ref=…`). Só a página pública passa
+       * isto: sem ele (pré-visualização, editor) o iframe fica como estava e nada é consultado.
+       */
+      statusUrl?: string;
+    };
 
 export type RenderContext = {
   offer: OfferView;

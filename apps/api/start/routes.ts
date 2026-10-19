@@ -10,6 +10,8 @@ const AdminProfessionalDocumentsController = () =>
 const AdminCourseDocumentsController = () =>
   import('#controllers/admin_course_documents_controller')
 const ThemembersWebhookController = () => import('#controllers/themembers_webhook_controller')
+const PublicCheckoutStatusController = () =>
+  import('#controllers/public_checkout_status_controller')
 const PublicCoursesController = () => import('#controllers/public_courses_controller')
 const PublicProfessionalsController = () => import('#controllers/public_professionals_controller')
 const AdminHomeController = () => import('#controllers/admin_home_controller')
@@ -44,6 +46,7 @@ router
     router.get('/professionals/:slug', [PublicProfessionalsController, 'show'])
     router.get('/courses/:slug', [PublicCoursesController, 'show'])
     router.post('/track', [PublicTrackController, 'store'])
+    router.get('/checkout-status', [PublicCheckoutStatusController, 'show'])
   })
   .prefix('/public')
 

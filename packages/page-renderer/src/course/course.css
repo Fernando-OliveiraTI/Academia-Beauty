@@ -799,3 +799,12 @@ html:has(.pg-course) {
 .pg-bg[data-bg="white"] > * { background: #ffffff !important; }
 .pg-bg[data-bg="paper"] > * { background: #f3f0e7 !important; }
 .pg-bg[data-bg="gold"] > * { background: #e3c98a !important; }
+
+/* Retorno do pagamento no checkout embutido (The Members): aviso de andamento e confirmação. */
+.pg-course .pay-notice { margin: 0; padding: 14px 20px; font-size: .9rem; line-height: 1.5; color: var(--color-text); border-bottom: 1px solid var(--color-border); background: rgba(227, 201, 138, .08); }
+.pg-course .pay-notice[data-state="failed"], .pg-course .pay-notice[data-state="refunded"] { background: rgba(255, 138, 128, .08); }
+.pg-course .pay-result { display: grid; justify-items: center; gap: 10px; padding: 56px 24px; text-align: center; }
+.pg-course .pay-result h3 { margin: 0; font-size: 1.6rem; line-height: 1.2; }
+.pg-course .pay-result p { margin: 0; max-width: 44ch; color: var(--color-text-secondary); line-height: 1.6; }
+.pg-course .pay-result-icon { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; color: var(--color-cta-text); background: var(--color-primary); box-shadow: 0 0 0 10px rgba(227, 201, 138, .14); }
+.pg-course .pay-result-icon svg { width: 28px; height: 28px; }

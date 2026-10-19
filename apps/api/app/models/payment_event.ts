@@ -52,6 +52,9 @@ export default class PaymentEvent extends BaseModel {
   declare buyerEmail: string | null
 
   @column()
+  declare ref: string | null
+
+  @column()
   declare signatureScheme: string
 
   @column({

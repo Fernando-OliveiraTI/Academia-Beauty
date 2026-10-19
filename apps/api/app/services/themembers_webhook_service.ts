@@ -131,6 +131,21 @@ export function redact(value: unknown, key = '', depth = 0): unknown {
 
 /* --------------------------------- resumo ------------------------------------ */
 
+/** Formato do código da visita: `ab_` + 20 caracteres minúsculos/dígitos (gerado pelo navegador; ver `checkout_ref`). */
+export const REF_PATTERN = /^ab_[a-z0-9]{20}$/
+
+/**
+ * Procura o código da visita em qualquer lugar do corpo (a estrutura de `utms` não é detalhada na documentação, então
+ * varremos todos os textos). Só aceita o formato exato do código; ignora qualquer outro conteúdo.
+ */
+export function findRef(raw: string): string | null {
+  for (const match of raw.matchAll(/ab_[a-z0-9]{20}(?![a-z0-9])/gi)) {
+    const candidate = match[0].toLowerCase()
+    if (REF_PATTERN.test(candidate)) return candidate
+  }
+  return null
+}
+
 export type Summary = {
   event: string
   kind: 'transaction' | 'order' | 'access' | 'abandoned' | 'other'
@@ -296,6 +311,7 @@ export default class ThemembersWebhookService {
         cardBrand: summary.cardBrand,
         buyerName: summary.buyerName,
         buyerEmail: summary.buyerEmail,
+        ref: findRef(raw),
         signatureScheme: scheme,
         payload: redact(body) as Json,
         occurredAt: summary.occurredAt,

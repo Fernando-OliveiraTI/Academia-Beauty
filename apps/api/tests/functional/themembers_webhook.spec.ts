@@ -6,7 +6,9 @@ import db from '@adonisjs/lucid/services/db'
 import env from '#start/env'
 import { makeUser } from '#tests/helpers'
 import { resetWebhookLimiter } from '#controllers/themembers_webhook_controller'
+import { resetCheckoutStatusLimiter } from '#controllers/public_checkout_status_controller'
 import {
+  findRef,
   maskEmail,
   maskName,
   parseBody,
@@ -479,5 +481,174 @@ test.group('The Members · pagamentos no curso (painel)', (group) => {
       pending: 0,
     })
     assert.deepEqual(res.body().items, [])
+  })
+})
+
+const REF = 'ab_k3j9x0q2m7v5n1c8w4zt'
+const REF2 = 'ab_p0o9i8u7y6t5r4e3w2qa'
+
+test.group('The Members · código da visita (ref) no webhook', () => {
+  test('findRef acha o código em qualquer formato de utms e ignora o que não tem o formato exato', ({
+    assert,
+  }) => {
+    assert.equal(findRef(JSON.stringify({ utms: [{ utm_content: REF }] })), REF)
+    assert.equal(findRef(JSON.stringify({ utms: [{ key: 'utm_content', value: REF }] })), REF)
+    assert.equal(findRef(JSON.stringify({ utms: `utm_source=academia&utm_content=${REF}` })), REF)
+    assert.equal(
+      findRef(JSON.stringify({ data: { order: { utms: { utm_term: REF.toUpperCase() } } } })),
+      REF
+    )
+    assert.isNull(findRef(JSON.stringify({ utms: [] })))
+    assert.isNull(findRef(JSON.stringify({ utms: [{ utm_content: 'ab_curto' }] })))
+    assert.isNull(
+      findRef(JSON.stringify({ utms: [{ utm_content: `${REF}extra` }] })),
+      'mais longo que o formato não vale'
+    )
+    assert.isNull(findRef(JSON.stringify({ utms: [{ utm_content: 'cd_k3j9x0q2m7v5n1c8w4zt' }] })))
+  })
+})
+
+test.group('The Members · confirmação para o comprador (/public/checkout-status)', (group) => {
+  let previous: string | undefined
+  group.each.setup(async () => {
+    resetWebhookLimiter()
+    resetCheckoutStatusLimiter()
+    previous = env.get('THEMEMBERS_WEBHOOK_SECRET')
+    env.set('THEMEMBERS_WEBHOOK_SECRET', SECRET)
+    return testUtils.db().withGlobalTransaction()
+  })
+  group.each.teardown(() => {
+    env.set('THEMEMBERS_WEBHOOK_SECRET', previous ?? '')
+  })
+
+  const hook = (client: any, body: object) =>
+    client
+      .post('/webhooks/themembers')
+      .header('x-signature', sign(JSON.stringify(body)))
+      .json(body)
+  const withRef = (
+    ref: string | null,
+    over: Parameters<typeof sale>[0],
+    when: string,
+    method = 'credit_card'
+  ) => {
+    const body = sale(over) as any
+    body.payload.created_at = when
+    body.payload.data.payment_details.payment_method = method
+    body.payload.data.order.utms = ref ? [{ utm_source: 'academia', utm_content: ref }] : []
+    return body
+  }
+  const status = async (client: any, ref: string) =>
+    (await client.get(`/public/checkout-status?ref=${ref}`)).body()
+
+  test('sem pagamento a resposta é "none"; formato inválido é 400; nunca vem cache', async ({
+    client,
+    assert,
+  }) => {
+    assert.deepEqual(await status(client, REF), { status: 'none', method: null })
+    ;(await client.get('/public/checkout-status')).assertStatus(400)
+    ;(await client.get('/public/checkout-status?ref=abc')).assertStatus(400)
+    ;(await client.get("/public/checkout-status?ref=ab_k3j9x0q2m7v5n1c8w4z'--")).assertStatus(400)
+    const res = await client.get(`/public/checkout-status?ref=${REF}`)
+    assert.equal(res.header('cache-control'), 'no-store')
+  })
+
+  test('pix gerado → aguardando; aprovado → aprovado; só a visita certa enxerga o próprio resultado', async ({
+    client,
+    assert,
+  }) => {
+    ;(
+      await hook(
+        client,
+        withRef(
+          REF,
+          { txId: '11', event: 'transaction.pix_generated', status: 'pending' },
+          '2026-10-19 10:00:00',
+          'pix'
+        )
+      )
+    ).assertStatus(200)
+    assert.deepEqual(await status(client, REF), { status: 'waiting', method: 'pix' })
+    ;(
+      await hook(
+        client,
+        withRef(REF, { txId: '11', event: 'transaction.approved' }, '2026-10-19 10:05:00', 'pix')
+      )
+    ).assertStatus(200)
+    assert.deepEqual(await status(client, REF), { status: 'approved', method: null })
+    assert.deepEqual(await status(client, REF2), { status: 'none', method: null })
+  })
+
+  test('recusado e depois aprovado (nova tentativa) vale aprovado; aprovado e depois reembolsado vale reembolsado', async ({
+    client,
+    assert,
+  }) => {
+    ;(
+      await hook(
+        client,
+        withRef(
+          REF,
+          { txId: '21', event: 'transaction.failed', status: 'failed' },
+          '2026-10-19 10:00:00'
+        )
+      )
+    ).assertStatus(200)
+    assert.equal((await status(client, REF)).status, 'failed')
+    ;(
+      await hook(
+        client,
+        withRef(REF, { txId: '22', event: 'transaction.approved' }, '2026-10-19 10:10:00')
+      )
+    ).assertStatus(200)
+    assert.equal((await status(client, REF)).status, 'approved')
+    ;(
+      await hook(
+        client,
+        withRef(
+          REF,
+          { txId: '22', event: 'transaction.refunded', status: 'refunded' },
+          '2026-10-19 11:00:00'
+        )
+      )
+    ).assertStatus(200)
+    assert.equal((await status(client, REF)).status, 'refunded')
+  })
+
+  test('cartão iniciado → processando; evento sem código não aparece para ninguém', async ({
+    client,
+    assert,
+  }) => {
+    ;(
+      await hook(
+        client,
+        withRef(
+          REF,
+          { txId: '31', event: 'transaction.payment_cc_initiated', status: 'processing' },
+          '2026-10-19 10:00:00'
+        )
+      )
+    ).assertStatus(200)
+    assert.equal((await status(client, REF)).status, 'processing')
+    ;(await hook(client, withRef(null, { txId: '32' }, '2026-10-19 10:01:00'))).assertStatus(200)
+    assert.deepEqual(await status(client, REF2), { status: 'none', method: null })
+  })
+
+  test('a resposta pública traz só situação e forma de pagamento (sem valor, nome, e-mail ou documento)', async ({
+    client,
+    assert,
+  }) => {
+    ;(await hook(client, withRef(REF, { txId: '41' }, '2026-10-19 10:00:00'))).assertStatus(200)
+    const body = await status(client, REF)
+    assert.deepEqual(Object.keys(body).sort(), ['method', 'status'])
+    const raw = JSON.stringify(body)
+    for (const leak of ['Maria', '52998224725', 'maria.lima', '10260', 'visa'])
+      assert.notInclude(raw, leak)
+  })
+
+  test('limita consultas por IP (429)', async ({ client, assert }) => {
+    let last = 0
+    for (let i = 0; i < 62; i++)
+      last = (await client.get(`/public/checkout-status?ref=${REF}`)).status()
+    assert.equal(last, 429)
   })
 })

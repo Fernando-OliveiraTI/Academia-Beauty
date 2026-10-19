@@ -7,6 +7,7 @@ import type { CheckoutContent } from './schemas';
 import { DESKTOP_QUERY, useCourse, useMediaQuery, useReducedMotion } from './state';
 import { installmentLabel, offerTexts, type OfferView } from '../offer';
 import { mediaSrc } from '../media';
+import { loadVisitRef, useVisitStatus, withVisitRef } from './checkout-status';
 
 type Method = 'card' | 'pix' | 'boleto';
 type FieldState = { value: string; status: 'idle' | 'valid' | 'invalid'; error: string };
@@ -242,7 +243,7 @@ export function Checkout({ content, offer }: { content: CheckoutContent; offer: 
           </aside>
 
           <div className="checkout-main">
-            {embed ? <EmbeddedCheckout url={checkout.url} title={content.title} unavailable={content.confirmUnavailable} /> : <>
+            {embed ? <EmbeddedCheckout url={checkout.url} statusUrl={checkout.mode === 'embed' ? checkout.statusUrl : undefined} title={content.title} content={content} /> : <>
             <ol className="steps" aria-label="Etapas da compra" ref={stepsRef}>
               {stepLabels.map((label, i) => {
                 const n = i + 1;
@@ -366,23 +367,69 @@ export function Checkout({ content, offer }: { content: CheckoutContent; offer: 
   );
 }
 
-/** Checkout hospedado da The Members dentro da página. A URL já foi validada pelo backend (https + domínio autorizado). */
-function EmbeddedCheckout({ url, title, unavailable }: { url: string | null; title: string; unavailable: string }) {
+/**
+ * Checkout hospedado da The Members dentro da página. A URL já foi validada pelo backend (https + domínio autorizado).
+ * Com `statusUrl` (só na página pública) a visita ganha um código que vai na URL do iframe como UTM; quando o webhook
+ * da The Members confirma o pagamento a página troca o iframe pela confirmação, sem o comprador precisar fazer nada.
+ */
+function EmbeddedCheckout({ url, statusUrl, title, content }: { url: string | null; statusUrl?: string; title: string; content: CheckoutContent }) {
   const safe = url && /^https:\/\//i.test(url) ? url : null;
+  const tracked = Boolean(safe && statusUrl);
+  const [ref, setRef] = useState<string | null>(null);
+  const [seen, setSeen] = useState(false);
+  const card = useRef<HTMLDivElement>(null);
+
+  // O código nasce no navegador (depois da hidratação): o HTML do servidor não o conhece.
+  useEffect(() => { if (tracked) setRef(loadVisitRef()); }, [tracked]);
+  // Só começa a consultar depois que o checkout apareceu na tela: quem nem chegou até ele não gera chamadas.
+  useEffect(() => {
+    if (!tracked || seen) return;
+    const el = card.current;
+    if (!el || typeof IntersectionObserver === 'undefined') { setSeen(true); return; }
+    const io = new IntersectionObserver((entries) => { if (entries.some((e) => e.isIntersecting)) { setSeen(true); io.disconnect(); } }, { threshold: 0.05 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [tracked, seen]);
+
+  const visit = useVisitStatus(statusUrl, ref, tracked && seen);
+  const paid = visit.status === 'approved';
+  const message =
+    visit.status === 'processing' ? content.processingText
+    : visit.status === 'waiting' ? (visit.method === 'boleto' ? content.waitingBoleto : content.waitingPix)
+    : visit.status === 'failed' ? content.failedText
+    : visit.status === 'refunded' ? content.refundedText
+    : null;
+  const src = safe ? (tracked ? (ref ? withVisitRef(safe, ref) : null) : safe) : null;
+
   return (
-    <div className="card checkout-card" data-embed="">
-      {safe ? (
-        <iframe
-          src={safe}
-          title={title}
-          loading="lazy"
-          allow="payment *"
-          referrerPolicy="strict-origin-when-cross-origin"
-          sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation allow-storage-access-by-user-activation"
-          style={{ display: 'block', width: '100%', minHeight: 1180, border: 0, borderRadius: 'inherit', background: 'transparent' }}
-        />
+    <div className="card checkout-card" data-embed="" ref={card}>
+      {paid ? (
+        <div className="pay-result" role="status" data-state="paid">
+          <span className="pay-result-icon" aria-hidden="true"><Icon name="check" /></span>
+          <h3>{content.paidTitle}</h3>
+          <p>{content.paidText}</p>
+        </div>
       ) : (
-        <p className="field-error" role="status">{unavailable}</p>
+        <>
+          {message ? (
+            <p className="pay-notice" role="status" aria-live="polite" data-state={visit.status}>{message}</p>
+          ) : null}
+          {safe ? (
+            src ? (
+              <iframe
+                src={src}
+                title={title}
+                loading="lazy"
+                allow="payment *"
+                referrerPolicy="strict-origin-when-cross-origin"
+                sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation allow-storage-access-by-user-activation"
+                style={{ display: 'block', width: '100%', minHeight: 1180, border: 0, borderRadius: 'inherit', background: 'transparent' }}
+              />
+            ) : <div aria-hidden="true" style={{ minHeight: 1180 }} />
+          ) : (
+            <p className="field-error" role="status">{content.confirmUnavailable}</p>
+          )}
+        </>
       )}
     </div>
   );

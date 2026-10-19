@@ -162,6 +162,13 @@ export const CHECKOUT_DEFAULTS = {
   confirmTitle: 'Tudo certo!', confirmLead: 'Você será levado ao ambiente seguro de pagamento para concluir a compra.',
   confirmButton: 'Ir para o pagamento seguro', confirmBack: 'Voltar',
   confirmUnavailable: 'A compra deste curso está temporariamente indisponível.',
+  // Retorno do pagamento no checkout embutido (The Members): a página acompanha o webhook e mostra o resultado.
+  paidTitle: 'Pagamento confirmado!', paidText: 'Enviamos os dados de acesso para o seu e-mail. Você já pode fechar esta página.',
+  processingText: 'Processando o pagamento…',
+  waitingPix: 'Aguardando o pagamento do Pix. A confirmação aparece aqui assim que ele for pago.',
+  waitingBoleto: 'Aguardando a compensação do boleto. Avisaremos por e-mail quando for confirmado.',
+  failedText: 'O pagamento não foi aprovado. Tente novamente com outro cartão ou outra forma de pagamento.',
+  refundedText: 'Este pagamento foi reembolsado.',
 } as const;
 const D = CHECKOUT_DEFAULTS;
 
@@ -196,6 +203,13 @@ export const checkoutSchema = z.object({
   confirmButton: text(60).default(D.confirmButton),
   confirmBack: text(40).default(D.confirmBack),
   confirmUnavailable: text(160).default(D.confirmUnavailable),
+  paidTitle: text(60).default(D.paidTitle),
+  paidText: text(240).default(D.paidText),
+  processingText: text(100).default(D.processingText),
+  waitingPix: text(200).default(D.waitingPix),
+  waitingBoleto: text(200).default(D.waitingBoleto),
+  failedText: text(200).default(D.failedText),
+  refundedText: text(160).default(D.refundedText),
 });
 
 export const guaranteeSchema = z.object({
