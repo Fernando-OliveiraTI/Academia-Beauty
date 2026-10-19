@@ -23,10 +23,15 @@ export type TrackInput = {
 /** Janela simples por IP em memória: coleta pública não pode virar vetor de enchente do banco. */
 const hits = new Map<string, { count: number; reset: number }>()
 const LIMIT = 90
+const MAX_TRACKED_IPS = 5000
 function allowed(ip: string, now = Date.now()) {
   const entry = hits.get(ip)
   if (!entry || entry.reset <= now) {
-    if (hits.size > 5000) hits.clear()
+    if (hits.size >= MAX_TRACKED_IPS) {
+      for (const [key, value] of hits) if (value.reset <= now) hits.delete(key)
+      // Cheio de janelas ainda ativas: descarta o IP novo (a coleta é só métrica) em vez de zerar os limites de todos.
+      if (hits.size >= MAX_TRACKED_IPS) return false
+    }
     hits.set(ip, { count: 1, reset: now + 60_000 })
     return true
   }

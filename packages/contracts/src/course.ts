@@ -108,6 +108,8 @@ export const PRICE_MAX_CENTS = 10_000_000;
 /** Parcela mínima exibida (R$ 5,00): evita "12x de R$ 0,83". */
 export const MIN_INSTALLMENT_CENTS = 500;
 
+const externalCourseIdField = z.string().trim().max(128).regex(/^[A-Za-z0-9_.:-]*$/, 'Use apenas letras, números e _ . : -');
+
 export const commercialInputSchema = z.object({
   listCents: z.number().int().min(PRICE_MIN_CENTS).max(PRICE_MAX_CENTS),
   discountPct: z.number().int().min(0).max(90),
@@ -117,13 +119,16 @@ export const commercialInputSchema = z.object({
   /** Ausente em ofertas antigas = `academia`. */
   provider: z.enum(CHECKOUT_PROVIDERS).default('academia'),
   /** ID do curso na The Members (só referência; vazio = não informado). */
-  externalCourseId: z.string().trim().max(128).regex(/^[A-Za-z0-9_.:-]*$/, 'Use apenas letras, números e _ . : -').default(''),
+  externalCourseId: externalCourseIdField.default(''),
   environment: z.enum(CHECKOUT_ENVIRONMENTS),
   active: z.boolean(),
 });
 export type CommercialInput = z.infer<typeof commercialInputSchema>;
 
 export const updateCommercialSchema = commercialInputSchema.extend({
+  /** No PUT, ausente = mantém o valor atual (um cliente antigo não zera o vínculo nem o provedor). */
+  provider: z.enum(CHECKOUT_PROVIDERS).optional(),
+  externalCourseId: externalCourseIdField.optional(),
   /** Revisão da configuração comercial que o cliente leu (0 = ainda não existe). */
   revision: z.number().int().min(0),
 });

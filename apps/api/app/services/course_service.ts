@@ -164,22 +164,30 @@ export default class CourseService {
    * Copia um curso como rascunho novo, do mesmo profissional: dados e documento do editor. Não leva publicação,
    * versões, vitrine, link de checkout nem a oferta ativa (a cópia nasce sem venda, para não vender o produto errado).
    */
-  static async duplicate(id: number, actorId: number) {
+  static async duplicate(id: number, actorId: number, offer?: UpdateCommercialInput) {
     const source = await Course.find(id)
     if (!source) throw new DomainError(404, 'not_found', 'Curso não encontrado')
-    const data = { ...source.data, title: `${source.data.title.slice(0, 73)} (cópia)` }
+    const data = { ...source.data, title: `${source.data.title.slice(0, 72)} (cópia)` }
     const slug = await copySlug(source.slug, (candidate) => slugTaken(candidate))
-    return Course.create({
-      professionalId: source.professionalId,
-      slug,
-      data,
-      title: data.title,
-      document: source.document ? structuredClone(source.document) : null,
-      documentRevision: source.document ? source.documentRevision : 0,
-      status: 'draft',
-      revision: 1,
-      createdBy: actorId,
-      updatedBy: actorId,
+    // Curso e oferta na mesma transação: se a oferta falhar, não sobra cópia órfã.
+    return db.transaction(async (trx) => {
+      const course = await Course.create(
+        {
+          professionalId: source.professionalId,
+          slug,
+          data,
+          title: data.title,
+          document: source.document ? structuredClone(source.document) : null,
+          documentRevision: source.document ? source.documentRevision : 0,
+          status: 'draft',
+          revision: 1,
+          createdBy: actorId,
+          updatedBy: actorId,
+        },
+        { client: trx }
+      )
+      if (offer) await CourseService.saveCommercial(course.id, offer, actorId, trx)
+      return course
     })
   }
 
@@ -224,8 +232,15 @@ export default class CourseService {
    * Grava a oferta (Modo A). O link precisa ser https de domínio autorizado; o preço é sempre
    * definido aqui, nunca pela página ou pelo navegador do comprador.
    */
-  static async saveCommercial(courseId: number, input: UpdateCommercialInput, actorId: number) {
-    return db.transaction(async (trx) => {
+  static async saveCommercial(
+    courseId: number,
+    input: UpdateCommercialInput,
+    actorId: number,
+    outer?: TransactionClientContract
+  ) {
+    const run = <T>(fn: (trx: TransactionClientContract) => Promise<T>) =>
+      outer ? fn(outer) : db.transaction(fn)
+    return run(async (trx) => {
       const course = await Course.query({ client: trx }).where('id', courseId).forUpdate().first()
       if (!course) throw new DomainError(404, 'not_found', 'Curso não encontrado')
       if (course.status === 'archived') {
@@ -259,6 +274,19 @@ export default class CourseService {
           [{ field: 'checkoutUrl', message: 'Informe o link de checkout para ativar a oferta' }]
         )
       }
+      const provider = input.provider ?? providerOf(current?.provider)
+      const externalCourseId = input.externalCourseId ?? current?.externalCourseId ?? ''
+      if (externalCourseId && externalCourseId !== (current?.externalCourseId ?? '')) {
+        const taken = await CommercialConfig.query({ client: trx })
+          .where('external_course_id', externalCourseId)
+          .whereNot('course_id', courseId)
+          .first()
+        if (taken) {
+          throw new DomainError(409, 'external_id_taken', 'Este ID já está em outro curso', [
+            { field: 'externalCourseId', message: 'Este ID já está em outro curso' },
+          ])
+        }
+      }
       const values = {
         listCents: input.listCents,
         discountPct: input.discountPct,
@@ -266,8 +294,8 @@ export default class CourseService {
         checkoutUrl,
         environment: input.environment,
         active: input.active,
-        provider: input.provider,
-        externalCourseId: input.externalCourseId,
+        provider,
+        externalCourseId,
         currency: 'BRL',
         updatedBy: actorId,
       }

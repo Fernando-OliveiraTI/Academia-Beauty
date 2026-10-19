@@ -41,7 +41,7 @@ export function CtaLink({ href = '#checkout', onClick, className, id, children, 
     }
     // Com a seção de checkout na página o botão rola até ela; sem a seção (ou sem JS) vai direto ao provedor.
     return (
-      <a className={className} id={id} href={checkout.url} rel="noopener noreferrer" tabIndex={tabIndex} data-cta="" onClick={(ev) => { onClick?.(ev); goToCheckout(ev); }}>
+      <a {...rest} className={className} id={id} href={checkout.url} rel="noopener noreferrer" tabIndex={tabIndex} data-cta="" onClick={(ev) => { onClick?.(ev); goToCheckout(ev); }}>
         {children}
       </a>
     );

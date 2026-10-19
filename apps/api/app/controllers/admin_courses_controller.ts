@@ -251,26 +251,28 @@ export default class AdminCoursesController {
   async duplicate(ctx: HttpContext) {
     const actor = ctx.auth.getUserOrFail()
     try {
-      const course = await CourseService.duplicate(Number(ctx.params.id), actor.id)
       // Preço, desconto e parcelas vão junto só para quem gerencia a oferta; sem link e inativa (nunca vende por engano).
-      const offer = await CommercialConfig.query().where('course_id', Number(ctx.params.id)).first()
-      if (offer && actor.permissions.includes('commerce.manage')) {
-        await CourseService.saveCommercial(
-          course.id,
-          {
-            listCents: offer.listCents,
-            discountPct: offer.discountPct,
-            maxInstallments: offer.maxInstallments,
-            checkoutUrl: '',
-            provider: providerOf(offer.provider),
-            externalCourseId: '', // a cópia não herda IDs externos
-            environment: offer.environment,
-            active: false,
-            revision: 0,
-          },
-          actor.id
-        )
-      }
+      const sourceId = Number(ctx.params.id)
+      const offer = actor.permissions.includes('commerce.manage')
+        ? await CommercialConfig.query().where('course_id', sourceId).first()
+        : null
+      const course = await CourseService.duplicate(
+        sourceId,
+        actor.id,
+        offer
+          ? {
+              listCents: offer.listCents,
+              discountPct: offer.discountPct,
+              maxInstallments: offer.maxInstallments,
+              checkoutUrl: '',
+              provider: providerOf(offer.provider),
+              externalCourseId: '', // a cópia não herda IDs externos
+              environment: offer.environment,
+              active: false,
+              revision: 0,
+            }
+          : undefined
+      )
       await AuditService.record(ctx, {
         action: 'course.duplicate',
         actorId: actor.id,

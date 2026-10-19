@@ -825,3 +825,78 @@ test.group('Despublicar e apagar', (group) => {
     assert.equal((await a.get('/admin/professionals')).body().meta.counts.archived, 1)
   })
 })
+
+test.group('Oferta · campos novos e duplicação', (group) => {
+  group.each.setup(() => testUtils.db().withGlobalTransaction())
+
+  test('PUT da oferta sem provedor nem ID da The Members mantém o vínculo atual', async ({
+    client,
+    assert,
+  }) => {
+    const a = api(client, await makeUser('admin'))
+    const professional = await publishedProfessional(a)
+    const { id } = await readyCourse(a, professional.id)
+    ;(
+      await a.put(
+        `/admin/courses/${id}/commercial`,
+        commercial({ provider: 'themembers', externalCourseId: 'crs_9', revision: 1 })
+      )
+    ).assertStatus(200)
+    // Cliente antigo: o corpo não traz `provider` nem `externalCourseId`.
+    const old = await a.put(
+      `/admin/courses/${id}/commercial`,
+      commercial({ discountPct: 10, revision: 2 })
+    )
+    old.assertStatus(200)
+    assert.equal(old.body().commercial.provider, 'themembers')
+    assert.equal(old.body().commercial.externalCourseId, 'crs_9')
+    assert.equal(old.body().commercial.discountPct, 10)
+  })
+
+  test('o mesmo ID da The Members não pode estar em dois cursos (409)', async ({
+    client,
+    assert,
+  }) => {
+    const a = api(client, await makeUser('admin'))
+    const professional = await publishedProfessional(a)
+    const first = await readyCourse(a, professional.id)
+    const second = await readyCourse(a, professional.id)
+    ;(
+      await a.put(
+        `/admin/courses/${first.id}/commercial`,
+        commercial({ provider: 'themembers', externalCourseId: 'crs_dup', revision: 1 })
+      )
+    ).assertStatus(200)
+    const taken = await a.put(
+      `/admin/courses/${second.id}/commercial`,
+      commercial({ provider: 'themembers', externalCourseId: 'crs_dup', revision: 1 })
+    )
+    taken.assertStatus(409)
+    assert.equal(taken.body().code, 'external_id_taken')
+  })
+
+  test('duplicar curso de título longo respeita o limite de 80 caracteres', async ({
+    client,
+    assert,
+  }) => {
+    const a = api(client, await makeUser('admin'))
+    const professional = await publishedProfessional(a)
+    const longTitle = 'T'.repeat(80)
+    const created = await a.post('/admin/courses', {
+      professionalId: professional.id,
+      slug: slug(),
+      data: courseData(longTitle),
+    })
+    created.assertStatus(201)
+    const copy = await a.post(`/admin/courses/${created.body().id}/duplicate`)
+    copy.assertStatus(201)
+    assert.isAtMost(copy.body().data.title.length, 80)
+    assert.match(copy.body().data.title, /\(cópia\)$/)
+    // A cópia continua editável: o título gravado passa na validação.
+    const saved = await a.put(`/admin/courses/${copy.body().id}`, {
+      data: copy.body().data,
+      revision: copy.body().revision,
+    })
+    saved.assertStatus(200)
+  })
+})

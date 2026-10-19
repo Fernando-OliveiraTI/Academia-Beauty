@@ -90,14 +90,21 @@ export function Checkout({ content, offer }: { content: CheckoutContent; offer: 
   const reduced = useReducedMotion();
   const desktop = useMediaQuery(DESKTOP_QUERY);
   const [summaryOpen, setSummaryOpen] = useState<boolean | null>(null);
-  const [buyer, setBuyer] = useState<Record<number, FieldState>>({});
+  const fields = content.buyerFields;
+  // O estado é por posição do campo; se a lista muda (o editor reordena, insere ou remove), ele recomeça vazio
+  // em vez de passar valor, validade e erro para outro campo.
+  const fieldsSig = fields.map((f) => `${f.type}:${f.label}`).join('|');
+  const [buyerState, setBuyerState] = useState<{ sig: string; map: Record<number, FieldState> }>({ sig: fieldsSig, map: {} });
+  const buyer = buyerState.sig === fieldsSig ? buyerState.map : {};
+  const setBuyer = (update: (b: Record<number, FieldState>) => Record<number, FieldState>) =>
+    setBuyerState((s) => ({ sig: fieldsSig, map: update(s.sig === fieldsSig ? s.map : {}) }));
   const [methodIx, setMethodIx] = useState(0);
   const [alert, setAlert] = useState<string | null>(null);
   const alertRef = useRef<HTMLDivElement>(null);
   const stepsRef = useRef<HTMLOListElement>(null);
   const confirmRef = useRef<HTMLHeadingElement>(null);
   const t = offerTexts(offer);
-  const fields = content.buyerFields;
+  const methods = content.methods.slice(0, METHOD_KEYS.length);
   const stepLabels = [content.stepData, content.stepPayment, content.stepConfirmation];
 
   // Resumo aberto no desktop; no mobile o usuário recolhe. A media query volta a mandar quando muda.
@@ -291,7 +298,7 @@ export function Checkout({ content, offer }: { content: CheckoutContent; offer: 
                   </legend>
 
                   <div className="pay-methods" role="radiogroup" aria-label={content.paymentTitle}>
-                    {content.methods.map((m, i) => (
+                    {methods.map((m, i) => (
                       <div className="pay-method" key={METHOD_KEYS[i]}>
                         <input
                           type="radio" name="method" id={`m-${METHOD_KEYS[i]}`} value={METHOD_KEYS[i]}
@@ -303,7 +310,7 @@ export function Checkout({ content, offer }: { content: CheckoutContent; offer: 
                     ))}
                   </div>
 
-                  {content.methods.map((m, i) => (
+                  {methods.map((m, i) => (
                     <div className="method-panel" key={METHOD_KEYS[i]} hidden={methodIx !== i}>
                       {!redirect && i === 0 ? (
                         <CardFields offer={offer} />

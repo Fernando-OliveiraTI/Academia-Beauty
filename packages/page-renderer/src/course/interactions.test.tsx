@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Accordion } from './Accordion';
 import { Checkout } from './Checkout';
+import { CtaLink } from './CtaLink';
 import { CourseProvider } from './state';
 import { courseOriginalTemplate } from '../index';
 import { sampleOffer } from '../fixtures';
@@ -149,5 +150,34 @@ describe('Checkout embutido (The Members)', () => {
     const { container } = draw(url);
     expect(container.querySelector('iframe')).toBeNull();
     expect(screen.getByRole('status')).toHaveTextContent(/indispon/i);
+  });
+});
+
+describe('Checkout: estado dos campos acompanha a lista', () => {
+  const base = courseOriginalTemplate.sections.find((s) => s.type === 'course.checkout')!.content as CheckoutContent;
+
+  it('reordenar os campos não passa o valor digitado para outro campo', async () => {
+    const user = userEvent.setup();
+    const ui = (content: CheckoutContent) => <CourseProvider><Checkout content={content} offer={sampleOffer} /></CourseProvider>;
+    const view = render(ui(base));
+    await user.type(screen.getByLabelText('E-mail'), 'ana@exemplo.com');
+    expect(screen.getByLabelText('E-mail')).toHaveValue('ana@exemplo.com');
+    const [name, email, ...rest] = base.buyerFields;
+    view.rerender(ui({ ...base, buyerFields: [email!, name!, ...rest] }));
+    expect(screen.getByLabelText('E-mail')).toHaveValue('');
+    expect(screen.getByLabelText('Nome completo')).toHaveValue('');
+  });
+});
+
+describe('CtaLink', () => {
+  it('no modo redirect mantém os atributos extras (aria-label, data-*)', () => {
+    render(
+      <CourseProvider checkout={{ mode: 'redirect', url: 'https://pay.example.com/c/abc' }}>
+        <CtaLink aria-label="Comprar agora" data-track="buy">Comprar</CtaLink>
+      </CourseProvider>,
+    );
+    const link = screen.getByRole('link', { name: 'Comprar agora' });
+    expect(link).toHaveAttribute('data-track', 'buy');
+    expect(link).toHaveAttribute('href', 'https://pay.example.com/c/abc');
   });
 });
