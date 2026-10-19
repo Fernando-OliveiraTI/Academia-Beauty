@@ -7,7 +7,7 @@ import env from '#start/env'
 import { makeUser } from '#tests/helpers'
 import { resetWebhookLimiter } from '#controllers/themembers_webhook_controller'
 import { resetCheckoutStatusLimiter } from '#controllers/public_checkout_status_controller'
-import {
+import ThemembersWebhookService, {
   findRef,
   maskEmail,
   maskName,
@@ -650,5 +650,108 @@ test.group('The Members · confirmação para o comprador (/public/checkout-stat
     for (let i = 0; i < 62; i++)
       last = (await client.get(`/public/checkout-status?ref=${REF}`)).status()
     assert.equal(last, 429)
+  })
+})
+
+/** Exemplo real do webhook enviado pela The Members (IDs de 19 dígitos, `utms` vazio, `last_digit` numérico). */
+const REAL_SAMPLE = `{
+  "company": { "id": "7268299385367167832", "name": "company", "email": "company.test@email.com", "phone": "+55 11999999999", "document_type": "cnpj", "document_number": "00000000000000",
+    "owner": { "id": "7268299385346197469", "name": "Lucas da Silva", "email": "lucas@company.com", "phone": "+5511999999999", "document_type": "cpf", "document_number": "00000000000" } },
+  "payload": { "object": "transaction", "event": "transaction.approved", "created_at": "2026-01-02 16:48:57",
+    "data": { "id": 7405530052968814123, "paid_at": "2026-01-02T19:48:57+00:00", "status": "approved",
+      "transaction": { "currency": "brl", "amount": 10260, "buyer_fees": 0, "total_amount": 10260, "cupom": "" },
+      "payment_details": { "payment_method": "credit_card", "credit_card": { "instalments": 1, "brand": "mastercard", "last_digit": 7600 } },
+      "comissions": [],
+      "order": { "id": 7405530048429536111,
+        "customer": { "id": "7394310639977632991", "name": "João da Silva", "email": "joao@example.com", "phone_country": null, "phone": "+55 11999999999", "document_type": "cpf", "document_number": "00000000000" },
+        "main_product": { "id": 7338938162967740123, "title": "Produto 1", "price": 10000 },
+        "order_bump": [ { "product_id": 7338938162967740123, "title": "Produto 1", "price": 10000, "order_bump": true } ],
+        "utms": [] },
+      "subscription": null } } }`
+
+test.group('The Members · exemplo real da documentação', (group) => {
+  group.each.setup(() => testUtils.db().withGlobalTransaction())
+
+  test('o corpo do exemplo é tratado inteiro: IDs de 19 dígitos exatos, valores, pagamento e comprador mascarado', async ({
+    assert,
+  }) => {
+    const result = await ThemembersWebhookService.receive(REAL_SAMPLE, sign(REAL_SAMPLE), SECRET)
+    assert.deepInclude(result, { ok: true, duplicate: false })
+    const row = await db.from('payment_events').first()
+    assert.equal(row.event, 'transaction.approved')
+    assert.equal(row.status, 'approved')
+    assert.equal(row.external_product_id, '7338938162967740123', 'ID do produto sem perder dígitos')
+    assert.equal(row.external_transaction_id, '7405530052968814123')
+    assert.equal(row.amount_cents, 10260)
+    assert.equal(row.currency, 'BRL')
+    assert.equal(row.payment_method, 'credit_card')
+    assert.equal(row.instalments, 1)
+    assert.equal(row.card_brand, 'mastercard')
+    assert.equal(row.buyer_name, 'João S.')
+    assert.equal(row.buyer_email, 'j***@e***.com')
+    assert.isNull(row.ref, 'utms vazio: sem código da visita')
+    assert.equal(row.signature_scheme, 'raw+hex')
+    const stored = JSON.stringify(row)
+    for (const leak of [
+      'joao@example.com',
+      'João da Silva',
+      '+55 11999999999',
+      'lucas@company.com',
+      'company.test@email.com',
+    ]) {
+      assert.notInclude(stored, leak)
+    }
+  })
+
+  test('o produto da The Members liga ao curso quando o ID de 19 dígitos está na oferta', async ({
+    assert,
+  }) => {
+    const { default: CommercialConfig } = await import('#models/commercial_config')
+    await db.table('professionals').insert({
+      slug: 'p-real',
+      status: 'draft',
+      revision: 1,
+      data: JSON.stringify({ name: 'P' }),
+      name: 'P',
+      template_key: 'professional-original',
+      created_at: new Date(),
+    })
+    const pro = await db.from('professionals').where('slug', 'p-real').first()
+    await db.table('courses').insert({
+      professional_id: pro.id,
+      slug: 'c-real',
+      status: 'draft',
+      revision: 1,
+      data: JSON.stringify({ title: 'C' }),
+      title: 'C',
+      created_at: new Date(),
+    })
+    const course = await db.from('courses').where('slug', 'c-real').first()
+    await CommercialConfig.create({
+      courseId: course.id,
+      revision: 1,
+      currency: 'BRL',
+      listCents: 10000,
+      discountPct: 0,
+      maxInstallments: 1,
+      provider: 'themembers',
+      externalCourseId: '7338938162967740123',
+      checkoutUrl: '',
+      environment: 'production',
+      active: false,
+    })
+    const result = await ThemembersWebhookService.receive(REAL_SAMPLE, sign(REAL_SAMPLE), SECRET)
+    assert.deepInclude(result, { ok: true, courseId: course.id })
+  })
+
+  test('variante com ref no utms (o que esperamos se a The Members devolver as UTMs) é reconhecida', async ({
+    assert,
+  }) => {
+    const withUtm = REAL_SAMPLE.replace(
+      '"utms": []',
+      `"utms": [ { "utm_source": "academia", "utm_content": "ab_k3j9x0q2m7v5n1c8w4zt" } ]`
+    )
+    await ThemembersWebhookService.receive(withUtm, sign(withUtm), SECRET)
+    assert.equal((await db.from('payment_events').first()).ref, 'ab_k3j9x0q2m7v5n1c8w4zt')
   })
 })
