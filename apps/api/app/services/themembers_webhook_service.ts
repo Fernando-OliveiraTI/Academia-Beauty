@@ -5,8 +5,22 @@ import PaymentEvent from '#models/payment_event'
 
 /** Resultado da recepção: o controller só traduz para HTTP. */
 export type ReceiveResult =
-  | { ok: true; duplicate: boolean; eventId: number | null; courseId: number | null }
-  | { ok: false; status: 400 | 403 | 503; code: string; message: string }
+  | {
+      ok: true
+      duplicate: boolean
+      eventId: number | null
+      courseId: number | null
+      event: string
+      scheme: string
+    }
+  | {
+      ok: false
+      status: 400 | 403 | 503
+      code: string
+      message: string
+      event?: string | null
+      scheme?: string | null
+    }
 
 type Json = Record<string, unknown>
 const isObj = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -281,12 +295,26 @@ export default class ThemembersWebhookService {
     const body = parseBody(raw)
     const summary = summarize(body)
     if (!summary)
-      return { ok: false, status: 400, code: 'invalid_payload', message: 'Evento não reconhecido' }
+      return {
+        ok: false,
+        status: 400,
+        code: 'invalid_payload',
+        message: 'Evento não reconhecido',
+        scheme,
+      }
 
     const eventKey = createHash('sha256').update(raw).digest('hex')
     const existing = await PaymentEvent.findBy('eventKey', eventKey)
-    if (existing)
-      return { ok: true, duplicate: true, eventId: existing.id, courseId: existing.courseId }
+    if (existing) {
+      return {
+        ok: true,
+        duplicate: true,
+        eventId: existing.id,
+        courseId: existing.courseId,
+        event: summary.event,
+        scheme,
+      }
+    }
 
     const config = summary.externalProductId
       ? await CommercialConfig.query()
@@ -317,11 +345,25 @@ export default class ThemembersWebhookService {
         occurredAt: summary.occurredAt,
         receivedAt: DateTime.utc(),
       })
-      return { ok: true, duplicate: false, eventId: row.id, courseId: row.courseId }
+      return {
+        ok: true,
+        duplicate: false,
+        eventId: row.id,
+        courseId: row.courseId,
+        event: summary.event,
+        scheme,
+      }
     } catch (error) {
       // Duas entregas simultâneas do mesmo evento: a segunda perde a corrida e vale como duplicada.
       if ((error as { code?: string }).code === 'ER_DUP_ENTRY') {
-        return { ok: true, duplicate: true, eventId: null, courseId: config?.courseId ?? null }
+        return {
+          ok: true,
+          duplicate: true,
+          eventId: null,
+          courseId: config?.courseId ?? null,
+          event: summary.event,
+          scheme,
+        }
       }
       throw error
     }

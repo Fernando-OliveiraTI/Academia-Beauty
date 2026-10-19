@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import env from '#start/env'
 import ThemembersWebhookService from '#services/themembers_webhook_service'
+import WebhookLogService from '#services/webhook_log_service'
 
 /** Janela simples por IP em memória: o receptor é público (a assinatura é a defesa; isto só limita enchente). */
 const hits = new Map<string, { count: number; reset: number }>()
@@ -31,7 +32,26 @@ export default class ThemembersWebhookController {
     if (!allowed(request.ip())) return response.tooManyRequests({ message: 'Muitas requisições' })
 
     const raw = request.raw() ?? ''
-    if (!raw) return response.badRequest({ code: 'empty_body', message: 'Corpo vazio' })
+    const log = (
+      result: string,
+      httpStatus: number,
+      extra: { event?: string | null; scheme?: string | null; paymentEventId?: number | null } = {}
+    ) =>
+      WebhookLogService.record({
+        result,
+        httpStatus,
+        raw,
+        headers: request.headers() as Record<string, string | string[] | undefined>,
+        ip: request.ip(),
+        event: extra.event ?? null,
+        signatureScheme: extra.scheme ?? null,
+        paymentEventId: extra.paymentEventId ?? null,
+      })
+
+    if (!raw) {
+      await log('empty_body', 400)
+      return response.badRequest({ code: 'empty_body', message: 'Corpo vazio' })
+    }
 
     const result = await ThemembersWebhookService.receive(
       raw,
@@ -40,8 +60,18 @@ export default class ThemembersWebhookController {
       env.get('THEMEMBERS_WEBHOOK_URL')
     )
     if (!result.ok) {
+      await log(
+        result.code === 'webhook_not_configured' ? 'not_configured' : result.code,
+        result.status,
+        { scheme: result.scheme }
+      )
       return response.status(result.status).send({ code: result.code, message: result.message })
     }
+    await log(result.duplicate ? 'duplicate' : 'accepted', 200, {
+      event: result.event,
+      scheme: result.scheme,
+      paymentEventId: result.eventId,
+    })
     return response.ok({ received: true, duplicate: result.duplicate })
   }
 }

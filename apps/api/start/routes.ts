@@ -12,6 +12,8 @@ const AdminCourseDocumentsController = () =>
 const ThemembersWebhookController = () => import('#controllers/themembers_webhook_controller')
 const PublicCheckoutStatusController = () =>
   import('#controllers/public_checkout_status_controller')
+const AdminWebhookDeliveriesController = () =>
+  import('#controllers/admin_webhook_deliveries_controller')
 const PublicCoursesController = () => import('#controllers/public_courses_controller')
 const PublicProfessionalsController = () => import('#controllers/public_professionals_controller')
 const AdminHomeController = () => import('#controllers/admin_home_controller')
@@ -52,6 +54,16 @@ router
 
 // Webhook de checkout da The Members (servidor→servidor): autenticado por assinatura HMAC, fora do CSRF.
 router.post('/webhooks/themembers', [ThemembersWebhookController, 'handle'])
+
+// Registro técnico do webhook da The Members (corpo bruto com dados pessoais): só administrador.
+router
+  .group(() => {
+    router.get('/', [AdminWebhookDeliveriesController, 'index'])
+    router.get('/:id', [AdminWebhookDeliveriesController, 'show'])
+  })
+  .prefix('/admin/webhook-deliveries')
+  .where('id', router.matchers.number())
+  .use(middleware.can({ permission: 'users.manage' }))
 
 // Painel de indicadores: qualquer usuário autenticado do painel.
 router.get('/admin/dashboard', [AdminDashboardController, 'show']).use(middleware.auth())

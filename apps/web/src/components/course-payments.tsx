@@ -9,6 +9,7 @@ import {
   type CoursePayments,
   type PaymentEventItem,
 } from '@academia/contracts'
+import Link from 'next/link'
 import { apiGet } from '@/lib/api-client'
 import { relativeTime } from '@/lib/relative-time'
 
@@ -135,6 +136,7 @@ export function CoursePaymentsPanel({ courseId, externalCourseId }: { courseId: 
               </table>
             </div>
           )}
+          <p className="pay-foot"><Link className="link-button" href="/admin/webhooks/themembers">Ver as chamadas recebidas (técnico, só administrador)</Link></p>
           <p className="pay-foot">Mostra os 50 eventos mais recentes. Nome e e-mail dos compradores aparecem mascarados e nenhum dado de cartão é guardado.</p>
         </>
       ) : state === 'loading' ? <p className="wizard-hint" role="status">Carregando pagamentos…</p> : null}
