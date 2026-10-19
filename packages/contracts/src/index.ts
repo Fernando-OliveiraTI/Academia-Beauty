@@ -57,3 +57,4 @@ export * from './course.js';
 export * from './document.js';
 export * from './media.js';
 export * from './home.js';
+export * from './payments.js';

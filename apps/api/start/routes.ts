@@ -9,6 +9,7 @@ const AdminProfessionalDocumentsController = () =>
   import('#controllers/admin_professional_documents_controller')
 const AdminCourseDocumentsController = () =>
   import('#controllers/admin_course_documents_controller')
+const ThemembersWebhookController = () => import('#controllers/themembers_webhook_controller')
 const PublicCoursesController = () => import('#controllers/public_courses_controller')
 const PublicProfessionalsController = () => import('#controllers/public_professionals_controller')
 const AdminHomeController = () => import('#controllers/admin_home_controller')
@@ -45,6 +46,9 @@ router
     router.post('/track', [PublicTrackController, 'store'])
   })
   .prefix('/public')
+
+// Webhook de checkout da The Members (servidor→servidor): autenticado por assinatura HMAC, fora do CSRF.
+router.post('/webhooks/themembers', [ThemembersWebhookController, 'handle'])
 
 // Painel de indicadores: qualquer usuário autenticado do painel.
 router.get('/admin/dashboard', [AdminDashboardController, 'show']).use(middleware.auth())
@@ -102,6 +106,9 @@ router
     router
       .put('/:id', [AdminCoursesController, 'update'])
       .use(middleware.can({ permission: 'courses.write' }))
+    router
+      .get('/:id/payments', [AdminCoursesController, 'payments'])
+      .use(middleware.can({ permission: 'commerce.manage' }))
     router
       .put('/:id/themembers-id', [AdminCoursesController, 'themembersLink'])
       .use(middleware.can({ permission: 'commerce.manage' }))

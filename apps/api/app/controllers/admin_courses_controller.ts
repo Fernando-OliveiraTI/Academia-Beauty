@@ -24,6 +24,7 @@ import CourseService, {
 } from '#services/course_service'
 import { DomainError, toDomainError } from '#services/domain_error'
 import ThemembersSyncService from '#services/themembers_sync_service'
+import PaymentsService from '#services/payments_service'
 import RevalidationService from '#services/revalidation_service'
 import { applySort } from '#services/list_sort'
 
@@ -300,6 +301,15 @@ export default class AdminCoursesController {
         metadata: { revision: course.revision },
       })
       return respond(course)
+    } catch (error) {
+      return fail(ctx, error)
+    }
+  }
+
+  /** Pagamentos recebidos pelo webhook da The Members para este curso (exige `commerce.manage`: traz dados de compradores mascarados). */
+  async payments(ctx: HttpContext) {
+    try {
+      return await PaymentsService.forCourse(Number(ctx.params.id))
     } catch (error) {
       return fail(ctx, error)
     }

@@ -69,6 +69,10 @@ export default await Env.create(new URL('../', import.meta.url), {
   */
   /** Token da API da The Members (somente leitura no servidor; nunca vai ao navegador). */
   TOKEN_THE_MEMBERS: Env.schema.string.optional(),
+  /** Segredo do webhook de checkout da The Members (HMAC-SHA256 em `X-Signature`). Sem ele o receptor responde 503. */
+  THEMEMBERS_WEBHOOK_SECRET: Env.schema.string.optional(),
+  /** URL pública cadastrada no webhook (algumas variantes da assinatura incluem a URL na string assinada). */
+  THEMEMBERS_WEBHOOK_URL: Env.schema.string.optional(),
   PUBLIC_SHOW_DRAFTS: Env.schema.boolean.optional(),
 
   /*

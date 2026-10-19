@@ -18,7 +18,8 @@ const shieldConfig = defineConfig({
   csrf: {
     enabled: true,
     // Coleta pública de métricas: o visitante anônimo não tem token CSRF e a rota não altera nada dele.
-    exceptRoutes: ['/public/track'],
+    // O webhook da The Members é servidor→servidor: a autenticidade vem da assinatura HMAC, não de cookie/CSRF.
+    exceptRoutes: ['/public/track', '/webhooks/themembers'],
     enableXsrfCookie: true,
     methods: ['POST', 'PUT', 'PATCH', 'DELETE'],
   },

@@ -19,6 +19,7 @@ import { apiSend } from '@/lib/api-client'
 import { mediaSrc } from '@academia/page-renderer'
 import { ActionCard, AddButton, Ico, InfoCard, IssueRow, NumberedSection, PanelHead, RemoveButton, SelectField, SummaryRow, WizardIcon, WizardSteps } from '@/components/wizard-ui'
 import { ImageField } from '@/components/image-field'
+import { CoursePaymentsPanel } from '@/components/course-payments'
 import { canonical, centsToInput, emptyCourseData, emptyLines, fieldErrors, groupIssuesByStep, maskBRL, maskPercent, parseBRLToCents, STEPS, suggestSlug } from './form-model'
 
 type Loaded = AdminCourse & { readiness: ReadinessIssue[] }
@@ -391,6 +392,7 @@ export function CourseWizard({ initial, professionals, permissions, initialStep 
             ) : null}
             {saved?.commercial ? <p className="wizard-hint">Revisão da oferta: {saved.commercial.revision}.</p> : null}
             {canCommerce ? <Button disabled={busy || !saved} onClick={saveOffer}>Salvar oferta</Button> : null}
+            {canCommerce && saved ? <CoursePaymentsPanel courseId={saved.id} externalCourseId={saved.commercial?.externalCourseId ?? ''} /> : null}
           </div>
         ) : null}
 
