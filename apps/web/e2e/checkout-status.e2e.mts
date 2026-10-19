@@ -126,6 +126,21 @@ try {
     assert.equal((await fetch(`${BASE}/api/public/checkout-status?ref=invalido`)).status, 400)
   })
 
+  await step('a visita foi registrada no servidor com o mesmo código, o curso e o navegador, e está ligada ao pagamento aprovado', async () => {
+    const list = await send('get', `/admin/checkout-sessions?q=${ref}`)
+    assert.equal(list.status, 200)
+    assert.equal(list.body.total, 1)
+    const visit = list.body.items[0]
+    assert.equal(visit.ref, ref)
+    assert.equal(visit.courseSlug, SLUG)
+    assert.ok(visit.browser && visit.os, 'navegador e sistema lidos do User-Agent')
+    assert.ok(visit.viewport.w > 0 && visit.timezone, 'tela e fuso enviados pela página')
+    assert.equal(visit.payment.state, 'paid')
+    assert.equal(visit.payment.buyerName, 'Maria S.')
+    assert.ok(visit.visits >= 2, 'recarregar a aba soma uma abertura com o mesmo código')
+    assert.ok(!JSON.stringify(list.body).includes('maria@exemplo.com'), 'e-mail nunca sai inteiro')
+  })
+
   await step('o painel do curso mostra os mesmos pagamentos (para a equipe)', async () => {
     const panel = await send('get', `/admin/courses/${courseId}/payments`)
     assert.equal(panel.status, 200)

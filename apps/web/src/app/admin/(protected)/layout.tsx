@@ -20,6 +20,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
           {user.permissions.includes('courses.read') ? <NavLink href="/admin/cursos">Cursos</NavLink> : null}
           {user.permissions.includes('pages.read') ? <NavLink href="/admin/editor/home">Home</NavLink> : null}
           {user.permissions.includes('media.manage') ? <NavLink href="/admin/midia">Mídia</NavLink> : null}
+          {user.permissions.includes('users.manage') ? <NavLink href="/admin/checkouts">Checkouts</NavLink> : null}
           {user.permissions.includes('users.manage') ? <NavLink href="/admin/webhooks/themembers">Webhooks</NavLink> : null}
         </nav>
         <div className="admin-user">

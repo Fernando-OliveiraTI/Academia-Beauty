@@ -15,6 +15,8 @@ type Props = {
   statusOptions?: Option[]
   /** Filtro extra por lista (ex.: profissional do curso). `value` vazio = todos. */
   extra?: { name: string; label: string; options: Option[] }
+  /** `inline`: abas à esquerda e busca/ordem/itens por página à direita, na mesma linha (listas técnicas). Padrão: empilhado. */
+  variant?: 'stacked' | 'inline'
 }
 
 const SearchIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
@@ -25,7 +27,7 @@ const ChevronIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="
  * Barra de filtros das listas do painel. Tudo vive na URL (compartilhável e com voltar do navegador):
  * a busca aplica depois de uma pausa na digitação e os demais controles aplicam na hora, sempre voltando à página 1.
  */
-export function ListToolbar({ searchPlaceholder, tabs, sorts, perPageOptions = [10, 20, 50], statusOptions, extra }: Props) {
+export function ListToolbar({ searchPlaceholder, tabs, sorts, perPageOptions = [10, 20, 50], statusOptions, extra, variant = 'stacked' }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
@@ -58,6 +60,43 @@ export function ListToolbar({ searchPlaceholder, tabs, sorts, perPageOptions = [
   }
 
   const dirty = Boolean(q || status || params.get('sort') || params.get('perPage') || (extra && params.get(extra.name)))
+
+  if (variant === 'inline') {
+    return (
+      <div className="lt lt-inline" data-pending={pending ? '' : undefined}>
+        <div className="lt-tabs" role="tablist" aria-label="Situação">
+          {tabs.map((t) => (
+            <button key={t.value} type="button" role="tab" aria-selected={status === t.value} onClick={() => apply({ status: t.value })}>
+              {t.icon}{t.label}<em>{t.count}</em>
+            </button>
+          ))}
+        </div>
+        {dirty ? <button type="button" className="lt-clear" onClick={() => { setQ(''); start(() => router.replace(pathname, { scroll: false })) }}>Limpar filtros</button> : null}
+        <div className="lt-controls">
+          <label className="lt-search">
+            <span className="sr-only">Buscar</span>
+            <SearchIcon />
+            <input type="search" value={q} maxLength={80} placeholder={searchPlaceholder} onChange={(e) => onSearch(e.target.value)} />
+          </label>
+          <label className="lt-select lt-select-icon">
+            <span>Ordenar por</span>
+            <SortIcon />
+            <select aria-label="Ordenar por" value={sort} onChange={(e) => apply({ sort: e.target.value === sorts[0]!.value ? '' : e.target.value })}>
+              {sorts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            <ChevronIcon />
+          </label>
+          <label className="lt-select lt-select-pages">
+            <span>Itens por página</span>
+            <select aria-label="Itens por página" value={perPage} onChange={(e) => apply({ perPage: e.target.value === String(perPageOptions[1] ?? perPageOptions[0]) ? '' : e.target.value })}>
+              {perPageOptions.map((n) => <option key={n} value={n}>{n} por página</option>)}
+            </select>
+            <ChevronIcon />
+          </label>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="lt" data-pending={pending ? '' : undefined}>

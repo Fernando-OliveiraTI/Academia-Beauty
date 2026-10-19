@@ -42,6 +42,36 @@ export function withVisitRef(url: string, ref: string): string {
   }
 }
 
+const CLICK_IDS = ['fbclid', 'gclid', 'ttclid', 'msclkid', 'wbraid', 'gbraid'];
+const clip = (value: string | null, max: number) => (value ? value.slice(0, max) : undefined);
+
+/**
+ * Registra a visita ao checkout no servidor (uma vez por abertura): o código, o curso e só o que o navegador já informa
+ * (fuso, idioma, tamanho da tela, origem e UTMs da URL de entrada). Não lê cookies, não identifica a pessoa e não envia
+ * o conteúdo de formulário algum. Falha de rede é ignorada: o registro é opcional e nunca atrapalha a compra.
+ */
+export function registerVisit(sessionUrl: string, ref: string, courseSlug?: string): void {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const body = {
+      ref,
+      slug: courseSlug,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      language: navigator.language,
+      viewport: { w: window.innerWidth, h: window.innerHeight },
+      referrer: clip(document.referrer, 300),
+      landing: window.location.pathname,
+      utm: {
+        source: clip(params.get('utm_source'), 80), medium: clip(params.get('utm_medium'), 80), campaign: clip(params.get('utm_campaign'), 120),
+        content: clip(params.get('utm_content'), 120), term: clip(params.get('utm_term'), 120),
+      },
+      // Só registra que havia um id de clique de anúncio, nunca o valor.
+      clickId: CLICK_IDS.some((key) => params.has(key)),
+    };
+    void fetch(sessionUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), keepalive: true, credentials: 'omit' }).catch(() => {});
+  } catch { /* sem rede ou sem API do navegador: segue sem registrar */ }
+}
+
 /** Intervalo entre consultas: rápido no começo (quem acabou de pagar), mais espaçado depois. */
 export function pollDelay(elapsedMs: number): number {
   if (elapsedMs < 2 * 60_000) return 4_000;

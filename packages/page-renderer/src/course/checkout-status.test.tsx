@@ -12,8 +12,8 @@ const STATUS = '/api/public/checkout-status';
 const URL_ = 'https://pay.example.com/c/1';
 type Reply = { status: string; method: string | null };
 
-function draw(statusUrl: string | null = STATUS, url: string = URL_) {
-  return render(<CourseProvider checkout={{ mode: 'embed', url, statusUrl: statusUrl ?? undefined }}><Checkout content={content} offer={sampleOffer} /></CourseProvider>);
+function draw(statusUrl: string | null = STATUS, url: string = URL_, extra: { sessionUrl?: string; courseSlug?: string } = {}) {
+  return render(<CourseProvider checkout={{ mode: 'embed', url, statusUrl: statusUrl ?? undefined, ...extra }}><Checkout content={content} offer={sampleOffer} /></CourseProvider>);
 }
 const replyWith = (...replies: Reply[]) => {
   let n = 0;
@@ -131,5 +131,47 @@ describe('checkout embutido com acompanhamento do pagamento', () => {
     await flush();
     expect(screen.getByRole('status')).toHaveTextContent('Bem-vinda!');
     expect(screen.getByRole('status')).toHaveTextContent('Acesso a caminho.');
+  });
+});
+
+describe('registro da visita ao checkout', () => {
+  const SESSION = '/api/public/checkout-sessions';
+  const posts = (spy: { mock: { calls: unknown[][] } }) => spy.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method === 'POST');
+
+  it('registra uma vez, com o mesmo código do iframe, o curso, tela, fuso, idioma e as UTMs da URL de entrada', async () => {
+    window.history.replaceState({}, '', '/cursos/morena?utm_source=instagram&utm_medium=bio&utm_campaign=lancamento&fbclid=abc123&email=segredo@x.com');
+    const spy = replyWith({ status: 'none', method: null });
+    const { container } = draw(STATUS, URL_, { sessionUrl: SESSION, courseSlug: 'morena-iluminada' });
+    await flush();
+    const ref = new URL(container.querySelector('iframe')!.getAttribute('src')!).searchParams.get('utm_content');
+    const sent = posts(spy);
+    expect(sent).toHaveLength(1);
+    expect(String(sent[0]![0])).toBe(SESSION);
+    const body = JSON.parse(String((sent[0]![1] as RequestInit).body));
+    expect(body).toMatchObject({ ref, slug: 'morena-iluminada', landing: '/cursos/morena', clickId: true, utm: { source: 'instagram', medium: 'bio', campaign: 'lancamento' } });
+    expect(body.viewport).toEqual({ w: window.innerWidth, h: window.innerHeight });
+    expect(typeof body.timezone).toBe('string');
+    // Nada de e-mail, valor do id de clique nem query: só o que o navegador já informa.
+    const raw = JSON.stringify(body);
+    for (const leak of ['segredo@x.com', 'abc123', 'fbclid']) expect(raw).not.toContain(leak);
+    window.history.replaceState({}, '', '/');
+  });
+
+  it('sem sessionUrl (pré-visualização, editor) nada é registrado', async () => {
+    const spy = replyWith({ status: 'none', method: null });
+    draw(STATUS, URL_);
+    await flush();
+    expect(posts(spy)).toHaveLength(0);
+  });
+
+  it('falha ao registrar não atrapalha: o checkout e o acompanhamento seguem', async () => {
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if ((init as RequestInit | undefined)?.method === 'POST') throw new Error('offline');
+      return new Response(JSON.stringify({ status: 'approved', method: null }), { status: 200 });
+    });
+    const { container } = draw(STATUS, URL_, { sessionUrl: SESSION, courseSlug: 'morena-iluminada' });
+    await flush();
+    expect(spy).toHaveBeenCalled();
+    expect(container.textContent).toContain('Pagamento confirmado!');
   });
 });

@@ -23,6 +23,7 @@ const shieldConfig = defineConfig({
       const path = ctx.request.url().split('?')[0]!
       return (
         path === '/public/track' ||
+        path === '/public/checkout-sessions' ||
         path === '/webhooks/themembers' ||
         path.startsWith('/webhooks/themembers/')
       )

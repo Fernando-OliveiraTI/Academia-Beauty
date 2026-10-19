@@ -1,6 +1,6 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { adminGet, getCurrentUser } from '@/lib/api-server'
+import { ListToolbar, type StatusTab } from '@/components/list-toolbar'
 import { Pager } from '@/components/pager'
 import { WebhookDeliveries, type DeliveryItem } from '@/components/webhook-deliveries'
 import { RESULT_LABEL } from '@/lib/webhook-labels'
@@ -18,57 +18,77 @@ type List = {
   retentionDays: number
 }
 const FILTERS = ['accepted', 'duplicate', 'invalid_signature', 'invalid_payload', 'not_configured', 'empty_body']
+const SORTS = [{ value: '', label: 'Mais recentes' }, { value: 'oldest', label: 'Mais antigas' }]
+const dot = (tone: 'ok' | 'bad' | 'neutral' | 'all') => <span className="wh-dot" data-tone={tone} aria-hidden="true" />
+const TONE: Record<string, 'ok' | 'bad' | 'neutral'> = { accepted: 'ok', duplicate: 'neutral', invalid_signature: 'bad', invalid_payload: 'bad', not_configured: 'bad', empty_body: 'bad' }
 
-export default async function WebhookLogPage({ searchParams }: { searchParams: Promise<{ result?: string; page?: string }> }) {
+const WebhookArt = () => (
+  <div className="wh-art" aria-hidden="true">
+    <div className="wh-art-main">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 16.980h-5.990c-1.100 0-1.950.940-2.480 1.900A4 4 0 0 1 2 17c.010-.7.200-1.400.570-2" /><path d="m6 17 3.130-5.780c.530-.970.100-2.180-.500-3.100a4 4 0 1 1 6.890-4.060" /><path d="m12 6 3.130 5.730C15.660 12.700 16.900 13 18 13a4 4 0 0 1 0 8" /></svg>
+    </div>
+    <div className="wh-art-chip wh-art-chip--ok"><i /><div><b>HTTP 200</b><span>transaction.approved</span></div></div>
+    <div className="wh-art-chip wh-art-chip--bad"><i /><div><b>HTTP 403</b><span>invalid signature</span></div></div>
+  </div>
+)
+
+export default async function WebhookLogPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string; page?: string; sort?: string; perPage?: string }> }) {
   const user = await getCurrentUser()
   if (!user) redirect('/admin/login')
   if (!user.permissions.includes('users.manage')) {
     return <main><h1>Webhook da The Members</h1><p>Só administradores veem este registro: ele guarda o corpo bruto das chamadas, com dados de compradores.</p></main>
   }
-  const { result = '', page = '1' } = await searchParams
+  const { status = '', q = '', page = '1', sort = '', perPage = '' } = await searchParams
   const params = new URLSearchParams()
-  if (FILTERS.includes(result)) params.set('result', result)
+  if (FILTERS.includes(status)) params.set('result', status)
+  if (q) params.set('q', q.slice(0, 80))
+  if (sort === 'oldest') params.set('sort', sort)
+  if (['10', '20', '50'].includes(perPage)) params.set('perPage', perPage)
   params.set('page', String(Math.max(1, Number(page) || 1)))
   const { data } = await adminGet<List>(`/admin/webhook-deliveries?${params}`)
+
   const total = Object.values(data?.counts ?? {}).reduce((a, b) => a + b, 0)
-  const hrefFor = (p: number) => `/admin/webhooks/themembers?${new URLSearchParams({ ...(result ? { result } : {}), page: String(p) })}`
+  const tabs: StatusTab[] = [
+    { value: '', label: 'Todas', icon: dot('all'), count: total },
+    ...FILTERS.filter((f) => (data?.counts[f] ?? 0) > 0 || f === status).map((f) => ({ value: f, label: RESULT_LABEL[f]!, icon: dot(TONE[f]!), count: data?.counts[f] ?? 0 })),
+  ]
+  const hrefFor = (p: number) => {
+    const next = new URLSearchParams()
+    for (const [k, v] of [['status', status], ['q', q], ['sort', sort], ['perPage', perPage]] as const) if (v) next.set(k, v)
+    next.set('page', String(p))
+    return `/admin/webhooks/themembers?${next}`
+  }
 
   return (
     <main>
-      <section className="admin-hero">
+      <section className="admin-hero wh-hero">
         <div>
           <p className="admin-eyebrow">Pagamentos</p>
           <h1>Webhook da The Members</h1>
-          <p>Cada chamada recebida em <code className="wh-code">/api/webhooks/themembers</code>, com o corpo exatamente como chegou. Use para conferir o que a The Members envia e por que uma assinatura foi recusada.</p>
+          <p>Cada chamada recebida em <code className="wh-code">/api/webhooks/themembers</code>, com o corpo exatamente como chegou. Use para conferir o que a The Members envia e por que uma chamada foi recusada.</p>
         </div>
+        <WebhookArt />
       </section>
 
       {data && !data.loggingEnabled ? (
         <p role="status" className="wizard-hint">O registro está desligado (<code className="wh-code">THEMEMBERS_LOG_RAW=false</code>): novas chamadas não aparecem aqui.</p>
       ) : null}
 
-      <div className="tm-filters" role="group" aria-label="Filtrar por resultado">
-        <Link className="tm-filter" href="/admin/webhooks/themembers" aria-pressed={!result}>Todas <em>{total}</em></Link>
-        {FILTERS.filter((f) => (data?.counts[f] ?? 0) > 0 || f === result).map((f) => (
-          <Link key={f} className="tm-filter" href={`/admin/webhooks/themembers?result=${f}`} aria-pressed={result === f}>{RESULT_LABEL[f]} <em>{data?.counts[f] ?? 0}</em></Link>
-        ))}
-      </div>
+      <ListToolbar variant="inline" searchPlaceholder="Buscar por evento, ID, assinatura…" tabs={tabs} sorts={SORTS} />
 
-      <section className="admin-panel">
-        {!data ? (
-          <p role="alert" className="form-error">Não foi possível carregar o registro. Tente recarregar a página.</p>
-        ) : data.items.length === 0 ? (
-          <div className="pay-empty">
-            <div>
-              <strong>Nenhuma chamada registrada{result ? ' com este resultado' : ' ainda'}</strong>
-              <p>Cadastre a URL do webhook na The Members e faça um pagamento de teste: a chamada aparece aqui, aceita ou não. Fica guardada por {data.retentionDays} dias.</p>
-            </div>
-          </div>
-        ) : (
+      {!data ? (
+        <p role="alert" className="form-error">Não foi possível carregar o registro. Tente recarregar a página.</p>
+      ) : data.items.length === 0 ? (
+        <section className="list-empty">
+          <b>{q || status ? 'Nenhuma chamada encontrada' : 'Nenhuma chamada registrada ainda'}</b>
+          <p>{q || status ? 'Ajuste a busca ou limpe os filtros para ver mais resultados.' : `Cadastre a URL do webhook na The Members e faça um pagamento de teste: a chamada aparece aqui, aceita ou não. Fica guardada por ${data.retentionDays} dias.`}</p>
+        </section>
+      ) : (
+        <section className="admin-panel wh-panel">
           <WebhookDeliveries items={data.items} />
-        )}
-        {data && data.total > 0 ? <Pager page={data.page} lastPage={Math.max(1, Math.ceil(data.total / data.perPage))} total={data.total} perPage={data.perPage} hrefFor={hrefFor} /> : null}
-      </section>
+          <Pager page={data.page} lastPage={Math.max(1, Math.ceil(data.total / data.perPage))} total={data.total} perPage={data.perPage} hrefFor={hrefFor} />
+        </section>
+      )}
     </main>
   )
 }

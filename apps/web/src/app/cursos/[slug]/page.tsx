@@ -44,7 +44,7 @@ export default async function CoursePage({ params }: Params) {
   const document = resolveCourseDocument({ data: course.data, professional: course.professional.data, document: course.document as PageDocument | null })
   return (
     <>
-      <PageRenderer document={document} ctx={{ offer: course.offer, year: new Date().getFullYear(), checkout: course.checkout.mode === 'embed' ? { ...course.checkout, statusUrl: '/api/public/checkout-status' } : course.checkout, professional: { slug: course.professional.slug, name: course.professional.data.name } }} />
+      <PageRenderer document={document} ctx={{ offer: course.offer, year: new Date().getFullYear(), checkout: course.checkout.mode === 'embed' ? { ...course.checkout, statusUrl: '/api/public/checkout-status', sessionUrl: '/api/public/checkout-sessions', courseSlug: course.slug } : course.checkout, professional: { slug: course.professional.slug, name: course.professional.data.name } }} />
       <PageTracker type="course" slug={slug} />
     </>
   )

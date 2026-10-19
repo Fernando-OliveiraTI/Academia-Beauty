@@ -239,14 +239,18 @@ test.group('The Members · assinatura e leitura do corpo (funções puras)', () 
 
 test.group('The Members · receptor do webhook', (group) => {
   let previous: string | undefined
+  let previousToken: string | undefined
   group.each.setup(async () => {
     resetWebhookLimiter()
     previous = env.get('THEMEMBERS_WEBHOOK_SECRET')
     env.set('THEMEMBERS_WEBHOOK_SECRET', SECRET)
+    previousToken = env.get('THEMEMBERS_WEBHOOK_TOKEN')
+    env.set('THEMEMBERS_WEBHOOK_TOKEN', '') // o .env local pode ter um token: estes testes são só da assinatura
     return testUtils.db().withGlobalTransaction()
   })
   group.each.teardown(() => {
     env.set('THEMEMBERS_WEBHOOK_SECRET', previous ?? '')
+    env.set('THEMEMBERS_WEBHOOK_TOKEN', previousToken ?? '')
   })
 
   const signed = (client: any, body: object, secret = SECRET) =>
@@ -331,14 +335,18 @@ test.group('The Members · receptor do webhook', (group) => {
 
 test.group('The Members · pagamentos no curso (painel)', (group) => {
   let previous: string | undefined
+  let previousToken: string | undefined
   group.each.setup(async () => {
     resetWebhookLimiter()
     previous = env.get('THEMEMBERS_WEBHOOK_SECRET')
     env.set('THEMEMBERS_WEBHOOK_SECRET', SECRET)
+    previousToken = env.get('THEMEMBERS_WEBHOOK_TOKEN')
+    env.set('THEMEMBERS_WEBHOOK_TOKEN', '') // o .env local pode ter um token: estes testes são só da assinatura
     return testUtils.db().withGlobalTransaction()
   })
   group.each.teardown(() => {
     env.set('THEMEMBERS_WEBHOOK_SECRET', previous ?? '')
+    env.set('THEMEMBERS_WEBHOOK_TOKEN', previousToken ?? '')
   })
 
   const api = (client: any, user: any) => ({
@@ -510,15 +518,19 @@ test.group('The Members · código da visita (ref) no webhook', () => {
 
 test.group('The Members · confirmação para o comprador (/public/checkout-status)', (group) => {
   let previous: string | undefined
+  let previousToken: string | undefined
   group.each.setup(async () => {
     resetWebhookLimiter()
     resetCheckoutStatusLimiter()
     previous = env.get('THEMEMBERS_WEBHOOK_SECRET')
     env.set('THEMEMBERS_WEBHOOK_SECRET', SECRET)
+    previousToken = env.get('THEMEMBERS_WEBHOOK_TOKEN')
+    env.set('THEMEMBERS_WEBHOOK_TOKEN', '') // o .env local pode ter um token: estes testes são só da assinatura
     return testUtils.db().withGlobalTransaction()
   })
   group.each.teardown(() => {
     env.set('THEMEMBERS_WEBHOOK_SECRET', previous ?? '')
+    env.set('THEMEMBERS_WEBHOOK_TOKEN', previousToken ?? '')
   })
 
   const hook = (client: any, body: object) =>

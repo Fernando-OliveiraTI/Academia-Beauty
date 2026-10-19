@@ -14,6 +14,10 @@ const PublicCheckoutStatusController = () =>
   import('#controllers/public_checkout_status_controller')
 const AdminWebhookDeliveriesController = () =>
   import('#controllers/admin_webhook_deliveries_controller')
+const PublicCheckoutSessionsController = () =>
+  import('#controllers/public_checkout_sessions_controller')
+const AdminCheckoutSessionsController = () =>
+  import('#controllers/admin_checkout_sessions_controller')
 const PublicCoursesController = () => import('#controllers/public_courses_controller')
 const PublicProfessionalsController = () => import('#controllers/public_professionals_controller')
 const AdminHomeController = () => import('#controllers/admin_home_controller')
@@ -49,6 +53,7 @@ router
     router.get('/courses/:slug', [PublicCoursesController, 'show'])
     router.post('/track', [PublicTrackController, 'store'])
     router.get('/checkout-status', [PublicCheckoutStatusController, 'show'])
+    router.post('/checkout-sessions', [PublicCheckoutSessionsController, 'store'])
   })
   .prefix('/public')
 
@@ -62,6 +67,17 @@ router
     router.get('/:id', [AdminWebhookDeliveriesController, 'show'])
   })
   .prefix('/admin/webhook-deliveries')
+  .where('id', router.matchers.number())
+  .use(middleware.can({ permission: 'users.manage' }))
+
+// Visitas ao checkout (IP e dados de navegação): só administrador.
+router
+  .group(() => {
+    router.get('/', [AdminCheckoutSessionsController, 'index'])
+    router.get('/insights', [AdminCheckoutSessionsController, 'insights'])
+    router.get('/:id', [AdminCheckoutSessionsController, 'show'])
+  })
+  .prefix('/admin/checkout-sessions')
   .where('id', router.matchers.number())
   .use(middleware.can({ permission: 'users.manage' }))
 

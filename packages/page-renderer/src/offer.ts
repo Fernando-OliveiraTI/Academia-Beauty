@@ -59,6 +59,10 @@ export type CheckoutMode =
        * isto: sem ele (pré-visualização, editor) o iframe fica como estava e nada é consultado.
        */
       statusUrl?: string;
+      /** Rota pública que registra a visita ao checkout (`POST`): contexto do navegador ligado ao código da visita. */
+      sessionUrl?: string;
+      /** Slug do curso, para a visita registrada saber de qual curso é. */
+      courseSlug?: string;
     };
 
 export type RenderContext = {

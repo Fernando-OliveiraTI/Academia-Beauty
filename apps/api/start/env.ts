@@ -80,6 +80,12 @@ export default await Env.create(new URL('../', import.meta.url), {
   THEMEMBERS_WEBHOOK_TOKEN: Env.schema.string.optional(),
   /** Guarda o corpo bruto de cada chamada do webhook (com dados pessoais) para depuração. `false` desliga. Padrão: ligado. */
   THEMEMBERS_LOG_RAW: Env.schema.boolean.optional(),
+  /** Registro das visitas ao checkout (código ab_…, navegador, origem, cidade aproximada). `false` desliga. Padrão: ligado. */
+  CHECKOUT_SESSIONS_ENABLED: Env.schema.boolean.optional(),
+  /** Como o IP é guardado: `full` (padrão), `truncated` (IPv4 /24, IPv6 /48) ou `none`. IP é dado pessoal (LGPD). */
+  CHECKOUT_SESSIONS_IP_MODE: Env.schema.enum.optional(['full', 'truncated', 'none'] as const),
+  /** Dias de retenção das visitas (1 a 730; padrão 180). */
+  CHECKOUT_SESSIONS_RETENTION_DAYS: Env.schema.number.optional(),
   /** Dias de retenção do registro bruto (1 a 365; padrão 30). */
   THEMEMBERS_LOG_RETENTION_DAYS: Env.schema.number.optional(),
   PUBLIC_SHOW_DRAFTS: Env.schema.boolean.optional(),

@@ -34,14 +34,18 @@ const post = (
 
 test.group('Webhook · registro técnico das chamadas', (group) => {
   let previous: string | undefined
+  let previousToken: string | undefined
   group.each.setup(async () => {
     resetWebhookLimiter()
     previous = env.get('THEMEMBERS_WEBHOOK_SECRET')
     env.set('THEMEMBERS_WEBHOOK_SECRET', SECRET)
+    previousToken = env.get('THEMEMBERS_WEBHOOK_TOKEN')
+    env.set('THEMEMBERS_WEBHOOK_TOKEN', '') // o .env local pode ter um token: estes testes são só da assinatura
     return testUtils.db().withGlobalTransaction()
   })
   group.each.teardown(() => {
     env.set('THEMEMBERS_WEBHOOK_SECRET', previous ?? '')
+    env.set('THEMEMBERS_WEBHOOK_TOKEN', previousToken ?? '')
     env.set('THEMEMBERS_LOG_RAW', true)
   })
 
@@ -177,13 +181,19 @@ test.group('Webhook · registro técnico das chamadas', (group) => {
 
 test.group('Webhook · consulta do registro (admin)', (group) => {
   let previous: string | undefined
+  let previousToken: string | undefined
   group.each.setup(async () => {
     resetWebhookLimiter()
     previous = env.get('THEMEMBERS_WEBHOOK_SECRET')
     env.set('THEMEMBERS_WEBHOOK_SECRET', SECRET)
+    previousToken = env.get('THEMEMBERS_WEBHOOK_TOKEN')
+    env.set('THEMEMBERS_WEBHOOK_TOKEN', '') // o .env local pode ter um token: estes testes são só da assinatura
     return testUtils.db().withGlobalTransaction()
   })
-  group.each.teardown(() => env.set('THEMEMBERS_WEBHOOK_SECRET', previous ?? ''))
+  group.each.teardown(() => {
+    env.set('THEMEMBERS_WEBHOOK_SECRET', previous ?? '')
+    env.set('THEMEMBERS_WEBHOOK_TOKEN', previousToken ?? '')
+  })
 
   test('só administrador lê: editor e viewer 403, sem sessão 401', async ({ client }) => {
     ;(await client.get('/admin/webhook-deliveries')).assertStatus(401)
@@ -227,5 +237,92 @@ test.group('Webhook · consulta do registro (admin)', (group) => {
     assert.include(detail.body().prettyBody, '\n')
     assert.equal(detail.body().headers['x-signature'], sign(RAW))
     ;(await client.get('/admin/webhook-deliveries/999999').loginAs(admin)).assertStatus(404)
+  })
+})
+
+test.group('Webhook · lista do registro: busca, ordem, itens por página', (group) => {
+  let previous: string | undefined
+  let previousToken: string | undefined
+  group.each.setup(async () => {
+    resetWebhookLimiter()
+    previous = env.get('THEMEMBERS_WEBHOOK_SECRET')
+    env.set('THEMEMBERS_WEBHOOK_SECRET', SECRET)
+    previousToken = env.get('THEMEMBERS_WEBHOOK_TOKEN')
+    env.set('THEMEMBERS_WEBHOOK_TOKEN', '') // o .env local pode ter um token: estes testes são só da assinatura
+    return testUtils.db().withGlobalTransaction()
+  })
+  group.each.teardown(() => {
+    env.set('THEMEMBERS_WEBHOOK_SECRET', previous ?? '')
+    env.set('THEMEMBERS_WEBHOOK_TOKEN', previousToken ?? '')
+  })
+
+  const seed = async (client: any) => {
+    ;(await post(client, RAW, sign(RAW))).assertStatus(200) // aceita, com id de transação no corpo
+    ;(await post(client, RAW, 'errada')).assertStatus(403) // com cabeçalho inválido
+    ;(await post(client, RAW, null)).assertStatus(403) // sem cabeçalho
+    const refunded = RAW.replace('transaction.approved', 'transaction.refunded')
+    ;(await post(client, refunded, sign(refunded))).assertStatus(200)
+  }
+  const get = async (client: any, query: string) =>
+    (await client.get(`/admin/webhook-deliveries${query}`).loginAs(await makeUser('admin'))).body()
+
+  test('cada item diz se a chamada trouxe o cabeçalho de assinatura', async ({
+    client,
+    assert,
+  }) => {
+    await seed(client)
+    const body = await get(client, '')
+    const byResult = body.items.filter((i: any) => i.result === 'invalid_signature')
+    assert.deepEqual(byResult.map((i: any) => i.hasSignatureHeader).sort(), [false, true])
+    assert.isTrue(body.items.find((i: any) => i.result === 'accepted').hasSignatureHeader)
+  })
+
+  test('busca por evento, id da chamada, variante da assinatura e id de transação (no corpo)', async ({
+    client,
+    assert,
+  }) => {
+    await seed(client)
+    assert.equal((await get(client, '?q=refunded')).total, 1)
+    assert.equal(
+      (await get(client, '?q=approved')).total,
+      4,
+      'com 6+ letras a busca olha também o corpo bruto (todas as chamadas trazem status approved)'
+    )
+    const first = (await get(client, '')).items.at(-1)
+    assert.equal((await get(client, `?q=${first.id}`)).items[0].id, first.id)
+    assert.equal((await get(client, '?q=raw%2Bhex')).total, 2)
+    assert.equal(
+      (await get(client, '?q=7405530052968814123')).total,
+      4,
+      'id da transação procurado dentro do corpo bruto'
+    )
+    assert.equal((await get(client, '?q=nada-parecido-1234')).total, 0)
+  })
+
+  test('curingas do LIKE digitados pelo usuário valem como texto', async ({ client, assert }) => {
+    await seed(client)
+    assert.equal((await get(client, '?q=%25')).total, 0)
+    // `_` é o caractere literal (existe em "invalid_signature"); como curinga casaria as 4 chamadas.
+    assert.equal((await get(client, '?q=_')).total, 2)
+  })
+
+  test('ordem (mais recentes por padrão, mais antigas) e itens por página só aceitam valores da lista', async ({
+    client,
+    assert,
+  }) => {
+    await seed(client)
+    const newest = await get(client, '')
+    const oldest = await get(client, '?sort=oldest')
+    assert.equal(newest.items[0].id, oldest.items.at(-1).id)
+    assert.equal(newest.perPage, 20)
+    assert.equal((await get(client, '?perPage=10')).perPage, 10)
+    assert.equal(
+      (await get(client, '?perPage=3')).items.length,
+      4,
+      'valor fora da lista volta ao padrão'
+    )
+    const two = await get(client, '?perPage=10&page=2')
+    assert.lengthOf(two.items, 0)
+    assert.equal(two.total, 4)
   })
 })

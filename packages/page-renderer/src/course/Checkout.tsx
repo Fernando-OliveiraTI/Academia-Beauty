@@ -7,7 +7,7 @@ import type { CheckoutContent } from './schemas';
 import { DESKTOP_QUERY, useCourse, useMediaQuery, useReducedMotion } from './state';
 import { installmentLabel, offerTexts, type OfferView } from '../offer';
 import { mediaSrc } from '../media';
-import { loadVisitRef, useVisitStatus, withVisitRef } from './checkout-status';
+import { loadVisitRef, registerVisit, useVisitStatus, withVisitRef } from './checkout-status';
 
 type Method = 'card' | 'pix' | 'boleto';
 type FieldState = { value: string; status: 'idle' | 'valid' | 'invalid'; error: string };
@@ -243,7 +243,7 @@ export function Checkout({ content, offer }: { content: CheckoutContent; offer: 
           </aside>
 
           <div className="checkout-main">
-            {embed ? <EmbeddedCheckout url={checkout.url} statusUrl={checkout.mode === 'embed' ? checkout.statusUrl : undefined} title={content.title} content={content} /> : <>
+            {embed ? <EmbeddedCheckout url={checkout.url} statusUrl={checkout.mode === 'embed' ? checkout.statusUrl : undefined} sessionUrl={checkout.mode === 'embed' ? checkout.sessionUrl : undefined} courseSlug={checkout.mode === 'embed' ? checkout.courseSlug : undefined} title={content.title} content={content} /> : <>
             <ol className="steps" aria-label="Etapas da compra" ref={stepsRef}>
               {stepLabels.map((label, i) => {
                 const n = i + 1;
@@ -372,7 +372,7 @@ export function Checkout({ content, offer }: { content: CheckoutContent; offer: 
  * Com `statusUrl` (só na página pública) a visita ganha um código que vai na URL do iframe como UTM; quando o webhook
  * da The Members confirma o pagamento a página troca o iframe pela confirmação, sem o comprador precisar fazer nada.
  */
-function EmbeddedCheckout({ url, statusUrl, title, content }: { url: string | null; statusUrl?: string; title: string; content: CheckoutContent }) {
+function EmbeddedCheckout({ url, statusUrl, sessionUrl, courseSlug, title, content }: { url: string | null; statusUrl?: string; sessionUrl?: string; courseSlug?: string; title: string; content: CheckoutContent }) {
   const safe = url && /^https:\/\//i.test(url) ? url : null;
   const tracked = Boolean(safe && statusUrl);
   const [ref, setRef] = useState<string | null>(null);
@@ -390,6 +390,14 @@ function EmbeddedCheckout({ url, statusUrl, title, content }: { url: string | nu
     io.observe(el);
     return () => io.disconnect();
   }, [tracked, seen]);
+
+  // Uma vez por abertura do checkout (depois que ele apareceu): registra o contexto da visita no servidor.
+  const registered = useRef(false);
+  useEffect(() => {
+    if (!tracked || !seen || !ref || !sessionUrl || registered.current) return;
+    registered.current = true;
+    registerVisit(sessionUrl, ref, courseSlug);
+  }, [tracked, seen, ref, sessionUrl, courseSlug]);
 
   const visit = useVisitStatus(statusUrl, ref, tracked && seen);
   const paid = visit.status === 'approved';
