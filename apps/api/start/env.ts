@@ -73,6 +73,11 @@ export default await Env.create(new URL('../', import.meta.url), {
   THEMEMBERS_WEBHOOK_SECRET: Env.schema.string.optional(),
   /** URL pública cadastrada no webhook (algumas variantes da assinatura incluem a URL na string assinada). */
   THEMEMBERS_WEBHOOK_URL: Env.schema.string.optional(),
+  /**
+   * Token secreto na própria URL do webhook (`/webhooks/themembers/<token>`), para quando a The Members não assina a chamada.
+   * Mínimo de 24 caracteres. Vale como alternativa à assinatura: qualquer uma das duas autentica.
+   */
+  THEMEMBERS_WEBHOOK_TOKEN: Env.schema.string.optional(),
   /** Guarda o corpo bruto de cada chamada do webhook (com dados pessoais) para depuração. `false` desliga. Padrão: ligado. */
   THEMEMBERS_LOG_RAW: Env.schema.boolean.optional(),
   /** Dias de retenção do registro bruto (1 a 365; padrão 30). */

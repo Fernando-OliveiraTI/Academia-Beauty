@@ -53,7 +53,7 @@ router
   .prefix('/public')
 
 // Webhook de checkout da The Members (servidor→servidor): autenticado por assinatura HMAC, fora do CSRF.
-router.post('/webhooks/themembers', [ThemembersWebhookController, 'handle'])
+router.post('/webhooks/themembers/:token?', [ThemembersWebhookController, 'handle'])
 
 // Registro técnico do webhook da The Members (corpo bruto com dados pessoais): só administrador.
 router

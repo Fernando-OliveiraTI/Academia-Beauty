@@ -85,8 +85,11 @@ export default class PaymentsService {
       .first()) as { total: number | string } | null
 
     return {
-      webhookConfigured: Boolean(env.get('THEMEMBERS_WEBHOOK_SECRET')),
+      webhookConfigured:
+        Boolean(env.get('THEMEMBERS_WEBHOOK_SECRET')) ||
+        (env.get('THEMEMBERS_WEBHOOK_TOKEN') ?? '').length >= 24,
       webhookPath: WEBHOOK_PATH,
+      webhookTokenConfigured: (env.get('THEMEMBERS_WEBHOOK_TOKEN') ?? '').length >= 24,
       externalCourseId: config?.externalCourseId ?? '',
       summary: summarizeTransactions(recent),
       items: recent.slice(0, ITEMS).map(toItem),

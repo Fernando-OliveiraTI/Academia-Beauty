@@ -84,6 +84,8 @@ export type CoursePayments = {
   webhookConfigured: boolean;
   /** Caminho do receptor na API (o painel monta a URL pública com o domínio do site). */
   webhookPath: string;
+  /** Há token secreto configurado para a URL (`<webhookPath>/<token>`)? O token nunca sai do servidor. */
+  webhookTokenConfigured: boolean;
   /** ID do produto na The Members vinculado ao curso (vazio = sem vínculo, nenhum evento chega aqui). */
   externalCourseId: string;
   summary: PaymentsSummary;

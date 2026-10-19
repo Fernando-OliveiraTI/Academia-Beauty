@@ -41,6 +41,16 @@ const int = (v: unknown): number | null =>
  * então aceitamos as variantes documentadas — todas exigem o segredo — e registramos qual casou (`signature_scheme`).
  * Comparação em tempo constante. Devolve o nome da variante ou `null` se nenhuma casar.
  */
+const MIN_TOKEN_LENGTH = 24
+
+/** Token da URL (alternativa à assinatura): comparação em tempo constante; token configurado curto demais é ignorado. */
+export function verifyUrlToken(provided: unknown, expected: string | undefined): boolean {
+  if (!expected || expected.length < MIN_TOKEN_LENGTH || typeof provided !== 'string') return false
+  const a = Buffer.from(provided)
+  const b = Buffer.from(expected)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+
 export function verifySignature(
   raw: string,
   header: string | undefined,
@@ -277,10 +287,12 @@ export default class ThemembersWebhookService {
     raw: string,
     signature: string | undefined,
     secret: string | undefined,
-    webhookUrl?: string
+    webhookUrl?: string,
+    urlToken?: { provided?: string | null; expected?: string }
   ): Promise<ReceiveResult> {
-    // Sem segredo configurado nada é aceito: um receptor sem verificação seria uma porta aberta.
-    if (!secret) {
+    // Sem nenhuma forma de autenticação configurada nada é aceito: um receptor sem verificação seria uma porta aberta.
+    const tokenUsable = Boolean(urlToken?.expected && urlToken.expected.length >= MIN_TOKEN_LENGTH)
+    if (!secret && !tokenUsable) {
       return {
         ok: false,
         status: 503,
@@ -288,7 +300,18 @@ export default class ThemembersWebhookService {
         message: 'Webhook não configurado',
       }
     }
-    const scheme = verifySignature(raw, signature, secret, webhookUrl)
+    // Autenticação: token na URL OU assinatura HMAC. Um token errado na URL é recusado mesmo com assinatura válida
+    // (URL cadastrada com token errado é erro de configuração, não deve passar despercebido).
+    let scheme: string | null = null
+    if (
+      urlToken?.provided !== undefined &&
+      urlToken.provided !== null &&
+      urlToken.provided !== ''
+    ) {
+      scheme = verifyUrlToken(urlToken.provided, urlToken.expected) ? 'url-token' : null
+    } else if (secret) {
+      scheme = verifySignature(raw, signature, secret, webhookUrl)
+    }
     if (!scheme)
       return { ok: false, status: 403, code: 'invalid_signature', message: 'Assinatura inválida' }
 

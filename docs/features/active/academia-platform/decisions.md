@@ -243,3 +243,9 @@ Pedido do usuário: salvar o JSON que o webhook entrega para testar em produçã
 - **Falha no registro nunca derruba o webhook** (erro de gravação é engolido); chamadas barradas pelo limite de IP não são registradas.
 - **Consulta:** `GET /admin/webhook-deliveries` (lista, filtro por resultado, contagens) e `/:id` (corpo bruto + versão indentada sem tocar nos números); tela "Webhooks" no menu (`/admin/webhooks/themembers`, só administrador) com filtros, modal do corpo ("Ver como chegou" / formatado / copiar) e link a partir do bloco de pagamentos do curso.
 
+## D-035 — Token secreto na URL do webhook como alternativa à assinatura (2026-10-19)
+O usuário informou que a The Members pode apenas chamar a URL, sem a assinatura `X-Signature` que a documentação descreve. Para não depender disso (e sem aceitar chamadas sem autenticação):
+- `POST /webhooks/themembers/<token>`: se `THEMEMBERS_WEBHOOK_TOKEN` (mínimo 24 caracteres; mais curto é ignorado) bate com o token da URL (tempo constante), a chamada é autenticada (variante `url-token`). Vale **como alternativa**: a assinatura HMAC continua aceita em `/webhooks/themembers` sem token. Token errado na URL é 403 mesmo com assinatura boa. Sem token nem segredo configurados o receptor responde 503.
+- **Risco aceito:** o token na URL pode aparecer em logs de proxy/CDN e em histórico de quem cadastra; trate como senha, use um valor longo e aleatório (`openssl rand -hex 24`) e troque se vazar. A assinatura é mais forte (o segredo nunca trafega); preferir a assinatura quando a The Members a enviar.
+- O painel do curso mostra a URL com `<seu-token>` no lugar (o token nunca sai do servidor) e indica quando há autenticação configurada.
+

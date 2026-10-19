@@ -46,7 +46,7 @@ export function CoursePaymentsPanel({ courseId, externalCourseId }: { courseId: 
   }, [courseId])
   useEffect(() => { void load() }, [load, externalCourseId])
 
-  const url = data ? `${origin}/api${data.webhookPath}` : ''
+  const url = data ? `${origin}/api${data.webhookPath}${data.webhookTokenConfigured ? '/<seu-token>' : ''}` : ''
   const copy = async () => {
     try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { setCopied(false) }
   }
@@ -78,10 +78,12 @@ export function CoursePaymentsPanel({ courseId, externalCourseId }: { courseId: 
             <p className="pay-hook-note" role="status">
               {copied ? 'URL copiada.' : (
                 <>
-                  <span className="pay-pill" data-tone={data.webhookConfigured ? 'ok' : 'bad'}>{data.webhookConfigured ? 'Segredo configurado' : 'Segredo não configurado'}</span>
+                  <span className="pay-pill" data-tone={data.webhookConfigured ? 'ok' : 'bad'}>{data.webhookConfigured ? 'Autenticação configurada' : 'Autenticação não configurada'}</span>
                   {data.webhookConfigured
-                    ? ' No painel da The Members: Checkout → Ferramentas → Webhooks, com o mesmo token do servidor.'
-                    : ' Defina THEMEMBERS_WEBHOOK_SECRET no servidor: sem ele o receptor recusa todas as chamadas.'}
+                    ? (data.webhookTokenConfigured
+                      ? ' No painel da The Members: Checkout → Ferramentas → Webhooks. Troque <seu-token> pelo valor de THEMEMBERS_WEBHOOK_TOKEN do servidor.'
+                      : ' No painel da The Members: Checkout → Ferramentas → Webhooks, com o mesmo token do servidor.')
+                    : ' Defina THEMEMBERS_WEBHOOK_TOKEN (ou THEMEMBERS_WEBHOOK_SECRET) no servidor: sem isso o receptor recusa todas as chamadas.'}
                 </>
               )}
             </p>

@@ -28,7 +28,7 @@ export const resetWebhookLimiter = () => hits.clear()
  * quando o evento já tinha sido recebido (retentativa), 403 para assinatura inválida e 503 sem segredo configurado.
  */
 export default class ThemembersWebhookController {
-  async handle({ request, response }: HttpContext) {
+  async handle({ request, response, params }: HttpContext) {
     if (!allowed(request.ip())) return response.tooManyRequests({ message: 'Muitas requisições' })
 
     const raw = request.raw() ?? ''
@@ -57,7 +57,8 @@ export default class ThemembersWebhookController {
       raw,
       request.header('x-signature'),
       env.get('THEMEMBERS_WEBHOOK_SECRET'),
-      env.get('THEMEMBERS_WEBHOOK_URL')
+      env.get('THEMEMBERS_WEBHOOK_URL'),
+      { provided: params.token, expected: env.get('THEMEMBERS_WEBHOOK_TOKEN') }
     )
     if (!result.ok) {
       await log(

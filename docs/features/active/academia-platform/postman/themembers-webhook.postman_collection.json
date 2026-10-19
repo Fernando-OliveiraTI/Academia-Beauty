@@ -1,0 +1,142 @@
+{
+  "info": {
+    "name": "Academia Beauty · Webhook The Members",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Simula o webhook de checkout da The Members. Preencha as variáveis da collection: secret (THEMEMBERS_WEBHOOK_SECRET da API), ref (sessionStorage.getItem('ab:checkout-ref') na página do curso), product (ID do produto na oferta do curso). Para cada envio novo troque tx e when."
+  },
+  "variable": [
+    {
+      "key": "base",
+      "value": "http://localhost:3333"
+    },
+    {
+      "key": "secret",
+      "value": "COLE-AQUI-O-THEMEMBERS_WEBHOOK_SECRET"
+    },
+    {
+      "key": "ref",
+      "value": "ab_COLE_O_CODIGO_DA_ABA"
+    },
+    {
+      "key": "product",
+      "value": "4321"
+    },
+    {
+      "key": "tx",
+      "value": "7405530052968814123"
+    },
+    {
+      "key": "when",
+      "value": "2026-10-19 14:30:00"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Assina o corpo já com as variáveis preenchidas (HMAC SHA-256, hex) no cabeçalho X-Signature.",
+          "const secret = pm.variables.get('secret');",
+          "const body = pm.variables.replaceIn(pm.request.body.raw);",
+          "pm.request.headers.upsert({ key: 'X-Signature', value: CryptoJS.HmacSHA256(body, secret).toString() });"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "1 · Pix gerado (pending)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"company\": {\n    \"id\": \"7268299385367167832\",\n    \"name\": \"company\",\n    \"email\": \"company.test@email.com\",\n    \"phone\": \"+55 11999999999\",\n    \"document_type\": \"cnpj\",\n    \"document_number\": \"00000000000000\",\n    \"owner\": {\n      \"id\": \"7268299385346197469\",\n      \"name\": \"Lucas da Silva\",\n      \"email\": \"lucas@company.com\",\n      \"phone\": \"+5511999999999\",\n      \"document_type\": \"cpf\",\n      \"document_number\": \"00000000000\"\n    }\n  },\n  \"payload\": {\n    \"object\": \"transaction\",\n    \"event\": \"transaction.pix_generated\",\n    \"created_at\": \"{{when}}\",\n    \"data\": {\n      \"id\": {{tx}},\n      \"paid_at\": \"2026-10-19T17:30:00+00:00\",\n      \"status\": \"pending\",\n      \"transaction\": {\n        \"currency\": \"brl\",\n        \"amount\": 29700,\n        \"buyer_fees\": 0,\n        \"total_amount\": 29700,\n        \"cupom\": \"\"\n      },\n      \"payment_details\": {\n        \"payment_method\": \"pix\",\n        \"pix\": {\n          \"qrcode_url\": \"https://exemplo.com/qr.png\",\n          \"qrcode_data\": \"00020126580014br.gov.bcb.pix\",\n          \"expiration\": 3600\n        }\n      },\n      \"comissions\": [],\n      \"order\": {\n        \"id\": 7405530048429536111,\n        \"customer\": {\n          \"id\": \"7394310639977632991\",\n          \"name\": \"João da Silva\",\n          \"email\": \"joao@example.com\",\n          \"phone_country\": null,\n          \"phone\": \"+55 11999999999\",\n          \"document_type\": \"cpf\",\n          \"document_number\": \"00000000000\"\n        },\n        \"main_product\": {\n          \"id\": {{product}},\n          \"title\": \"Produto 1\",\n          \"price\": 29700\n        },\n        \"order_bump\": [],\n        \"utms\": [\n          {\n            \"utm_source\": \"academia\",\n            \"utm_medium\": \"site\",\n            \"utm_content\": \"{{ref}}\"\n          }\n        ]\n      },\n      \"subscription\": null\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base}}/webhooks/themembers",
+          "host": [
+            "{{base}}"
+          ],
+          "path": [
+            "webhooks",
+            "themembers"
+          ]
+        }
+      }
+    },
+    {
+      "name": "2 · Pagamento recusado (failed)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"company\": {\n    \"id\": \"7268299385367167832\",\n    \"name\": \"company\",\n    \"email\": \"company.test@email.com\",\n    \"phone\": \"+55 11999999999\",\n    \"document_type\": \"cnpj\",\n    \"document_number\": \"00000000000000\",\n    \"owner\": {\n      \"id\": \"7268299385346197469\",\n      \"name\": \"Lucas da Silva\",\n      \"email\": \"lucas@company.com\",\n      \"phone\": \"+5511999999999\",\n      \"document_type\": \"cpf\",\n      \"document_number\": \"00000000000\"\n    }\n  },\n  \"payload\": {\n    \"object\": \"transaction\",\n    \"event\": \"transaction.failed\",\n    \"created_at\": \"{{when}}\",\n    \"data\": {\n      \"id\": {{tx}},\n      \"paid_at\": \"2026-10-19T17:30:00+00:00\",\n      \"status\": \"failed\",\n      \"transaction\": {\n        \"currency\": \"brl\",\n        \"amount\": 29700,\n        \"buyer_fees\": 0,\n        \"total_amount\": 29700,\n        \"cupom\": \"\"\n      },\n      \"payment_details\": {\n        \"payment_method\": \"credit_card\",\n        \"credit_card\": {\n          \"instalments\": 1,\n          \"brand\": \"mastercard\",\n          \"last_digit\": 7600\n        }\n      },\n      \"comissions\": [],\n      \"order\": {\n        \"id\": 7405530048429536111,\n        \"customer\": {\n          \"id\": \"7394310639977632991\",\n          \"name\": \"João da Silva\",\n          \"email\": \"joao@example.com\",\n          \"phone_country\": null,\n          \"phone\": \"+55 11999999999\",\n          \"document_type\": \"cpf\",\n          \"document_number\": \"00000000000\"\n        },\n        \"main_product\": {\n          \"id\": {{product}},\n          \"title\": \"Produto 1\",\n          \"price\": 29700\n        },\n        \"order_bump\": [],\n        \"utms\": [\n          {\n            \"utm_source\": \"academia\",\n            \"utm_medium\": \"site\",\n            \"utm_content\": \"{{ref}}\"\n          }\n        ]\n      },\n      \"subscription\": null\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base}}/webhooks/themembers",
+          "host": [
+            "{{base}}"
+          ],
+          "path": [
+            "webhooks",
+            "themembers"
+          ]
+        }
+      }
+    },
+    {
+      "name": "3 · Pagamento aprovado (approved) ✅ SUCESSO",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"company\": {\n    \"id\": \"7268299385367167832\",\n    \"name\": \"company\",\n    \"email\": \"company.test@email.com\",\n    \"phone\": \"+55 11999999999\",\n    \"document_type\": \"cnpj\",\n    \"document_number\": \"00000000000000\",\n    \"owner\": {\n      \"id\": \"7268299385346197469\",\n      \"name\": \"Lucas da Silva\",\n      \"email\": \"lucas@company.com\",\n      \"phone\": \"+5511999999999\",\n      \"document_type\": \"cpf\",\n      \"document_number\": \"00000000000\"\n    }\n  },\n  \"payload\": {\n    \"object\": \"transaction\",\n    \"event\": \"transaction.approved\",\n    \"created_at\": \"{{when}}\",\n    \"data\": {\n      \"id\": {{tx}},\n      \"paid_at\": \"2026-10-19T17:30:00+00:00\",\n      \"status\": \"approved\",\n      \"transaction\": {\n        \"currency\": \"brl\",\n        \"amount\": 29700,\n        \"buyer_fees\": 0,\n        \"total_amount\": 29700,\n        \"cupom\": \"\"\n      },\n      \"payment_details\": {\n        \"payment_method\": \"credit_card\",\n        \"credit_card\": {\n          \"instalments\": 1,\n          \"brand\": \"mastercard\",\n          \"last_digit\": 7600\n        }\n      },\n      \"comissions\": [],\n      \"order\": {\n        \"id\": 7405530048429536111,\n        \"customer\": {\n          \"id\": \"7394310639977632991\",\n          \"name\": \"João da Silva\",\n          \"email\": \"joao@example.com\",\n          \"phone_country\": null,\n          \"phone\": \"+55 11999999999\",\n          \"document_type\": \"cpf\",\n          \"document_number\": \"00000000000\"\n        },\n        \"main_product\": {\n          \"id\": {{product}},\n          \"title\": \"Produto 1\",\n          \"price\": 29700\n        },\n        \"order_bump\": [],\n        \"utms\": [\n          {\n            \"utm_source\": \"academia\",\n            \"utm_medium\": \"site\",\n            \"utm_content\": \"{{ref}}\"\n          }\n        ]\n      },\n      \"subscription\": null\n    }\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base}}/webhooks/themembers",
+          "host": [
+            "{{base}}"
+          ],
+          "path": [
+            "webhooks",
+            "themembers"
+          ]
+        }
+      }
+    }
+  ]
+}

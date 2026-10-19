@@ -755,3 +755,80 @@ test.group('The Members · exemplo real da documentação', (group) => {
     assert.equal((await db.from('payment_events').first()).ref, 'ab_k3j9x0q2m7v5n1c8w4zt')
   })
 })
+
+const URL_TOKEN = 'token-secreto-da-url-1234567890-abcdef'
+
+test.group('The Members · token na URL (quando a The Members não assina)', (group) => {
+  let secret: string | undefined
+  let token: string | undefined
+  group.each.setup(async () => {
+    resetWebhookLimiter()
+    secret = env.get('THEMEMBERS_WEBHOOK_SECRET')
+    token = env.get('THEMEMBERS_WEBHOOK_TOKEN')
+    env.set('THEMEMBERS_WEBHOOK_SECRET', '')
+    env.set('THEMEMBERS_WEBHOOK_TOKEN', URL_TOKEN)
+    return testUtils.db().withGlobalTransaction()
+  })
+  group.each.teardown(() => {
+    env.set('THEMEMBERS_WEBHOOK_SECRET', secret ?? '')
+    env.set('THEMEMBERS_WEBHOOK_TOKEN', token ?? '')
+  })
+
+  test('chamada sem nenhum cabeçalho de assinatura, só com o token na URL, é aceita e grava a variante "url-token"', async ({
+    client,
+    assert,
+  }) => {
+    const res = await client.post(`/webhooks/themembers/${URL_TOKEN}`).json(sale())
+    res.assertStatus(200)
+    assert.deepEqual(res.body(), { received: true, duplicate: false })
+    assert.equal((await db.from('payment_events').first()).signature_scheme, 'url-token')
+  })
+
+  test('token errado, ausente ou de outro tamanho é 403 e nada é gravado', async ({
+    client,
+    assert,
+  }) => {
+    ;(
+      await client.post('/webhooks/themembers/token-errado-token-errado-1234').json(sale())
+    ).assertStatus(403)
+    ;(await client.post(`/webhooks/themembers/${URL_TOKEN}x`).json(sale())).assertStatus(403)
+    ;(await client.post('/webhooks/themembers').json(sale())).assertStatus(403)
+    assert.lengthOf(await db.from('payment_events'), 0)
+  })
+
+  test('com os dois configurados, a assinatura continua valendo sem token na URL e token errado não passa com assinatura boa', async ({
+    client,
+    assert,
+  }) => {
+    env.set('THEMEMBERS_WEBHOOK_SECRET', SECRET)
+    const body = sale({ txId: '7' })
+    const raw = JSON.stringify(body)
+    ;(
+      await client.post('/webhooks/themembers').header('x-signature', sign(raw)).json(body)
+    ).assertStatus(200)
+    ;(
+      await client
+        .post('/webhooks/themembers/token-errado-token-errado-1234')
+        .header('x-signature', sign(raw))
+        .json(body)
+    ).assertStatus(403)
+    assert.lengthOf(await db.from('payment_events'), 1)
+  })
+
+  test('token configurado curto demais (menos de 24 caracteres) é ignorado: sem segredo, o receptor fica "não configurado" (503)', async ({
+    client,
+  }) => {
+    env.set('THEMEMBERS_WEBHOOK_TOKEN', 'curto')
+    ;(await client.post('/webhooks/themembers/curto').json(sale())).assertStatus(503)
+  })
+
+  test('a chamada com token na URL aparece no registro bruto com o resultado e a variante', async ({
+    client,
+    assert,
+  }) => {
+    ;(await client.post(`/webhooks/themembers/${URL_TOKEN}`).json(sale())).assertStatus(200)
+    const log = await db.from('webhook_deliveries').first()
+    assert.equal(log.result, 'accepted')
+    assert.equal(log.signature_scheme, 'url-token')
+  })
+})
