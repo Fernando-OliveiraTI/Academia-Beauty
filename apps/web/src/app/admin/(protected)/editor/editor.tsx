@@ -2,12 +2,12 @@
 
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { z } from 'zod'
-import type { PageDocument } from '@academia/page-schema'
+import type { PageDocument, SectionBackground } from '@academia/page-schema'
 import {
-  addSection, canRedo, canUndo, commit, createHistory, moveSection, redo, removeSection,
-  setVisibility, undo, updateContent, type EditError, type EditResult, type History,
+  addSection, canRedo, canUndo, commit, createHistory, duplicateSection, moveSection, newSectionId, redo, removeSection,
+  setBackground, setVisibility, undo, updateContent, type EditError, type EditResult, type History,
 } from '@academia/editor-core'
-import { editorRules, metaFor, validatePageDocument } from '@academia/section-schemas'
+import { MAX_PER_REPEATABLE_TYPE, backgroundsFor, editorRules, isRepeatable, metaFor, validatePageDocument } from '@academia/section-schemas'
 import type { AdminCourse, DocumentVersion } from '@academia/contracts'
 import { apiGet, apiSend } from '@/lib/api-client'
 import { useConfirm } from '@/components/confirm-dialog'
@@ -55,7 +55,18 @@ const ERROR_TEXT = (e: EditError): string => ({
   not_found: 'Seção não encontrada.', duplicate_id: 'Já existe uma seção com este id.', singleton: 'Esta seção só pode existir uma vez.',
   required: 'Esta seção é obrigatória e não pode ser removida.', cross_region: 'A seção só pode mudar de posição dentro da mesma região da página.',
   out_of_range: 'Posição inválida.', too_many: 'Limite de seções atingido.',
+  too_many_of_type: `Esta seção já aparece ${MAX_PER_REPEATABLE_TYPE} vezes na página (o máximo).`,
 }[e.code])
+
+/** Tons de fundo da aba Estilo (9B). Cada seção mostra só os tons do seu esquema de cores (`backgroundsFor`). */
+const BACKGROUND_INFO: Record<SectionBackground, { label: string; hint: string }> = {
+  surface: { label: 'Painel', hint: 'Cinza quente, um tom acima da página' },
+  dark: { label: 'Escuro', hint: 'Preto profundo' },
+  glow: { label: 'Dourado suave', hint: 'Escuro com brilho dourado discreto' },
+  white: { label: 'Branco', hint: 'Branco puro' },
+  paper: { label: 'Papel', hint: 'Bege claro' },
+  gold: { label: 'Dourado', hint: 'Dourado da marca' },
+}
 
 const svg = (d: ReactNode) => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>
 const ICONS = {
@@ -259,6 +270,19 @@ export function Editor(props: EditorProps) {
     return 0
   }
   const missing = library.sections.filter((s) => !doc.sections.some((d) => d.type === s.type))
+  // Tipos repetíveis (D-031) que já estão na página e ainda não chegaram ao limite: podem ganhar outra instância.
+  const again = library.sections.filter((s) => isRepeatable(s.type) && doc.sections.some((d) => d.type === s.type) && doc.sections.filter((d) => d.type === s.type).length < MAX_PER_REPEATABLE_TYPE)
+  const addAgain = (type: string) => {
+    const base = library.sections.find((s) => s.type === type)
+    if (!base) return
+    const copy = { ...structuredClone(base), id: newSectionId(doc, type) }
+    const last = doc.sections.map((d) => d.type).lastIndexOf(type)
+    if (apply(addSection(doc, copy, last + 1, rules))) setSelectedId(copy.id)
+  }
+  const duplicate = (sectionId: string, type: string) => {
+    const newId = newSectionId(doc, type)
+    if (apply(duplicateSection(doc, sectionId, rules))) setSelectedId(newId)
+  }
   const addMissing = (type: string) => {
     const section = library.sections.find((s) => s.type === type)
     if (!section) return
@@ -504,10 +528,11 @@ export function Editor(props: EditorProps) {
         <fieldset className="ed-pane ed-tree" disabled={!editable} aria-label="Seções da página">
           <legend className="ds-label">Seções da página</legend>
           <div className="ed-menu ed-add" ref={addMenu.ref}>
-            <button type="button" className="admin-button ed-add-btn" aria-haspopup="menu" aria-expanded={addMenu.open} disabled={missing.length === 0} title={missing.length === 0 ? 'Todas as seções já estão na página' : undefined} onClick={() => addMenu.setOpen((v) => !v)}>+ Adicionar seção</button>
+            <button type="button" className="admin-button ed-add-btn" aria-haspopup="menu" aria-expanded={addMenu.open} disabled={missing.length === 0 && again.length === 0} title={missing.length === 0 && again.length === 0 ? 'Todas as seções já estão na página' : undefined} onClick={() => addMenu.setOpen((v) => !v)}>+ Adicionar seção</button>
             {addMenu.open ? (
               <div className="ed-menu-list" role="menu">
                 {missing.map((m) => <button key={m.type} type="button" role="menuitem" onClick={() => { addMissing(m.type); addMenu.setOpen(false) }}>{metaFor(m.type)?.label ?? m.type}<small>{SECTION_DESC[m.type] ?? ''}</small></button>)}
+                {again.map((m) => <button key={`again-${m.type}`} type="button" role="menuitem" onClick={() => { addAgain(m.type); addMenu.setOpen(false) }}>Outra «{metaFor(m.type)?.label ?? m.type}»<small>Repete esta seção na página (até {MAX_PER_REPEATABLE_TYPE})</small></button>)}
               </div>
             ) : null}
           </div>
@@ -642,7 +667,24 @@ export function Editor(props: EditorProps) {
                   />
                 </fieldset>
               ) : tab === 'style' ? (
-                <p className="wizard-hint">As opções de estilo (fundo, espaçamento, alinhamento) chegam numa próxima etapa. Por enquanto o visual da seção segue o modelo da página.</p>
+                backgroundsFor(templateKey, selected.type).length > 0 ? (
+                  <fieldset disabled={!editable} className="ed-form ed-style">
+                    <legend className="ds-label">Fundo da seção</legend>
+                    <div className="ed-bg-options" role="radiogroup" aria-label="Fundo da seção">
+                      {[undefined, ...backgroundsFor(templateKey, selected.type)].map((tone) => {
+                        const info = tone ? BACKGROUND_INFO[tone] : { label: 'Padrão do modelo', hint: 'Sem alteração' }
+                        return (
+                          <label key={tone ?? 'default'} className="ed-bg-opt" data-selected={selected.settings.background === tone || undefined}>
+                            <input type="radio" name={`bg-${selected.id}`} checked={selected.settings.background === tone} onChange={() => run((d) => setBackground(d, selected.id, tone))} />
+                            <span className="ed-bg-swatch" data-bg={tone ?? 'default'} aria-hidden="true" />
+                            <span><strong>{info.label}</strong><small>{info.hint}</small></span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                    <p className="wizard-hint">O tom vale só para esta seção e combina com a cor do texto dela.</p>
+                  </fieldset>
+                ) : <p className="wizard-hint">{kind === 'home' ? 'A Home alterna seções claras e escuras, e a cor do texto depende do fundo de cada uma: por isso o fundo não é editável aqui.' : 'Esta seção tem visual próprio e não aceita troca de fundo.'}</p>
               ) : (
                 <fieldset disabled={!editable} className="ed-form ed-advanced">
                   <legend className="sr-only">Avançado: {metaFor(selected.type)?.label ?? selected.type}</legend>
@@ -660,6 +702,13 @@ export function Editor(props: EditorProps) {
                       <button type="button" className="admin-button secondary" disabled={!(moves[selectedIndex]?.down)} onClick={() => run((d) => moveSection(d, selected.id, selectedIndex + 1, rules))} aria-label={`Mover ${metaFor(selected.type)?.label ?? selected.type} para baixo`}>↓ Descer</button>
                     </span>
                   </div>
+                  {isRepeatable(selected.type) ? (
+                    <div className="sf-field">
+                      <span className="ds-label">Repetir seção</span>
+                      <button type="button" className="admin-button secondary" onClick={() => duplicate(selected.id, selected.type)}>Duplicar seção</button>
+                      <p className="wizard-hint">Cria uma cópia logo abaixo, com o mesmo conteúdo para você ajustar. Até {MAX_PER_REPEATABLE_TYPE} por página.</p>
+                    </div>
+                  ) : null}
                   <div className="sf-field">
                     <span className="ds-label">Identificador da seção</span>
                     <code className="ed-code">{selected.id}</code>

@@ -70,6 +70,13 @@ export const safeMediaSchema = z.string().max(2048).refine(isSafeMediaPath, 'Use
 export const plainTextSchema = (max: number) =>
   z.string().max(max).refine((v) => !/[<>]/.test(v), 'Marcação não é permitida');
 
+/**
+ * Tons de fundo permitidos por seção; ausente = o padrão do modelo da página. `surface`/`dark`/`glow` valem para seções de
+ * texto claro (esquema escuro) e `white`/`paper`/`gold` para seções de texto escuro (esquema claro): quem decide é o catálogo.
+ */
+export const SECTION_BACKGROUNDS = ['surface', 'dark', 'glow', 'white', 'paper', 'gold'] as const;
+export type SectionBackground = (typeof SECTION_BACKGROUNDS)[number];
+
 export const sectionBaseSchema = z.object({
   id: z.string().min(1).max(64),
   type: z.string().min(1).max(64),
@@ -77,8 +84,8 @@ export const sectionBaseSchema = z.object({
   variant: z.string().max(32).regex(/^[a-z0-9-]+$/).optional(),
   visibility: z.object({ enabled: z.boolean() }).default({ enabled: true }),
   content: z.record(z.string(), z.unknown()).default({}),
-  /** Reservado: nenhuma opção por seção existe ainda. Objeto vazio estrito, para não virar canal de dados livres. */
-  settings: z.object({}).strict().default({}),
+  /** Opções de estilo por seção (9B). Objeto estrito com valores de lista fechada: nunca vira canal de dados livres. */
+  settings: z.object({ background: z.enum(SECTION_BACKGROUNDS).optional() }).strict().default({}),
 });
 export type SectionBase = z.infer<typeof sectionBaseSchema>;
 

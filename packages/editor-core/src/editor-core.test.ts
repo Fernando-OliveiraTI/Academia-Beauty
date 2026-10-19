@@ -3,7 +3,7 @@ import { DOCUMENT_SCHEMA_VERSION, clearRegistryForTests, parsePageDocument, regi
 import { z } from 'zod';
 import {
   addSection, canRedo, canUndo, commit, createHistory, duplicateSection, moveSection, newSectionId, redo, removeSection,
-  setVariant, setVisibility, undo, updateContent, type EditorRules, type Section,
+  setBackground, setVariant, setVisibility, undo, updateContent, type EditorRules, type Section,
 } from './index';
 
 const sec = (id: string, type: string, content: Record<string, unknown> = { t: id }): Section => ({
@@ -216,5 +216,40 @@ describe('bordas', () => {
     h = redo(h);
     h = commit(h, must(updateContent(h.present, 'bio', { t: 'c' })), { coalesceKey: 'k', now: 200 });
     expect(canRedo(h)).toBe(false);
+  });
+});
+
+describe('9B/9C: tipos repetíveis e fundo da seção', () => {
+  const rules: EditorRules = { maxPerType: new Map([['p.bio', 2]]), singleton: new Set(['p.hero']) };
+
+  it('aceita instâncias de um tipo repetível até o limite e recusa a seguinte', () => {
+    let d = doc(sec('hero', 'p.hero'), sec('bio', 'p.bio'));
+    const second = duplicateSection(d, 'bio', rules);
+    expect(second.ok).toBe(true);
+    if (second.ok) d = second.doc;
+    expect(d.sections.map((s) => s.id)).toEqual(['hero', 'bio', 'bio-2']);
+    const third = duplicateSection(d, 'bio', rules);
+    expect(third).toEqual({ ok: false, error: { code: 'too_many_of_type', type: 'p.bio', max: 2 } });
+  });
+
+  it('tipo único continua recusando a segunda instância; a cópia é clonada, sem compartilhar conteúdo', () => {
+    const d = doc(sec('hero', 'p.hero'), sec('bio', 'p.bio', { t: 'a', list: [1] }));
+    expect(duplicateSection(d, 'hero', rules)).toMatchObject({ ok: false, error: { code: 'singleton' } });
+    const dup = duplicateSection(d, 'bio', rules);
+    expect(dup.ok).toBe(true);
+    if (!dup.ok) return;
+    (dup.doc.sections[2]!.content.list as number[]).push(2);
+    expect(d.sections[1]!.content.list).toEqual([1]);
+  });
+
+  it('setBackground troca, remove e não cria histórico quando o valor é o mesmo', () => {
+    const d = doc(sec('bio', 'p.bio'));
+    const gold = setBackground(d, 'bio', 'gold');
+    expect(gold.ok && gold.doc.sections[0]!.settings).toEqual({ background: 'gold' });
+    if (!gold.ok) return;
+    expect(setBackground(gold.doc, 'bio', 'gold')).toEqual({ ok: true, doc: gold.doc });
+    const cleared = setBackground(gold.doc, 'bio', undefined);
+    expect(cleared.ok && cleared.doc.sections[0]!.settings).toEqual({});
+    expect(setBackground(d, 'nada', 'dark')).toEqual({ ok: false, error: { code: 'not_found', id: 'nada' } });
   });
 });

@@ -9,9 +9,9 @@ export type SectionEntry = {
   type: string;
   schema: ZodType;
   placement: Placement;
-  Component: ComponentType<{ content: never; ctx: RenderContext }>;
+  Component: ComponentType<{ content: never; ctx: RenderContext; idSuffix?: string }>;
 };
 
 export const entry = <C,>(
-  type: string, schema: ZodType<C>, placement: Placement, Component: ComponentType<{ content: C; ctx: RenderContext }>,
+  type: string, schema: ZodType<C>, placement: Placement, Component: ComponentType<{ content: C; ctx: RenderContext; idSuffix?: string }>,
 ): SectionEntry => ({ type, schema, placement, Component: Component as SectionEntry['Component'] });

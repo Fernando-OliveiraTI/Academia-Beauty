@@ -201,7 +201,7 @@ test.group('Documento de página · profissionais', (group) => {
     const js = bio()
     ;(js.content as { instagram: { href: string } }).instagram.href = 'javascript:alert(1)'
     ;(await put(proDoc(js))).assertStatus(422)
-    ;(await put(proDoc(bio(), { ...bio(), id: 'bio-2' }))).assertStatus(422)
+    ;(await put(proDoc(bio(), { ...hero(), id: 'hero-2' }))).assertStatus(422) // tipo único repetido
     ;(await put('texto')).assertStatus(422)
     const res = await put(proDoc(badContent))
     assert.equal(res.body().code, 'invalid_document')
@@ -417,7 +417,7 @@ test.group('Documento de página · regras impostas pelo servidor', (group) => {
     res.assertStatus(422)
     assert.include(JSON.stringify(res.body()), 'obrigatória')
     ;(await put({ ...proDoc(), sections: [] })).assertStatus(422)
-    ;(await put(proDoc(bio(), { ...bio(), id: 'bio-2' }))).assertStatus(422)
+    ;(await put(proDoc(bio(), { ...hero(), id: 'hero-2' }))).assertStatus(422) // tipo único repetido
     ;(
       await put({ ...proDoc(), sections: [{ ...hero(), settings: { qualquer: 'coisa' } }] })
     ).assertStatus(422)
@@ -520,4 +520,56 @@ test('violação de índice único (corrida de slug) vira 409 e não 500', ({ as
   assert.equal((mapped as DomainError).status, 409)
   const other = new Error('outro')
   assert.strictEqual(toDomainError(other), other)
+})
+
+test.group('Documento de página · seções repetidas e fundo (9B/9C)', (group) => {
+  group.each.setup(() => testUtils.db().withGlobalTransaction())
+
+  test('tipo repetível pode aparecer até 4 vezes; a 5ª é recusada (422) e nada é salvo', async ({
+    client,
+    assert,
+  }) => {
+    const a = api(client, await makeUser('editor'))
+    const p = await newProfessional(a)
+    const copies = (n: number) =>
+      Array.from({ length: n }, (_, i) => ({ ...bio(), id: i === 0 ? 'bio' : `bio-${i + 1}` }))
+    const ok = await a.put(`/admin/professionals/${p.id}/document`, {
+      document: proDoc(...copies(4)),
+      revision: 0,
+    })
+    ok.assertStatus(200)
+    const over = await a.put(`/admin/professionals/${p.id}/document`, {
+      document: proDoc(...copies(5)),
+      revision: 1,
+    })
+    over.assertStatus(422)
+    assert.include(JSON.stringify(over.body()), 'acima do limite')
+    assert.equal((await a.get(`/admin/professionals/${p.id}/document`)).body().documentRevision, 1)
+  })
+
+  test('fundo da seção: tons permitidos salvam; valor livre e seção sem suporte são recusados', async ({
+    client,
+    assert,
+  }) => {
+    const a = api(client, await makeUser('editor'))
+    const p = await newProfessional(a)
+    const put = (document: unknown, revision: number) =>
+      a.put(`/admin/professionals/${p.id}/document`, { document, revision })
+    const saved = await put(proDoc({ ...bio(), settings: { background: 'gold' } }), 0)
+    saved.assertStatus(200)
+    const back = await a.get(`/admin/professionals/${p.id}/document`)
+    assert.equal(back.body().document.sections[1].settings.background, 'gold')
+    // Trajetória tem texto escuro: tom escuro seria ilegível.
+    const wrong = await put(proDoc({ ...bio(), settings: { background: 'dark' } }), 1)
+    wrong.assertStatus(422)
+    assert.include(JSON.stringify(wrong.body()), 'não combina')
+    ;(await put(proDoc({ ...bio(), settings: { background: '#ff0000' } }), 1)).assertStatus(422)
+    ;(await put(proDoc({ ...bio(), settings: { background: 'url(x)' } }), 1)).assertStatus(422)
+    const onHero = await put(
+      { ...proDoc(), sections: [{ ...hero(), settings: { background: 'dark' } }, bio()] },
+      1
+    )
+    onHero.assertStatus(422)
+    assert.include(JSON.stringify(onHero.body()), 'não aceita fundo')
+  })
 })

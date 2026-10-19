@@ -69,3 +69,14 @@
 .pg-pro .course-section .course-grid .course-plus { width: 40px !important; height: 40px !important; }
 @media (max-width: 1000px) { .pg-pro .course-section .course-grid[data-cols] { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 620px) { .pg-pro .course-section .course-grid[data-cols] { grid-template-columns: 1fr; } }
+
+/* 9B — fundo escolhido por seção no editor (invólucro só existe quando há escolha; não afeta o layout).
+   Esquema escuro (texto claro): surface, dark, glow. Esquema claro (texto escuro): white, paper, gold. O catálogo
+   (`backgroundsFor`) garante que cada seção só receba tons do próprio esquema. */
+.pg-bg { display: contents; }
+.pg-bg[data-bg="surface"] > * { background: #1d1a17 !important; }
+.pg-bg[data-bg="dark"] > * { background: #0a0908 !important; }
+.pg-bg[data-bg="glow"] > * { background: linear-gradient(180deg, rgba(227, 201, 138, .12), rgba(227, 201, 138, .04)), #12100d !important; }
+.pg-bg[data-bg="white"] > * { background: #ffffff !important; }
+.pg-bg[data-bg="paper"] > * { background: #f3f0e7 !important; }
+.pg-bg[data-bg="gold"] > * { background: #e3c98a !important; }

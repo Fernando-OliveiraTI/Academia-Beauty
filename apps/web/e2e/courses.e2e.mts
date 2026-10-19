@@ -55,6 +55,11 @@ const courseData = (title: string) => ({
 const createdCourses: number[] = []
 let professionalId = 0
 
+const waitUntil = async (what: string, check: () => Promise<boolean>, ms = 8000) => {
+  const end = Date.now() + ms
+  while (Date.now() < end) { if (await check()) return; await new Promise((r) => setTimeout(r, 250)) }
+  assert.fail(`Tempo esgotado: ${what}`)
+}
 const goStep = (p: Page, label: string) => p.getByRole('button', { name: label }).click()
 const save = async (p: Page) => { await p.getByRole('button', { name: /Salvar rascunho/ }).click(); await p.getByText('Alterações salvas.').waitFor() }
 const publicStatus = async (path: string) => (await fetch(`${BASE}${path}`, { redirect: 'manual' })).status
@@ -242,8 +247,9 @@ try {
     await goStep(page, 'Revisão e publicação')
     await page.getByRole('button', { name: 'Despublicar' }).click()
     await page.getByText('Curso tirado do ar.').waitFor()
-    assert.equal(await publicStatus(`/cursos/${SLUG}`), 404)
-    assert.doesNotMatch(await publicHtml(`/profissionais/${PRO_SLUG}`), new RegExp(SLUG))
+    // A invalidação do cache público termina logo depois da resposta: espera em vez de checar no mesmo instante.
+    await waitUntil('página do curso fora do ar', async () => (await publicStatus(`/cursos/${SLUG}`)) === 404)
+    await waitUntil('cartão fora da vitrine do profissional', async () => !new RegExp(SLUG).test(await publicHtml(`/profissionais/${PRO_SLUG}`)))
     await page.getByRole('button', { name: 'Arquivar' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Arquivar' }).click()
     await page.getByText('Curso arquivado.').waitFor()

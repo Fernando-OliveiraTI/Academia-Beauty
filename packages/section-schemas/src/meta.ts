@@ -1,3 +1,4 @@
+import type { SectionBackground } from '@academia/page-schema';
 import type { ZodType } from 'zod';
 import * as course from './course.js';
 import * as home from './home.js';
@@ -78,6 +79,60 @@ export const TEMPLATE_PREFIX: Readonly<Record<string, string>> = {
   'course-original': 'course.',
   'home-original': 'home.',
   ...Object.fromEntries(PROFESSIONAL_TEMPLATES.map((t) => [t.key, 'professional.'])),
+};
+
+/** Máximo de instâncias de um tipo repetível por página, e de seções por documento (9C, D-031). */
+export const MAX_PER_REPEATABLE_TYPE = 4;
+export const MAX_SECTIONS_PER_DOCUMENT = 30;
+
+/**
+ * Tipos que podem ser adicionados/duplicados: texto e destaque, vídeo e galeria, chamadas para ação, FAQ e depoimentos.
+ * Só entram aqui seções cujos ids/âncoras de DOM o renderer sabe sufixar (`idSuffix`) e cujo CSS não depende de `#id`.
+ */
+export const REPEATABLE_TYPES: ReadonlySet<string> = new Set([
+  'course.benefits', 'course.faq', 'course.proof', 'course.final-cta',
+  'professional.bio', 'professional.works', 'professional.video', 'professional.cta',
+  'home.cta',
+]);
+export const isRepeatable = (type: string) => REPEATABLE_TYPES.has(type);
+
+/** Seções com visual próprio complexo (efeitos, preço, checkout) não aceitam troca de fundo. */
+const NO_BACKGROUND: ReadonlySet<string> = new Set(['course.hero', 'course.offer', 'course.checkout', 'professional.hero', 'home.hero']);
+
+/** Esquema de cores do texto da seção: `dark` = texto claro sobre fundo escuro; `light` = texto escuro sobre fundo claro. */
+export type BackgroundScheme = 'dark' | 'light';
+
+/** Seções do Profissional que, por modelo, trocam o esquema de cores (medido nas páginas renderizadas). */
+const PROFESSIONAL_DARK_WORKS: ReadonlySet<string> = new Set(['professional-immersive', 'professional-premium']);
+const PROFESSIONAL_SCHEME: Readonly<Record<string, BackgroundScheme>> = {
+  'professional.bio': 'light', 'professional.courses': 'light', 'professional.works': 'light',
+  'professional.video': 'dark', 'professional.stats': 'dark', 'professional.cta': 'dark',
+};
+
+/**
+ * Esquema da seção no modelo, ou `null` se ela não aceita troca de fundo. A cor do texto é ligada ao fundo original
+ * de cada seção; por isso cada esquema só aceita tons do mesmo tipo (sem texto escuro sobre fundo escuro).
+ * A Home alterna seções claras e escuras com cores fixas por seção e fica de fora.
+ */
+export function backgroundSchemeOf(templateKey: string, type: string): BackgroundScheme | null {
+  if (NO_BACKGROUND.has(type) || metaFor(type)?.placement !== 'main') return null;
+  if (type.startsWith('course.')) return templateKey === 'course-original' ? 'dark' : null;
+  if (type.startsWith('professional.')) {
+    if (type === 'professional.works' && PROFESSIONAL_DARK_WORKS.has(templateKey)) return 'dark';
+    return PROFESSIONAL_SCHEME[type] ?? null;
+  }
+  return null;
+}
+
+export const BACKGROUNDS_BY_SCHEME: Readonly<Record<BackgroundScheme, readonly SectionBackground[]>> = {
+  dark: ['surface', 'dark', 'glow'],
+  light: ['white', 'paper', 'gold'],
+};
+
+/** Tons de fundo aceitos pela seção no modelo (vazio = não aceita). */
+export const backgroundsFor = (templateKey: string, type: string): readonly SectionBackground[] => {
+  const scheme = backgroundSchemeOf(templateKey, type);
+  return scheme ? BACKGROUNDS_BY_SCHEME[scheme] : [];
 };
 
 export const metaFor = (type: string) => SECTION_META.find((s) => s.type === type);

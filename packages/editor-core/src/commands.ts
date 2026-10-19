@@ -1,4 +1,4 @@
-import type { PageDocument } from '@academia/page-schema';
+import type { PageDocument, SectionBackground } from '@academia/page-schema';
 
 export type Section = PageDocument['sections'][number];
 
@@ -12,6 +12,8 @@ export type EditorRules = {
   required?: ReadonlySet<string>;
   /** Limite de seções (o schema do documento aceita até 200). */
   maxSections?: number;
+  /** Tipos que podem se repetir, com o máximo de instâncias por página (os demais seguem `singleton`). */
+  maxPerType?: ReadonlyMap<string, number>;
 };
 
 export type EditResult = { ok: true; doc: PageDocument } | { ok: false; error: EditError };
@@ -22,7 +24,8 @@ export type EditError =
   | { code: 'required'; type: string }
   | { code: 'cross_region'; id: string; from?: string; to?: string }
   | { code: 'out_of_range'; index: number }
-  | { code: 'too_many'; max: number };
+  | { code: 'too_many'; max: number }
+  | { code: 'too_many_of_type'; type: string; max: number };
 
 const MAX_SECTIONS = 200;
 const ID_MAX = 64;
@@ -51,6 +54,10 @@ export function addSection(doc: PageDocument, section: Section, index: number = 
   if (indexOf(doc, section.id) !== -1) return fail({ code: 'duplicate_id', id: section.id });
   if (rules.singleton?.has(section.type) && doc.sections.some((s) => s.type === section.type)) {
     return fail({ code: 'singleton', type: section.type });
+  }
+  const perType = rules.maxPerType?.get(section.type);
+  if (perType !== undefined && doc.sections.filter((s) => s.type === section.type).length >= perType) {
+    return fail({ code: 'too_many_of_type', type: section.type, max: perType });
   }
   if (rules.placementOf) {
     // A seção nova só entra contígua à própria região do template (mesma regra de `moveSection`).
@@ -131,6 +138,16 @@ export function setVariant(doc: PageDocument, id: string, variant: string | unde
   return patchSection(doc, id, (s) => {
     const { variant: _drop, ...rest } = s;
     return variant === undefined ? rest : { ...rest, variant };
+  });
+}
+
+/** Fundo da seção (9B). `undefined` volta ao padrão do modelo. Valor igual ao atual não cria histórico. */
+export function setBackground(doc: PageDocument, id: string, background: SectionBackground | undefined): EditResult {
+  const at = indexOf(doc, id);
+  if (at !== -1 && doc.sections[at]!.settings.background === background) return ok(doc);
+  return patchSection(doc, id, (s) => {
+    const { background: _drop, ...rest } = s.settings;
+    return { ...s, settings: background === undefined ? rest : { ...rest, background } };
   });
 }
 

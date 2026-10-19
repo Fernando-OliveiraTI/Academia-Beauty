@@ -43,6 +43,11 @@ const proData = (name: string) => ({
 })
 const created: number[] = []
 
+const waitUntil = async (what: string, check: () => Promise<boolean>, ms = 8000) => {
+  const end = Date.now() + ms
+  while (Date.now() < end) { if (await check()) return; await new Promise((r) => setTimeout(r, 250)) }
+  assert.fail(`Tempo esgotado: ${what}`)
+}
 const goStep = (p: Page, label: string) => p.getByRole('button', { name: label }).click()
 const publicStatus = async (path: string) => (await fetch(`${BASE}${path}`, { redirect: 'manual' })).status
 const has = async (path: string, re: RegExp) => re.test(await publicHtml(path))
@@ -210,8 +215,8 @@ try {
     await goStep(page, 'Revisão e publicação')
     await page.getByRole('button', { name: 'Despublicar' }).click()
     await page.getByText('Página tirada do ar.').waitFor()
-    assert.equal(await publicStatus(`/profissionais/${SLUG}`), 404)
-    assert.ok(!(await has('/', new RegExp(`/profissionais/${SLUG}`))), 'despublicado ainda na vitrine')
+    await waitUntil('página do profissional fora do ar', async () => (await publicStatus(`/profissionais/${SLUG}`)) === 404)
+    await waitUntil('profissional fora da vitrine da Home', async () => !(await has('/', new RegExp(`/profissionais/${SLUG}`))))
     await page.getByRole('button', { name: 'Arquivar' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Arquivar' }).click()
     await page.getByText('Profissional arquivado.').waitFor()

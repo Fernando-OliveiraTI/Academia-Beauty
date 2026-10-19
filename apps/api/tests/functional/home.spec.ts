@@ -122,7 +122,13 @@ test.group('Home · documento e publicação', (group) => {
     const bad = async (doc: unknown) =>
       (await e.put('/admin/home/document', { document: doc, revision: 2 })).status()
     assert.equal(await bad(homeDoc(cta())), 422)
-    assert.equal(await bad(homeDoc(hero(), { ...cta(), id: 'cta2' }, cta())), 422)
+    assert.equal(await bad(homeDoc(hero(), { ...hero(), id: 'hero2' })), 422) // hero é único
+    assert.equal(
+      await bad(
+        homeDoc(hero(), ...Array.from({ length: 5 }, (_, i) => ({ ...cta(), id: `cta${i}` })))
+      ),
+      422
+    ) // acima do limite por tipo
     assert.equal(await bad(homeDoc(hero(), section('x', 'professional.bio', {}))), 422)
     assert.equal(await bad(homeDoc(hero('<script>x</script>'))), 422)
     assert.equal(

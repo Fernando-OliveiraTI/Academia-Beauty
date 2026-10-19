@@ -23,4 +23,11 @@ describe('sectionNodes', () => {
     const nodes = page('<div class="pg-course"><header></header><main><section></section></main></div>')
     expect(matchSectionNodes([sec('h', 'course.header'), sec('a', 'course.hero'), sec('b', 'course.facts')], nodes)).toBeNull()
   })
+
+  it('seção com fundo escolhido (invólucro .pg-bg) liga ao elemento da seção, não ao invólucro', () => {
+    const nodes = page('<div class="pg-course"><header></header><main><section id="a"></section><div class="pg-bg" data-bg="gold"><section id="b"></section></div></main></div>')
+    expect(nodes.map((n) => n.id)).toEqual(['', 'a', 'b'])
+    const map = matchSectionNodes([sec('h', 'course.header'), sec('a', 'course.facts'), sec('b', 'course.faq')], nodes)
+    expect(map!.get('b')?.id).toBe('b')
+  })
 })

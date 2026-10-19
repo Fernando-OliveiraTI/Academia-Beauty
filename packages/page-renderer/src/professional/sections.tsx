@@ -3,7 +3,7 @@ import type { RenderContext } from '../offer';
 import type { BioContent, CoursesContent, CtaContent, HeroContent, NavContent, StatsContent, VideoContent, WorksContent } from './schemas';
 import { mediaSrc } from '../media';
 
-type Props<C> = { content: C; ctx: RenderContext };
+type Props<C> = { content: C; ctx: RenderContext; idSuffix?: string };
 
 const DEFAULT_SITE_LINKS = [
   { label: 'CURSOS', href: '/#cursos-home' },
@@ -86,10 +86,10 @@ export function Bio({ content: c }: Props<BioContent>) {
   );
 }
 
-export function Works({ content: c }: Props<WorksContent>) {
+export function Works({ content: c, idSuffix: x = '' }: Props<WorksContent>) {
   const showInfo = Boolean(c.showPerson || c.showTitle || c.showPlus);
   return (
-    <section className="work-section" id="trabalhos">
+    <section className="work-section" id={`trabalhos${x}`}>
       <div className="cb-container">
         <div className="cb-course-heading-wrap reveal">
           <div className="cb-eyebrow">{c.eyebrow}</div>
@@ -127,9 +127,9 @@ export function Works({ content: c }: Props<WorksContent>) {
   );
 }
 
-export function Video({ content: c }: Props<VideoContent>) {
+export function Video({ content: c, idSuffix: x = '' }: Props<VideoContent>) {
   return (
-    <section className="video-section" id="video">
+    <section className="video-section" id={`video${x}`}>
       <div className="cb-container video-shell reveal">
         <div className="video-info">
           <div>
@@ -206,10 +206,10 @@ export function Stats({ content: c }: Props<StatsContent>) {
   );
 }
 
-export function Cta({ content: c }: Props<CtaContent>) {
+export function Cta({ content: c, idSuffix: x = '' }: Props<CtaContent>) {
   const external = /^https:\/\//i.test(c.cta.href);
   return (
-    <section className="cta-section" id="chamada">
+    <section className="cta-section" id={`chamada${x}`}>
       <div className="cb-container cta-shell reveal">
         <div className="cta-copy">
           <div className="section-index">{c.sectionIndex}</div>

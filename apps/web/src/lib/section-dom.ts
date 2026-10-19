@@ -6,6 +6,9 @@ const RANK: Record<string, number> = { banner: 0, main: 1, contentinfo: 2, overl
 // Seções automáticas sem itens não geram elemento na página.
 const MAY_BE_EMPTY = ['home.courses', 'professional.courses']
 
+/** O invólucro de fundo (`.pg-bg`, `display: contents`) não tem caixa própria: o bloco da seção é o filho dele. */
+const unwrapBackground = (el: HTMLElement): HTMLElement => (el.matches('.pg-bg') && el.firstElementChild ? (el.firstElementChild as HTMLElement) : el)
+
 /** Blocos de primeiro nível da página renderizada: um por seção (o `main` é aberto; utilitários de acessibilidade ficam de fora). */
 export function sectionNodes(doc: Document): HTMLElement[] {
   const wrapper = doc.querySelector('[class*="pg-"]')
@@ -16,8 +19,8 @@ export function sectionNodes(doc: Document): HTMLElement[] {
     const tag = child.tagName.toLowerCase()
     if (tag === 'svg' || tag === 'script' || tag === 'style') continue
     if (child.matches('.skip-link, .scroll-progress, .side-nav, .pro-side-nav')) continue
-    if (tag === 'main') nodes.push(...(Array.from(child.children) as HTMLElement[]))
-    else nodes.push(child as HTMLElement)
+    if (tag === 'main') nodes.push(...(Array.from(child.children) as HTMLElement[]).map(unwrapBackground))
+    else nodes.push(unwrapBackground(child as HTMLElement))
   }
   return nodes
 }

@@ -12,7 +12,7 @@ import type {
 } from './schemas';
 import { mediaSrc } from '../media';
 
-type Props<C> = { content: C; ctx: RenderContext };
+type Props<C> = { content: C; ctx: RenderContext; idSuffix?: string };
 
 const Arrow = () => <Icon name="arrow" className="arrow" size={18} />;
 const Brand = ({ lead, accent, logo, label, href = '#top' }: { lead: string; accent: string; logo: string; label?: string; href?: string }) => (
@@ -141,14 +141,14 @@ export function Facts({ content: c }: Props<FactsContent>) {
   );
 }
 
-export function Benefits({ content: c }: Props<BenefitsContent>) {
+export function Benefits({ content: c, idSuffix: x = '' }: Props<BenefitsContent>) {
   return (
-    <section className="section" id="beneficios" aria-labelledby="beneficios-title">
+    <section className="section" id={`beneficios${x}`} aria-labelledby={`beneficios-title${x}`}>
       <div className="container">
         <div className="problem">
           <div className="section-head reveal">
             <span className="eyebrow">{c.eyebrow}</span>
-            <h2 id="beneficios-title">{c.title}</h2>
+            <h2 id={`beneficios-title${x}`}>{c.title}</h2>
           </div>
           {c.quoteEmphasis && <p className="problem-quote reveal">{c.quoteBefore} <em>{c.quoteEmphasis}</em>{c.quoteAfter}</p>}
         </div>
@@ -234,13 +234,13 @@ export function Instructor({ content: c }: Props<InstructorContent>) {
 
 const countFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
 
-export function Proof({ content: c }: Props<ProofContent>) {
+export function Proof({ content: c, idSuffix: x = '' }: Props<ProofContent>) {
   return (
-    <section className="section" id="depoimentos" aria-labelledby="prova-title">
+    <section className="section" id={`depoimentos${x}`} aria-labelledby={`prova-title${x}`}>
       <div className="container">
         <div className="section-head section-head--center reveal">
           <span className="eyebrow">{c.eyebrow}</span>
-          <h2 id="prova-title">{c.title}</h2>
+          <h2 id={`prova-title${x}`}>{c.title}</h2>
         </div>
 
         {c.stats.length > 0 && <div className="stats reveal-group">
@@ -306,16 +306,16 @@ export function Offer({ content: c, ctx }: Props<OfferContent>) {
   );
 }
 
-export function Faq({ content: c }: Props<FaqContent>) {
+export function Faq({ content: c, idSuffix: x = '' }: Props<FaqContent>) {
   return (
-    <section className="section faq section--surface-top" id="faq" aria-labelledby="faq-title">
+    <section className="section faq section--surface-top" id={`faq${x}`} aria-labelledby={`faq-title${x}`}>
       <div className="container content-layout">
         <div className="section-head reveal">
           <span className="eyebrow">{c.eyebrow}</span>
-          <h2 id="faq-title">{c.title}</h2>
+          <h2 id={`faq-title${x}`}>{c.title}</h2>
           {c.lead && <p className="lead">{c.lead}</p>}
         </div>
-        <Accordion items={c.items} idPrefix="faq" />
+        <Accordion items={c.items} idPrefix={`faq${x}`} />
       </div>
     </section>
   );
@@ -349,14 +349,14 @@ export function Guarantee({ content: c }: Props<GuaranteeContent>) {
   );
 }
 
-export function FinalCta({ content: c, ctx }: Props<FinalCtaContent>) {
+export function FinalCta({ content: c, ctx, idSuffix: x = '' }: Props<FinalCtaContent>) {
   const t = offerTexts(ctx.offer);
   return (
-    <section className="section section--flush-top" aria-labelledby="final-title">
+    <section className="section section--flush-top" aria-labelledby={`final-title${x}`}>
       <div className="container">
         <div className="final-cta reveal">
           <span className="eyebrow">{c.eyebrow}</span>
-          <h2 id="final-title">{c.titleLead} <span>{c.titleAccent}</span></h2>
+          <h2 id={`final-title${x}`}>{c.titleLead} <span>{c.titleAccent}</span></h2>
           <p className="lead">{c.leadBefore} <strong className="num" style={{ color: 'var(--color-text)' }}>{t.total}</strong>{c.leadAfter}</p>
           <CtaLink className="btn btn--primary">{c.ctaLabel}<Arrow /></CtaLink>
         </div>

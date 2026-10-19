@@ -6,7 +6,7 @@ import type {
 } from './schemas';
 import { mediaSrc } from '../media';
 
-type Props<C> = { content: C; ctx: RenderContext };
+type Props<C> = { content: C; ctx: RenderContext; idSuffix?: string };
 
 const ARROW = '↗';
 
