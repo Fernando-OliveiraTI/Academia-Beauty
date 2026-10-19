@@ -28,7 +28,7 @@ const LABELS: Record<string, string> = {
   text: 'Texto', copy: 'Texto de apoio', sub: 'Subtítulo', lead: 'Chamada', label: 'Rótulo', href: 'Link', src: 'Arquivo', photo: 'Foto', logoSrc: 'Logo', coverSrc: 'Capa', productImage: 'Imagem do produto', alt: 'Texto alternativo',
   name: 'Nome', nameFirst: 'Nome', nameAccent: 'Sobrenome (destaque)', brandLead: 'Marca (início)', brandAccent: 'Marca (destaque)',
   links: 'Links', items: 'Itens', cards: 'Cartões', tags: 'Etiquetas', paragraphs: 'Parágrafos', meta: 'Informações', gold: 'Destaque dourado',
-  image: 'Imagem', portrait: 'Retrato', video: 'Vídeo', account: 'Conta', instagram: 'Instagram', handle: 'Perfil', followers: 'Seguidores',
+  hidePhoto: 'Não mostrar retrato (só o monograma)', monogram: 'Monograma (iniciais)', placesLabel: 'Rótulo dos locais', places: 'Locais', image: 'Imagem', portrait: 'Retrato', video: 'Vídeo', account: 'Conta', instagram: 'Instagram', handle: 'Perfil', followers: 'Seguidores',
   person: 'Pessoa', badge: 'Selo', plusLabel: 'Rótulo do botão +', sectionIndex: 'Índice da seção', tickerUnit: 'Texto do letreiro',
   ctaLabel: 'Texto do botão', copyright: 'Direitos autorais', socials: 'Redes sociais', icon: 'Ícone', logoLead: 'Logo (início)', logoAccent: 'Logo (destaque)',
   ariaLabel: 'Descrição para leitores de tela', fallback: 'Texto alternativo do vídeo', type: 'Tipo', hud: 'Painel (HUD)', value: 'Valor', accent: 'Destaque',

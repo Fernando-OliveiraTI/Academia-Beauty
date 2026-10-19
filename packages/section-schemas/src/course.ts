@@ -89,6 +89,11 @@ export const instructorSchema = z.object({
   monogram: text(4),
   /** Retrato opcional: sem ele aparece só o monograma. */
   photo: image.optional(),
+  /**
+   * "Sem retrato" explícito. Documento salvo sem `photo` herda o retrato do cadastro do profissional (ver `resolve`); remover a
+   * foto no editor só apaga a chave, então o marcador é o que diz "não quero retrato aqui". Ligado, a página mostra o monograma.
+   */
+  hidePhoto: z.boolean().optional(),
   handle: text(40),
   eyebrow: text(60),
   title: text(160),

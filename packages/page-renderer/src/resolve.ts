@@ -45,13 +45,13 @@ export function resolveCourseDocument(input: {
   return buildCourseDocument({ data: input.data, professional: input.professional });
 }
 
-/** Documentos salvos sem retrato do instrutor usam o retrato do cadastro do profissional. */
+/** Documentos salvos sem retrato do instrutor usam o retrato do cadastro do profissional, a menos que `hidePhoto` esteja ligado. */
 function withInstructorPhoto(doc: PageDocument, pro: ProfessionalData): PageDocument {
   if (!pro.portraitSrc) return doc;
   doc.sections = doc.sections.map((s) => {
     if (s.type !== 'course.instructor') return s;
-    const content = s.content as { photo?: { src?: string } };
-    if (content.photo?.src) return s;
+    const content = s.content as { photo?: { src?: string }; hidePhoto?: boolean };
+    if (content.hidePhoto || content.photo?.src) return s; // "sem retrato" explícito vale mais que o retrato do cadastro
     return { ...s, content: { ...s.content, photo: { src: pro.portraitSrc, alt: `Retrato de ${pro.name}`.slice(0, 300) } } };
   });
   return doc;

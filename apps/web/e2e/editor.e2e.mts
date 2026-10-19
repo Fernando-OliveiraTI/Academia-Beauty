@@ -270,6 +270,42 @@ try {
     assert.ok(html.includes(`href="${CHECKOUT}"`), 'link de checkout vem do backend')
   })
 
+  await step('instrutor: "Não mostrar retrato" tira a foto (a página não repõe o retrato do cadastro) e vale no site publicado', async () => {
+    await page.goto(`${BASE}/admin/editor/cursos/${courseId}`)
+    await page.locator('.ed-item').first().waitFor()
+    await frame(page).locator('h1').first().waitFor({ timeout: 15_000 })
+    // O curso herda o retrato do profissional: a prévia começa com foto.
+    await frame(page).locator('.instructor-portrait img').waitFor({ timeout: 10_000 })
+    await page.locator('.ed-item').filter({ has: page.locator('.ed-name', { hasText: 'Instrutor' }) }).locator('.ed-select').click()
+    const hide = page.getByLabel('Não mostrar retrato (só o monograma)')
+    assert.equal(await hide.isChecked(), false)
+    await hide.check()
+    await frame(page).locator('.instructor-portrait .monogram').waitFor({ timeout: 10_000 })
+    assert.equal(await frame(page).locator('.instructor-portrait img').count(), 0)
+    await saved(page)
+    // Recarregar não repõe o retrato: o marcador foi salvo no documento.
+    await page.reload()
+    await page.locator('.ed-item').first().waitFor()
+    await frame(page).locator('.instructor-portrait .monogram').waitFor({ timeout: 15_000 })
+    assert.equal(await frame(page).locator('.instructor-portrait img').count(), 0)
+    await page.getByRole('button', { name: 'Publicar', exact: true }).click()
+    await page.getByText('Publicado. O site será atualizado em instantes.').waitFor()
+    let html = ''
+    for (let i = 0; i < 30; i++) {
+      html = await (await fetch(`${BASE}/cursos/${COURSE_SLUG}`, { cache: 'no-store' })).text()
+      if (!/class="instructor-portrait[^"]*"[^>]*>\s*<img/.test(html) && html.includes('class="monogram"')) break
+      await new Promise((r) => setTimeout(r, 500))
+    }
+    const block = html.slice(html.indexOf('id="instrutor"'), html.indexOf('id="depoimentos"') > 0 ? html.indexOf('id="depoimentos"') : html.indexOf('id="oferta"'))
+    assert.ok(block.includes('class="monogram"'), 'monograma no site')
+    assert.ok(!block.includes('<img'), 'sem foto do instrutor no site')
+    // Desmarcar devolve o retrato (depois de recarregar a seleção volta ao início: escolhe o Instrutor de novo).
+    await page.locator('.ed-item').filter({ has: page.locator('.ed-name', { hasText: 'Instrutor' }) }).locator('.ed-select').click()
+    await page.getByLabel('Não mostrar retrato (só o monograma)').uncheck()
+    await frame(page).locator('.instructor-portrait img').waitFor({ timeout: 10_000 })
+    await saved(page)
+  })
+
   await step('servidor recusa documento de curso com seção de outro template', async () => {
     const bad = await send(context, 'put', `/admin/courses/${courseId}/document`, {
       document: { schemaVersion: 1, template: { key: 'course-original', version: 1 }, sections: [{ id: 'x', type: 'professional.hero', schemaVersion: 1, visibility: { enabled: true }, settings: {}, content: {} }] },

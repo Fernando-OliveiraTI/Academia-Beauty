@@ -209,12 +209,13 @@ export function Deliverables({ content: c }: Props<DeliverablesContent>) {
 }
 
 export function Instructor({ content: c }: Props<InstructorContent>) {
+  const photo = c.hidePhoto ? undefined : c.photo;
   return (
     <section className="section section--surface" id="instrutor" aria-labelledby="instrutor-title">
       <div className="container instructor">
         <div className="instructor-portrait reveal">
-          {!c.photo && <span className="monogram" aria-hidden="true">{c.monogram}</span>}
-          {c.photo && <img src={mediaSrc(c.photo.src, 640)} alt={c.photo.alt} loading="lazy" />}
+          {!photo && <span className="monogram" aria-hidden="true">{c.monogram}</span>}
+          {photo && <img src={mediaSrc(photo.src, 640)} alt={photo.alt} loading="lazy" />}
           <span className="badge badge--gold">{c.handle}</span>
         </div>
         <div className="instructor-copy reveal">
