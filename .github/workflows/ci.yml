@@ -1,7 +1,13 @@
 name: CI
 on:
-  push:
   pull_request:
+  # Na main o CI roda como parte do deploy (workflow_call em main_academia-beauty.yml): sem execução duplicada.
+  push:
+    branches-ignore: [main]
+  workflow_call:
+
+permissions:
+  contents: read
 
 jobs:
   verify:
@@ -38,5 +44,17 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm --filter @academia/api lint
+      - run: pnpm --filter @academia/web lint
+      - run: pnpm audit:prod
       - run: pnpm test
       - run: pnpm --filter @academia/web build
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

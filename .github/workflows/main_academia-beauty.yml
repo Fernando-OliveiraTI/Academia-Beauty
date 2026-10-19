@@ -1,67 +1,88 @@
-name: Build and deploy Node.js app to Azure Web App - academia-beauty
+name: Build and deploy - academia-beauty
 
+# Push na main: o CI completo (typecheck, lint, testes com MySQL, auditoria, build) roda primeiro; só se passar as imagens
+# Docker são publicadas e, se o Azure estiver configurado (variáveis/segredos abaixo), implantadas.
+# Configuração e passos manuais: docs/deploy-azure.md
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
-jobs:
-  build:
-    runs-on: ubuntu-24.04
+permissions:
+  contents: read
 
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+
+  images:
+    needs: verify
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
-
+      packages: write
+    strategy:
+      fail-fast: true
+      matrix:
+        service: [api, web]
+    outputs:
+      owner: ${{ steps.meta.outputs.owner }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.js 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.x'
-
-      - name: Install pnpm
-        run: npm install -g pnpm
-
-      - name: Install dependencies
+      - name: Nome da imagem (o GHCR exige minúsculas)
+        id: meta
         run: |
-          if [ -f pnpm-lock.yaml ]; then
-            pnpm install --frozen-lockfile
-          else
-            npm install
-          fi
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "owner=$owner" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/$owner/academia-${{ matrix.service }}" >> "$GITHUB_OUTPUT"
 
-      - name: Build application
-        run: npm run build --if-present
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Run tests
-        run: npm run test --if-present
-
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
+      - uses: docker/login-action@v3
         with:
-          name: node-app
-          path: .
-          include-hidden-files: true
-          retention-days: 1
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-  deploy:
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/${{ matrix.service }}.Dockerfile
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ github.sha }}
+            ${{ steps.meta.outputs.image }}:latest
+          # Valores lidos no build do web (rewrites, CSP e validação de mídia). Ignorados na imagem da API.
+          build-args: |
+            API_ORIGIN=${{ vars.WEB_API_ORIGIN || 'http://localhost:3333' }}
+            MEDIA_CDN_HOST=${{ vars.MEDIA_CDN_HOST }}
+            CHECKOUT_ALLOWED_HOSTS=${{ vars.CHECKOUT_ALLOWED_HOSTS }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  deploy-api:
+    needs: images
+    if: ${{ vars.AZURE_WEBAPP_API != '' }}
     runs-on: ubuntu-24.04
-    needs: build
-
+    environment: production
     steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
+      - uses: azure/webapps-deploy@v3
         with:
-          name: node-app
+          app-name: ${{ vars.AZURE_WEBAPP_API }}
+          slot-name: Production
+          publish-profile: ${{ secrets.AZURE_PUBLISHPROFILE_API }}
+          images: ghcr.io/${{ needs.images.outputs.owner }}/academia-api:${{ github.sha }}
 
-      - name: Deploy to Azure Web App
-        id: deploy-to-webapp
-        uses: azure/webapps-deploy@v3
+  deploy-web:
+    needs: [images, deploy-api]
+    if: ${{ always() && needs.images.result == 'success' && vars.AZURE_WEBAPP_WEB != '' && (needs.deploy-api.result == 'success' || needs.deploy-api.result == 'skipped') }}
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - uses: azure/webapps-deploy@v3
         with:
-          app-name: 'academia-beauty'
-          slot-name: 'Production'
-          package: .
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_25829C9D99994F3187045A9AF2DE7B01 }}
+          app-name: ${{ vars.AZURE_WEBAPP_WEB }}
+          slot-name: Production
+          publish-profile: ${{ secrets.AZURE_PUBLISHPROFILE_WEB }}
+          images: ghcr.io/${{ needs.images.outputs.owner }}/academia-web:${{ github.sha }}
