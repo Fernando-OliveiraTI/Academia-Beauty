@@ -14,7 +14,12 @@ assert.ok(EMAIL && PASSWORD, 'Defina E2E_ADMIN_EMAIL e E2E_ADMIN_PASSWORD')
 
 const stamp = Date.now().toString(36)
 const SLUG = `e2e-${stamp}`
-const NAME = `Teste E2e${stamp.replace(/[0-9]/g, 'x')}`.slice(0, 40)
+const letters = stamp.replace(/[0-9]/g, 'x')
+const NAME = `Teste E2e${letters}`.slice(0, 40)
+const BASE_SLUG = `e2e-pro-base-${stamp}`
+const BASE_NAME = `Base E2e ${letters}`.slice(0, 40)
+const DRAFT_SLUG = `e2e-pro-rasc-${stamp}`
+const DRAFT_NAME = `Rascunho E2e ${letters}`.slice(0, 40)
 
 const browser = await chromium.launch({ channel: 'chrome' })
 const context = await browser.newContext()
@@ -26,61 +31,82 @@ page.on('response', async (r) => { if (r.status() >= 400 && r.url().includes('/a
 const results: string[] = []
 const step = async (name: string, fn: () => Promise<void>) => { await fn(); results.push(`✓ ${name}`) }
 
+const xsrf = async () => decodeURIComponent((await context.cookies()).find((c) => c.name === 'XSRF-TOKEN')?.value ?? '')
+const send = async (method: 'get' | 'post' | 'put' | 'delete', path: string, data?: unknown) => {
+  const res = await context.request[method](`${BASE}/api${path}`, { headers: { 'x-xsrf-token': await xsrf() }, data })
+  return { status: res.status(), body: (await res.json().catch(() => null)) as any }
+}
+const proData = (name: string) => ({
+  name, specialty: 'Hair', tagline: 'Técnica e carreira.', experienceYears: 10, instagramHandle: '@e2e',
+  instagramFollowers: '10 mil', instagramUrl: 'https://instagram.com/e2e', portraitSrc: '/site/profissional/lukas_perfil.png',
+  cardPhotoSrc: '/site/home/lukas-campos.png', bio: ['Trajetória de dez anos.'], works: [],
+})
+const created: number[] = []
+
 const goStep = (p: Page, label: string) => p.getByRole('button', { name: label }).click()
 const publicStatus = async (path: string) => (await fetch(`${BASE}${path}`, { redirect: 'manual' })).status
 const has = async (path: string, re: RegExp) => re.test(await publicHtml(path))
 const publicHtml = async (path: string) => (await fetch(`${BASE}${path}`, { cache: 'no-store' })).text()
 
 try {
-  await step('login e lista com o profissional publicado do seed', async () => {
+  await step('login; cria um profissional publicado e um rascunho; a lista mostra o publicado', async () => {
     await page.goto(`${BASE}/admin/login`)
     await page.getByLabel('E-mail').fill(EMAIL)
     await page.getByLabel('Senha').fill(PASSWORD)
     await page.getByRole('button', { name: 'Entrar' }).click()
     await page.waitForURL(`${BASE}/admin`)
+    const base = await send('post', '/admin/professionals', { slug: BASE_SLUG, data: proData(BASE_NAME) })
+    assert.equal(base.status, 201, JSON.stringify(base.body))
+    created.push(base.body.id)
+    assert.equal((await send('post', `/admin/professionals/${base.body.id}/publish`)).status, 200)
+    assert.equal((await send('put', `/admin/professionals/${base.body.id}/showcase`, { homeVisible: true, homeOrder: 60, featured: false })).status, 200)
+    const draft = await send('post', '/admin/professionals', { slug: DRAFT_SLUG, data: proData(DRAFT_NAME) })
+    assert.equal(draft.status, 201, JSON.stringify(draft.body))
+    created.push(draft.body.id)
     await page.getByRole('link', { name: 'Profissionais' }).click()
     await page.waitForURL('**/admin/profissionais')
-    await page.getByRole('link', { name: 'Lukas Campos' }).waitFor()
+    await page.getByRole('link', { name: BASE_NAME }).first().waitFor()
   })
 
-  await step('página pública do seed renderiza; rascunho e slug inexistente dão 404', async () => {
-    const res = await page.goto(`${BASE}/profissionais/lukas-campos`)
+  await step('página pública do publicado renderiza; rascunho e slug inexistente dão 404', async () => {
+    const res = await page.goto(`${BASE}/profissionais/${BASE_SLUG}`)
     assert.equal(res?.status(), 200)
-    await page.locator('h1.hero-name').filter({ hasText: 'Lukas' }).waitFor()
-    assert.equal(await publicStatus('/profissionais/cleber-venancio'), 404) // rascunho
+    await page.locator('h1.hero-name').filter({ hasText: 'Base' }).waitFor()
+    assert.equal(await publicStatus(`/profissionais/${DRAFT_SLUG}`), 404) // rascunho
     assert.equal(await publicStatus('/profissionais/nao-existe-mesmo'), 404)
   })
 
   await step('a Home lista só publicados e liga para a página do profissional', async () => {
     await page.goto(`${BASE}/`)
     const links = await page.locator('a.professor-card-link').evaluateAll((els) => els.map((e) => e.getAttribute('href')))
-    assert.ok(links.includes('/profissionais/lukas-campos'))
-    assert.ok(!links.includes('/profissionais/cleber-venancio'), 'rascunho não pode aparecer na vitrine')
+    assert.ok(links.includes(`/profissionais/${BASE_SLUG}`), 'publicado deve aparecer na vitrine')
+    assert.ok(!links.includes(`/profissionais/${DRAFT_SLUG}`), 'rascunho não pode aparecer na vitrine')
   })
 
-  await step('etapa 1: valida nome obrigatório e cria o rascunho', async () => {
+  await step('galeria: escolhe o template (abre no editor); cadastro: etapa 1 valida nome e preenche slug', async () => {
     await page.goto(`${BASE}/admin/profissionais/novo`)
-    await page.getByRole('button', { name: 'Criar rascunho' }).click()
+    await page.getByRole('button', { name: /Usar este template/ }).first().click()
+    await page.waitForURL(/\/admin\/editor\/profissionais\/\d+$/)
+    const draftId = page.url().split('/').pop()!
+    created.push(Number(draftId))
+    await page.goto(`${BASE}/admin/profissionais/${draftId}`)
+    await page.getByLabel('Nome completo').fill('')
+    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
     await page.getByRole('alert').first().waitFor()
     await page.getByLabel('Nome completo').fill(NAME)
     await page.getByLabel('Especialidade').fill('Barber')
-    assert.equal(await page.getByLabel('Endereço da página (slug)').inputValue(), NAME.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
     await page.getByLabel('Endereço da página (slug)').fill(SLUG)
-    await page.getByRole('button', { name: 'Criar rascunho' }).click()
-    await page.waitForURL(/\/admin\/profissionais\/\d+$/)
+    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
+    await page.getByText('Alterações salvas.').waitFor()
   })
 
   const editUrl = page.url()
   const id = editUrl.split('/').pop()!
 
-  await step('rascunho incompleto: publicar bloqueado, pendências listadas e pré-visualização explica', async () => {
+  await step('rascunho incompleto: publicar bloqueado e pendências listadas', async () => {
     await goStep(page, 'Revisão e publicação')
     await page.getByText('Pendências para publicar:').waitFor()
     assert.equal(await page.getByRole('button', { name: 'Publicar', exact: true }).isDisabled(), true)
-    const preview = await context.newPage()
-    await preview.goto(`${BASE}/admin/preview/profissionais/${id}`)
-    await preview.getByRole('heading', { name: 'Complete o cadastro para visualizar' }).waitFor()
-    await preview.close()
   })
 
   await step('rejeita marcação no nome (cliente) sem enviar ao servidor', async () => {
@@ -104,23 +130,24 @@ try {
     await page.getByText('Alterações salvas.').waitFor()
 
     await goStep(page, 'Imagens e vídeo')
-    await page.getByLabel('Retrato da página').fill('javascript:alert(1)')
-    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
-    await page.getByText('Corrija os campos destacados.').waitFor()
-    await page.getByLabel('Retrato da página').fill('/site/profissional/lukas_perfil.png')
-    await page.getByLabel('Foto do cartão na Home').fill('/site/home/lukas-campos.png')
-    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
-    await page.getByText('Alterações salvas.').waitFor()
+    // As imagens agora são escolhidas pelo seletor (biblioteca). Aqui se confere que a API recusa caminho perigoso e aceita o válido.
+    const row = await send('get', `/admin/professionals/${id}`)
+    const bad = await send('put', `/admin/professionals/${id}`, { revision: row.body.revision, data: { ...row.body.data, portraitSrc: 'javascript:alert(1)' } })
+    assert.equal(bad.status, 422)
+    const ok = await send('put', `/admin/professionals/${id}`, { revision: row.body.revision, data: { ...row.body.data, portraitSrc: '/site/profissional/lukas_perfil.png', cardPhotoSrc: '/site/home/lukas-campos.png' } })
+    assert.equal(ok.status, 200, JSON.stringify(ok.body))
+    await page.reload()
 
     await goStep(page, 'Trajetória e trabalhos')
     await page.getByRole('button', { name: 'Adicionar parágrafo' }).click()
     await page.getByLabel('Parágrafo 1').fill('Trajetória do profissional de teste.')
-    await page.getByRole('button', { name: 'Adicionar trabalho' }).click()
-    await page.getByLabel('Trabalho 1 · título').fill('Corte Teste')
-    await page.getByLabel('Imagem', { exact: true }).fill('/site/profissional/trabLukas01.png')
-    await page.getByLabel('Texto alternativo da imagem').fill('Corte de teste')
     await page.getByRole('button', { name: 'Salvar', exact: true }).click()
     await page.getByText('Alterações salvas.').waitFor()
+    // O trabalho exige imagem, escolhida pelo seletor (biblioteca): aqui entra pela API.
+    const row2 = await send('get', `/admin/professionals/${id}`)
+    const works = [{ imageSrc: '/site/profissional/trabLukas01.png', alt: 'Corte de teste', title: 'Corte Teste', tags: [] }]
+    assert.equal((await send('put', `/admin/professionals/${id}`, { revision: row2.body.revision, data: { ...row2.body.data, works } })).status, 200)
+    await page.reload()
   })
 
   await step('pré-visualização do rascunho renderiza com os dados e não é pública', async () => {
@@ -185,19 +212,19 @@ try {
     await page.getByText('Página tirada do ar.').waitFor()
     assert.equal(await publicStatus(`/profissionais/${SLUG}`), 404)
     assert.ok(!(await has('/', new RegExp(`/profissionais/${SLUG}`))), 'despublicado ainda na vitrine')
-    page.once('dialog', (d) => d.accept())
     await page.getByRole('button', { name: 'Arquivar' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Arquivar' }).click()
     await page.getByText('Profissional arquivado.').waitFor()
     await page.getByRole('button', { name: 'Restaurar' }).click()
     await page.getByText('Profissional restaurado como rascunho.').waitFor()
-    page.once('dialog', (d) => d.accept())
     await page.getByRole('button', { name: 'Arquivar' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Arquivar' }).click()
     await page.getByText('Profissional arquivado.').waitFor()
   })
 
   await step('mobile 390px: lista e formulário sem rolagem horizontal', async () => {
     await page.setViewportSize({ width: 390, height: 800 })
-    for (const url of [`${BASE}/admin/profissionais`, editUrl, `${BASE}/profissionais/lukas-campos`]) {
+    for (const url of [`${BASE}/admin/profissionais`, editUrl, `${BASE}/profissionais/${BASE_SLUG}`]) {
       await page.goto(url)
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
       assert.ok(overflow <= 1, `overflow horizontal de ${overflow}px em ${url}`)
@@ -216,5 +243,13 @@ try {
   console.error('Erros de console até aqui:', consoleErrors)
   process.exitCode = 1
 } finally {
+  try {
+    for (const professionalId of created) {
+      await send('post', `/admin/professionals/${professionalId}/unpublish`)
+      await send('post', `/admin/professionals/${professionalId}/archive`)
+    }
+  } catch (error) {
+    console.error('limpeza falhou:', error)
+  }
   await browser.close()
 }

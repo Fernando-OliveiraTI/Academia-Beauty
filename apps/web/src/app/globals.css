@@ -326,6 +326,7 @@ a { color: var(--color-primary); }
 .ed-menu-list button { min-height: 36px; }
 
 .ed-body { gap: var(--space-5); grid-template-columns: minmax(250px, 290px) minmax(0, 1fr) minmax(310px, 360px); }
+@media (max-width: 1100px) { .ed-body { grid-template-columns: minmax(0, 1fr); } }
 .ed-tree > legend { padding: 0 0 var(--space-3); font-size: 10px; letter-spacing: .14em; color: var(--color-text-muted); }
 .ed-add-btn { min-height: 34px; font-size: 12px; font-weight: 500; background: transparent; color: var(--color-text-secondary); border: 1px dashed var(--color-border-strong); border-radius: 8px; }
 .ed-add-btn:hover:not(:disabled) { color: var(--color-primary); border-color: var(--color-primary); }

@@ -207,3 +207,8 @@ Pedido do usuário: testar o checkout da The Members dentro da página, mantendo
 - A URL do iframe passa pela mesma validação do Modo A (https + `CHECKOUT_ALLOWED_HOSTS`). O CSP do site ganhou `frame-src 'self' <hosts>`, lido de `CHECKOUT_ALLOWED_HOSTS` **também no ambiente do web** (rebuild/restart ao mudar).
 - Troca de provedor vale na página pública só ao republicar (como o preço); "Pausar vendas" continua imediato.
 - Limites conhecidos: o iframe só funciona se a The Members permitir ser embutida (`X-Frame-Options`/`frame-ancestors` do lado deles) e se aceitarem nosso domínio; conclusão da compra não é detectada (sem evento/webhook); o rastreio conta o clique em comprar, não o pagamento. Fase 6 (Modo B/webhooks) segue não autorizada.
+
+## D-031 — Escopo da 9B (Estilo) e da 9C (criar/duplicar seções) (2026-10-19)
+- **9B:** só **Fundo** por seção, em tons nomeados do design system (sem cor livre). Espaçamento, alinhamento e largura ficam de fora por ora. Os tons exatos serão propostos na implementação, a partir dos tokens existentes; `settings` do `page-schema` deixa de ser um objeto vazio e passa a aceitar só `background`.
+- **9C:** podem ser adicionadas/duplicadas seções dos tipos **texto e destaque, vídeo e galeria, chamada para ação (CTA) e FAQ e depoimentos**. Proposta de limites: até 4 por tipo e 30 seções por documento, `id` único `<tipo>-<n>`, âncora derivada do id; as demais seções seguem únicas ou obrigatórias conforme as regras atuais do `editor-core`.
+- **Status:** decidido pelo usuário; **implementação ainda não autorizada**. Limites e nomes dos tons são proposta a confirmar.

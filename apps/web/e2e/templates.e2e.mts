@@ -79,24 +79,19 @@ try {
     assert.equal((await fetch(`${BASE}/preview/modelos/professional-inexistente`)).status, 404)
   })
 
-  await step('assistente: escolhe o modelo Premium, vê o exemplo e cria o rascunho', async () => {
+  await step('galeria: escolhe o modelo Premium, vê o exemplo e cria o rascunho já no editor', async () => {
     await page.goto(`${BASE}/admin/profissionais/novo`)
-    await page.getByLabel('Nome completo').fill(`Modelo Premium ${stamp}`)
-    await page.getByLabel('Especialidade').fill('Hair')
-    const slug = `e2e-tpl-premium-${stamp}`
-    await page.getByLabel('Endereço da página (slug)').fill(slug)
-    const premium = page.getByRole('radio', { name: /^Premium/ })
-    assert.equal(await page.getByRole('radio', { name: /^Original/ }).isChecked(), true, 'o Original é o padrão')
-    await premium.check()
-    const link = page.getByRole('link', { name: /Ver exemplo do modelo Premium/ })
+    const card = page.locator('article', { has: page.getByRole('heading', { name: 'Premium', exact: true }) })
+    const link = card.getByRole('link', { name: /Ver exemplo do modelo Premium/ })
     assert.equal(await link.getAttribute('href'), '/preview/modelos/professional-premium')
     assert.equal(await link.getAttribute('target'), '_blank')
-    await page.getByRole('button', { name: 'Criar rascunho' }).click()
-    await page.waitForURL(/\/admin\/profissionais\/\d+$/)
+    await card.getByRole('button', { name: /Usar este template/ }).click()
+    await page.waitForURL(/\/admin\/editor\/profissionais\/\d+$/)
     const id = Number(page.url().split('/').pop())
-    ids.set('professional-premium', { id, slug })
-    assert.equal((await get(`/admin/professionals/${id}`)).body.templateKey, 'professional-premium')
-    assert.equal(await page.getByRole('radio', { name: /^Premium/ }).isChecked(), true)
+    const row = await get(`/admin/professionals/${id}`)
+    assert.equal(row.body.templateKey, 'professional-premium')
+    assert.equal(row.body.status, 'draft')
+    ids.set('professional-premium', { id, slug: row.body.slug })
   })
 
   await step('cria e publica um profissional por modelo (via API) e confere a página pública', async () => {
@@ -180,7 +175,7 @@ try {
     assert.equal(res.body.templateKey, 'professional-video')
   })
 
-  await step('390px: exemplos dos seis modelos e assistente sem rolagem horizontal', async () => {
+  await step('390px: exemplos dos seis modelos e galeria sem rolagem horizontal', async () => {
     await page.setViewportSize({ width: 390, height: 800 })
     for (const t of TEMPLATES) {
       await page.goto(`${BASE}/preview/modelos/${t.key}`)
@@ -188,8 +183,8 @@ try {
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `overflow em ${t.key}`)
     }
     await page.goto(`${BASE}/admin/profissionais/novo`)
-    await page.getByRole('radio', { name: /^Premium/ }).waitFor()
-    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'overflow no assistente')
+    await page.getByRole('heading', { name: 'Premium', exact: true }).waitFor()
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'overflow na galeria')
     await page.setViewportSize({ width: 1440, height: 900 })
   })
 

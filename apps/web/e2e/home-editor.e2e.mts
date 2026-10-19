@@ -67,6 +67,9 @@ try {
     await page.getByRole('button', { name: 'Entrar' }).click()
     await page.waitForURL(`${BASE}/admin`)
     await page.getByRole('link', { name: 'Home', exact: true }).waitFor()
+    // Parte sempre do template: o rascunho salvo da Home pode ter ficado sem seções por uso anterior do editor.
+    const current = await get('/admin/home/document')
+    assert.equal((await send('delete', '/admin/home/document', { revision: current.body.documentRevision })).status, 200)
   })
 
   await step('editor da Home abre com as seções do template e a pré-visualização renderizada', async () => {
@@ -93,7 +96,9 @@ try {
   })
 
   await step('campo de imagem do hero oferece a biblioteca de mídia', async () => {
-    await page.getByRole('button', { name: /Biblioteca.*Arquivo/ }).first().waitFor()
+    await page.getByRole('button', { name: /^Editar /i }).first().click()
+    await page.getByRole('tab', { name: /biblioteca/i }).waitFor()
+    await page.keyboard.press('Escape')
   })
 
   await step('publicar muda a Home pública na hora', async () => {
@@ -131,7 +136,10 @@ try {
     await until(async () => (await homeHtml()).includes(`/cursos/${COURSE_SLUG}`), 'cartão do curso na Home')
     const html = await homeHtml()
     assert.match(html, new RegExp(COURSE_TITLE))
-    assert.doesNotMatch(html, /\/cursos\/corte-profissional-classic-bob|\/cursos\/camadas-desconectadas/, 'os cartões estáticos antigos não devem mais existir')
+    // Sem cartões estáticos: todo link de curso da Home aponta para um curso que existe (independe dos dados do banco).
+    const links = [...new Set([...html.matchAll(/href="(\/cursos\/[a-z0-9-]+)"/g)].map((m) => m[1]!))]
+    assert.ok(links.includes(`/cursos/${COURSE_SLUG}`))
+    for (const link of links) assert.equal((await fetch(`${BASE}${link}`, { cache: 'no-store' })).status, 200, `link quebrado na Home: ${link}`)
     const res = await fetch(`${BASE}/cursos/${COURSE_SLUG}`, { cache: 'no-store' })
     assert.equal(res.status, 200)
   })

@@ -60,13 +60,18 @@ try {
 
   await step('contador da prova social termina no valor formatado', async () => {
     await page.evaluate(() => document.getElementById('depoimentos')!.scrollIntoView({ behavior: 'instant' }))
-    await page.waitForFunction(() => document.querySelectorAll('[data-count]')[1]?.textContent === '53,6 mil', undefined, { timeout: 4000 })
+    let text = ''
+    for (let i = 0; i < 20 && text !== '53,6 mil'; i++) {
+      text = (await page.evaluate(() => document.querySelectorAll('[data-count]')[1]?.textContent ?? '')) as string
+      if (text !== '53,6 mil') await page.waitForTimeout(300)
+    }
+    assert.equal(text, '53,6 mil')
   })
 
   await step('CTA rola até o checkout e foca o nome', async () => {
     await page.evaluate(() => window.scrollTo(0, 0))
     await page.locator('#hero-cta').click()
-    await page.waitForFunction(() => document.activeElement?.id === 'name', undefined, { timeout: 4000 })
+    await page.waitForFunction(() => document.activeElement?.id === 'buyer-0', undefined, { timeout: 4000 })
   })
 
   await step('checkout etapa 1: validação, máscara e avanço', async () => {
@@ -80,7 +85,7 @@ try {
     await page.getByLabel('Celular com DDD').pressSequentially('11987654321')
     assert.equal(await page.getByLabel('Celular com DDD').inputValue(), '(11) 98765-4321')
     await page.getByLabel('Celular com DDD').press('Enter') // Enter avança, não envia
-    await page.getByText('Quase lá, Maria. Escolha como prefere pagar.').waitFor()
+    await page.getByText('Escolha como prefere pagar.').waitFor() // 10A: textos configuráveis, sem o nome do comprador
     assert.equal(await page.locator('.step.is-active b').textContent(), '2')
   })
 
@@ -92,7 +97,7 @@ try {
     await page.getByRole('alert').filter({ hasText: 'O pagamento ainda não está disponível' }).waitFor()
     assert.deepEqual(requests, [], `requisições não-GET: ${requests.join(' | ')}`)
     await page.getByRole('button', { name: 'Voltar e editar meus dados' }).click()
-    await page.waitForFunction(() => document.activeElement?.id === 'name')
+    await page.waitForFunction(() => document.activeElement?.id === 'buyer-0')
   })
 
   await step('sem erros nem avisos de console (hidratação inclusa)', async () => {
