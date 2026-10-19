@@ -1,5 +1,6 @@
-import Link from 'next/link'
-import { DEVICE_LABEL, countryName, money } from '@/lib/checkout-labels'
+import { PeriodFilter } from '@/components/period-filter'
+import { money } from '@/lib/format'
+import { DEVICE_LABEL, countryName } from '@/lib/checkout-labels'
 import { HoursBars } from './hours-bars'
 
 export type Insights = {
@@ -67,9 +68,7 @@ export function AudienceInsights({ data }: { data: Insights }) {
           <h2>Perfil do público</h2>
           <p>Quem abriu o checkout nos últimos {data.days} dias. Quanto mais visitas, mais confiável o retrato.</p>
         </div>
-        <nav className="tm-filters" aria-label="Período">
-          {[7, 30, 90].map((d) => <Link key={d} className="tm-filter" href={`/admin/checkouts?days=${d}`} aria-pressed={data.days === d}>{d} dias</Link>)}
-        </nav>
+        <PeriodFilter value={data.days} hrefFor={(d) => `/admin/checkouts?days=${d}`} />
       </header>
 
       <dl className="ai-kpis">

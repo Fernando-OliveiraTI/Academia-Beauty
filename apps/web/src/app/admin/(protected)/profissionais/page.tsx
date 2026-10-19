@@ -5,7 +5,9 @@ import { mediaSrc } from '@academia/page-renderer'
 import { adminGet, getCurrentUser } from '@/lib/api-server'
 import { RowActions } from '@/components/row-actions'
 import { ListToolbar } from '@/components/list-toolbar'
+import { ListEmpty } from '@/components/list-empty'
 import { Pager } from '@/components/pager'
+import { isPerPage, pageOf } from '@/lib/list-params'
 
 export const metadata = { title: 'Profissionais' }
 export const dynamic = 'force-dynamic'
@@ -32,9 +34,9 @@ export default async function ProfessionalsPage({ searchParams }: { searchParams
   if (['draft', 'published', 'archived'].includes(status)) params.set('status', status)
   if (q) params.set('q', q.slice(0, 80))
   if (['oldest', 'name', 'name_desc', 'created'].includes(sort)) params.set('sort', sort)
-  if (['10', '20', '50'].includes(perPage)) params.set('perPage', perPage)
+  if (isPerPage(perPage)) params.set('perPage', perPage)
   if (/^\d+$/.test(professionalId)) params.set('professionalId', professionalId)
-  params.set('page', String(Math.max(1, Number(page) || 1)))
+  params.set('page', String(pageOf(page)))
   const { data, status: httpStatus } = await adminGet<List>(`/admin/professionals?${params}`)
   const canWrite = user.permissions.includes('professionals.write')
   const canArchive = user.permissions.includes('professionals.publish')
@@ -65,7 +67,7 @@ export default async function ProfessionalsPage({ searchParams }: { searchParams
       {!data ? (
         <p role="alert" className="form-error">Não foi possível carregar a lista (código {httpStatus}). Tente novamente.</p>
       ) : data.items.length === 0 ? (
-        <section className="list-empty"><b>Nenhum profissional encontrado</b><p>Ajuste a busca ou limpe os filtros para ver mais resultados.</p></section>
+        <ListEmpty title="Nenhum profissional encontrado">Ajuste a busca ou limpe os filtros para ver mais resultados.</ListEmpty>
       ) : (
         <div className="admin-table-wrap admin-panel">
           <table className="admin-table">

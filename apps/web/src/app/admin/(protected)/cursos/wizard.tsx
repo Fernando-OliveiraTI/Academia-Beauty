@@ -16,6 +16,8 @@ import {
 } from '@academia/contracts'
 import { Button, Field, TextArea } from '@academia/design-system'
 import { apiSend } from '@/lib/api-client'
+import { describeApiError, type ApiErrorBody } from '@/lib/api-errors'
+import { brl } from '@/lib/format'
 import { mediaSrc } from '@academia/page-renderer'
 import { ActionCard, AddButton, Ico, InfoCard, IssueRow, NumberedSection, PanelHead, RemoveButton, SelectField, SummaryRow, WizardIcon, WizardSteps } from '@/components/wizard-ui'
 import { ImageField } from '@/components/image-field'
@@ -23,7 +25,7 @@ import { CoursePaymentsPanel } from '@/components/course-payments'
 import { canonical, centsToInput, emptyCourseData, emptyLines, fieldErrors, groupIssuesByStep, maskBRL, maskPercent, parseBRLToCents, STEPS, suggestSlug } from './form-model'
 
 type Loaded = AdminCourse & { readiness: ReadinessIssue[] }
-type ApiError = { message?: string; code?: string; errors?: Array<{ field: string; message: string }> }
+type ApiError = ApiErrorBody
 export type ProfessionalOption = { id: number; name: string }
 
 const MESSAGES: Record<string, string> = {
@@ -36,15 +38,11 @@ const MESSAGES: Record<string, string> = {
 }
 
 function describe(status: number, body: ApiError | null): string {
-  if (body?.code && MESSAGES[body.code]) return `${MESSAGES[body.code]}${body.code === 'checkout_url_invalid' && body.message ? ` ${body.message}.` : ''}`
-  if (status === 0) return 'Sem conexão com o servidor. Verifique a internet e tente novamente.'
-  if (status === 401) return 'Sua sessão expirou. Entre novamente (em outra aba) e tente de novo.'
-  if (status === 403) return 'Você não tem permissão para esta ação. Recarregue a página.'
-  if (status === 422 && body?.message) return body.message
-  return 'Não foi possível concluir agora. Tente novamente.'
+  const known = body?.code ? MESSAGES[body.code] : undefined
+  const extra = body?.code === 'checkout_url_invalid' && body.message ? ` ${body.message}.` : ''
+  return describeApiError(status, body, known ? `${known}${extra}` : null)
 }
 
-const brl = (cents: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100)
 const replaceAt = <T,>(list: readonly T[], index: number, value: T) => list.map((item, i) => (i === index ? value : item))
 const removeAt = <T,>(list: readonly T[], index: number) => list.filter((_, i) => i !== index)
 

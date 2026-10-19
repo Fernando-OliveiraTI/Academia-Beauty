@@ -12,13 +12,14 @@ import {
 } from '@academia/contracts'
 import { Button, Field, TextArea } from '@academia/design-system'
 import { apiSend } from '@/lib/api-client'
+import { describeApiError, type ApiErrorBody } from '@/lib/api-errors'
 import { PanelHead, WizardIcon, WizardSteps } from '@/components/wizard-ui'
 import { PROFESSIONAL_TEMPLATES } from '@academia/section-schemas'
 import { ImageField } from '@/components/image-field'
 import { canonical, emptyProfessionalData, fieldErrors, groupIssuesByStep, parseTags, STEPS, suggestSlug } from './form-model'
 
 type Loaded = AdminProfessional & { readiness: ReadinessIssue[] }
-type ApiError = { message?: string; code?: string; errors?: Array<{ field: string; message: string }> }
+type ApiError = ApiErrorBody
 
 const MESSAGES: Record<string, string> = {
   revision_conflict: 'Outra pessoa alterou este cadastro. Recarregue a página para continuar sem perder o trabalho dela.',
@@ -29,12 +30,7 @@ const MESSAGES: Record<string, string> = {
 }
 
 function describe(status: number, body: ApiError | null): string {
-  if (body?.code && MESSAGES[body.code]) return MESSAGES[body.code]!
-  if (status === 0) return 'Sem conexão com o servidor. Verifique a internet e tente novamente.'
-  if (status === 401) return 'Sua sessão expirou. Entre novamente (em outra aba) e tente de novo.'
-  if (status === 403) return 'Você não tem permissão para esta ação. Recarregue a página.'
-  if (status === 422 && body?.message) return body.message
-  return 'Não foi possível concluir agora. Tente novamente.'
+  return describeApiError(status, body, body?.code ? MESSAGES[body.code] : null)
 }
 
 const STEP_ICONS = [WizardIcon.user, WizardIcon.sparkle, WizardIcon.image, WizardIcon.list, WizardIcon.check]

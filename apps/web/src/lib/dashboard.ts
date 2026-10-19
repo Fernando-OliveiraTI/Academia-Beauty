@@ -17,8 +17,6 @@ export type Dashboard = {
   recent: { action: string; resourceType: string | null; resourceId: string | null; actor: string | null; item: string | null; at: string }[]
 }
 
-export const RANGES = [7, 30, 90] as const
-
 const nf = new Intl.NumberFormat('pt-BR')
 export const fmtInt = (n: number) => nf.format(Math.round(n))
 /** 12.400 → "12,4 mil": só nos números grandes dos cartões, onde o espaço é curto. */

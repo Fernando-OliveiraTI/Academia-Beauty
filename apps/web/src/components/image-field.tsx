@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useId, useRef, useState, type DragEvent } from 'react'
+import { useId, useRef, useState, type DragEvent } from 'react'
 import type { MediaAsset, MediaKind } from '@academia/contracts'
 import { mediaIdOf } from '@academia/page-schema'
 import { apiUpload } from '@/lib/api-client'
 import { MediaDropzone } from './media-dropzone'
 import { MediaLibrary } from './media-library'
+import { useDialogSync } from './use-dialog'
 
 const ACCEPT: Record<MediaKind, string> = {
   image: 'image/jpeg,image/png,image/webp,image/avif',
@@ -44,12 +45,7 @@ export function ImageField({ label, value, onChange, onPickAsset, onClear, error
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-    if (editing && !dialog.open) (typeof dialog.showModal === 'function' ? dialog.showModal() : dialog.setAttribute('open', ''))
-    if (!editing && dialog.open) (typeof dialog.close === 'function' ? dialog.close() : dialog.removeAttribute('open'))
-  }, [editing])
+  useDialogSync(dialogRef, editing)
 
   const mediaId = mediaIdOf(value)
   const previewSrc = mediaId ? `/media/${mediaId}?w=480` : value

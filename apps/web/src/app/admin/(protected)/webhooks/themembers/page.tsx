@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation'
 import { adminGet, getCurrentUser } from '@/lib/api-server'
 import { ListToolbar, type StatusTab } from '@/components/list-toolbar'
-import { Pager } from '@/components/pager'
+import { ListEmpty } from '@/components/list-empty'
+import { Pager, lastPageOf } from '@/components/pager'
+import { isPerPage, listHref, pageOf } from '@/lib/list-params'
 import { WebhookDeliveries, type DeliveryItem } from '@/components/webhook-deliveries'
 import { RESULT_LABEL } from '@/lib/webhook-labels'
 
@@ -43,8 +45,8 @@ export default async function WebhookLogPage({ searchParams }: { searchParams: P
   if (FILTERS.includes(status)) params.set('result', status)
   if (q) params.set('q', q.slice(0, 80))
   if (sort === 'oldest') params.set('sort', sort)
-  if (['10', '20', '50'].includes(perPage)) params.set('perPage', perPage)
-  params.set('page', String(Math.max(1, Number(page) || 1)))
+  if (isPerPage(perPage)) params.set('perPage', perPage)
+  params.set('page', String(pageOf(page)))
   const { data } = await adminGet<List>(`/admin/webhook-deliveries?${params}`)
 
   const total = Object.values(data?.counts ?? {}).reduce((a, b) => a + b, 0)
@@ -52,12 +54,7 @@ export default async function WebhookLogPage({ searchParams }: { searchParams: P
     { value: '', label: 'Todas', icon: dot('all'), count: total },
     ...FILTERS.filter((f) => (data?.counts[f] ?? 0) > 0 || f === status).map((f) => ({ value: f, label: RESULT_LABEL[f]!, icon: dot(TONE[f]!), count: data?.counts[f] ?? 0 })),
   ]
-  const hrefFor = (p: number) => {
-    const next = new URLSearchParams()
-    for (const [k, v] of [['status', status], ['q', q], ['sort', sort], ['perPage', perPage]] as const) if (v) next.set(k, v)
-    next.set('page', String(p))
-    return `/admin/webhooks/themembers?${next}`
-  }
+  const hrefFor = (p: number) => listHref('/admin/webhooks/themembers', { status, q, sort, perPage }, p)
 
   return (
     <main>
@@ -79,14 +76,13 @@ export default async function WebhookLogPage({ searchParams }: { searchParams: P
       {!data ? (
         <p role="alert" className="form-error">Não foi possível carregar o registro. Tente recarregar a página.</p>
       ) : data.items.length === 0 ? (
-        <section className="list-empty">
-          <b>{q || status ? 'Nenhuma chamada encontrada' : 'Nenhuma chamada registrada ainda'}</b>
-          <p>{q || status ? 'Ajuste a busca ou limpe os filtros para ver mais resultados.' : `Cadastre a URL do webhook na The Members e faça um pagamento de teste: a chamada aparece aqui, aceita ou não. Fica guardada por ${data.retentionDays} dias.`}</p>
-        </section>
+        <ListEmpty title={q || status ? 'Nenhuma chamada encontrada' : 'Nenhuma chamada registrada ainda'}>
+          {q || status ? 'Ajuste a busca ou limpe os filtros para ver mais resultados.' : `Cadastre a URL do webhook na The Members e faça um pagamento de teste: a chamada aparece aqui, aceita ou não. Fica guardada por ${data.retentionDays} dias.`}
+        </ListEmpty>
       ) : (
         <section className="admin-panel wh-panel">
           <WebhookDeliveries items={data.items} />
-          <Pager page={data.page} lastPage={Math.max(1, Math.ceil(data.total / data.perPage))} total={data.total} perPage={data.perPage} hrefFor={hrefFor} />
+          <Pager page={data.page} lastPage={lastPageOf(data.total, data.perPage)} total={data.total} perPage={data.perPage} hrefFor={hrefFor} />
         </section>
       )}
     </main>

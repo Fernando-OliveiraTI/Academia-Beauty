@@ -5,7 +5,10 @@ import { mediaSrc } from '@academia/page-renderer'
 import { adminGet, getCurrentUser } from '@/lib/api-server'
 import { RowActions } from '@/components/row-actions'
 import { ListToolbar } from '@/components/list-toolbar'
+import { ListEmpty } from '@/components/list-empty'
 import { Pager } from '@/components/pager'
+import { isPerPage, pageOf } from '@/lib/list-params'
+import { brl } from '@/lib/format'
 import { relativeTime } from '@/lib/relative-time'
 import { ThemembersSync } from '@/components/themembers-sync'
 
@@ -20,7 +23,6 @@ const SORTS = [
   { value: 'name_desc', label: 'Título (Z–A)' },
   { value: 'created', label: 'Criados recentemente' },
 ]
-const brl = (cents: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100)
 
 const Ico = ({ children }: { children: React.ReactNode }) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
@@ -47,9 +49,9 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
   if (['draft', 'published', 'archived'].includes(status)) params.set('status', status)
   if (q) params.set('q', q.slice(0, 80))
   if (['oldest', 'name', 'name_desc', 'created'].includes(sort)) params.set('sort', sort)
-  if (['10', '20', '50'].includes(perPage)) params.set('perPage', perPage)
+  if (isPerPage(perPage)) params.set('perPage', perPage)
   if (/^\d+$/.test(professionalId)) params.set('professionalId', professionalId)
-  params.set('page', String(Math.max(1, Number(page) || 1)))
+  params.set('page', String(pageOf(page)))
   const { data, status: httpStatus } = await adminGet<List>(`/admin/courses?${params}`)
   const { data: pros } = await adminGet<{ items: ProRow[] }>('/admin/professionals?perPage=100&sort=name')
   const proById = new Map((pros?.items ?? []).map((p) => [p.id, p.data] as const))
@@ -87,7 +89,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
       {!data ? (
         <p role="alert" className="form-error">Não foi possível carregar a lista (código {httpStatus}). Tente novamente.</p>
       ) : data.items.length === 0 ? (
-        <section className="list-empty"><b>Nenhum curso encontrado</b><p>Ajuste a busca ou limpe os filtros para ver mais resultados.</p></section>
+        <ListEmpty title="Nenhum curso encontrado">Ajuste a busca ou limpe os filtros para ver mais resultados.</ListEmpty>
       ) : (
         <div className="admin-table-wrap admin-panel">
           <table className="admin-table">

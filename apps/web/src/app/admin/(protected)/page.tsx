@@ -1,9 +1,10 @@
 import Link from 'next/link'
 import { adminGet, getCurrentUser } from '@/lib/api-server'
+import { PeriodFilter, parsePeriod } from '@/components/period-filter'
 import { mediaSrc } from '@academia/page-renderer'
 import { TrendChart } from '@/components/trend-chart'
 import {
-  RANGES, actionLabel, delta, deviceLabel, fmtCompact, fmtInt, fmtPct, initials, longDate, plural, ratio,
+  actionLabel, delta, deviceLabel, fmtCompact, fmtInt, fmtPct, initials, longDate, plural, ratio,
   type Dashboard, type Delta,
 } from '@/lib/dashboard'
 
@@ -164,7 +165,7 @@ function Waiting() {
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
   const user = await getCurrentUser()
   const { days: raw } = await searchParams
-  const days = (RANGES as readonly number[]).includes(Number(raw)) ? Number(raw) : 30
+  const days = parsePeriod(raw)
   const { data } = await adminGet<Dashboard>(`/admin/dashboard?days=${days}`)
   const first = (user?.fullName ?? user?.email ?? '').split(' ')[0]
 
@@ -178,9 +179,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
         <div className="dash-head-controls">
           {data ? <p className="dash-daterange"><Icon name="calendar" size={18} />{longDate(data.range.from)} a {longDate(data.range.to)}</p> : null}
-          <nav className="dash-range" aria-label="Período">
-            {RANGES.map((r) => <Link key={r} href={`/admin?days=${r}`} aria-current={r === days ? 'page' : undefined}>{r} dias</Link>)}
-          </nav>
+          <PeriodFilter value={days} hrefFor={(d) => `/admin?days=${d}`} />
         </div>
         <p className="dash-tagline" aria-hidden="true">Conhecimento<br />transforma<br />beleza em<br />resultados.</p>
       </section>

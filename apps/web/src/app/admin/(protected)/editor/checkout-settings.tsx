@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { computeOffer, PRICE_MAX_CENTS, PRICE_MIN_CENTS, type AdminCourse, type CheckoutProvider } from '@academia/contracts'
 import { apiSend } from '@/lib/api-client'
+import { brl } from '@/lib/format'
 import { centsToInput, maskBRL, maskPercent, parseBRLToCents } from '../cursos/form-model'
 
-const brl = (cents: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100)
 
 type Commercial = NonNullable<AdminCourse['commercial']>
 

@@ -1,13 +1,19 @@
 import Link from 'next/link'
+import type { ReactNode } from 'react'
 
 type Props = {
   page: number
   lastPage: number
   total: number
   perPage: number
-  /** URL da página n, preservando filtros e ordenação. */
-  hrefFor: (page: number) => string
+  /** URL da página n, preservando filtros e ordenação (listas paginadas pela URL). */
+  hrefFor?: (page: number) => string
+  /** Para listas paginadas no cliente (sem URL): chamado com o número da página escolhida. Use `hrefFor` OU `onPageChange`. */
+  onPageChange?: (page: number) => void
 }
+
+/** Última página de uma lista: nunca menor que 1, mesmo vazia. */
+export const lastPageOf = (total: number, perPage: number) => Math.max(1, Math.ceil(total / perPage))
 
 /** 1 … 4 5 [6] 7 8 … 20: sempre a primeira, a última e a vizinhança da atual. */
 export function pageWindow(page: number, last: number): (number | 'gap')[] {
@@ -29,19 +35,22 @@ const Chevron = ({ dir }: { dir: 'left' | 'right' }) => (
 )
 
 /** Rodapé das listas: resumo "Mostrando 21–40 de 52" e paginação numerada com setas em ícone. */
-export function Pager({ page, lastPage, total, perPage, hrefFor }: Props) {
+export function Pager({ page, lastPage, total, perPage, hrefFor, onPageChange }: Props) {
   const from = total === 0 ? 0 : (page - 1) * perPage + 1
   const to = Math.min(total, page * perPage)
+  const item = (n: number, props: { label: string; current?: boolean; rel?: 'prev' | 'next' }, children: ReactNode) => hrefFor
+    ? <Link key={props.label} className="pager-btn" href={hrefFor(n)} aria-label={props.label} aria-current={props.current ? 'page' : undefined} rel={props.rel}>{children}</Link>
+    : <button key={props.label} type="button" className="pager-btn" aria-label={props.label} aria-current={props.current ? 'page' : undefined} onClick={() => onPageChange?.(n)}>{children}</button>
   return (
     <footer className="pager">
       <p className="pager-sum">Mostrando <b>{from}–{to}</b> de <b>{total}</b></p>
       {lastPage > 1 ? (
         <nav className="pager-nav" aria-label="Paginação">
-          {page > 1 ? <Link className="pager-btn" href={hrefFor(page - 1)} aria-label="Página anterior" rel="prev"><Chevron dir="left" /></Link> : <span className="pager-btn" aria-disabled="true"><Chevron dir="left" /></span>}
+          {page > 1 ? item(page - 1, { label: 'Página anterior', rel: 'prev' }, <Chevron dir="left" />) : <span className="pager-btn" aria-disabled="true"><Chevron dir="left" /></span>}
           {pageWindow(page, lastPage).map((n, i) => n === 'gap'
             ? <span key={`gap-${i}`} className="pager-gap" aria-hidden="true">…</span>
-            : <Link key={n} className="pager-btn" href={hrefFor(n)} aria-label={`Página ${n}`} aria-current={n === page ? 'page' : undefined}>{n}</Link>)}
-          {page < lastPage ? <Link className="pager-btn" href={hrefFor(page + 1)} aria-label="Próxima página" rel="next"><Chevron dir="right" /></Link> : <span className="pager-btn" aria-disabled="true"><Chevron dir="right" /></span>}
+            : item(n, { label: `Página ${n}`, current: n === page }, n))}
+          {page < lastPage ? item(page + 1, { label: 'Próxima página', rel: 'next' }, <Chevron dir="right" />) : <span className="pager-btn" aria-disabled="true"><Chevron dir="right" /></span>}
         </nav>
       ) : null}
     </footer>

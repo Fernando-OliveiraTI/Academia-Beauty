@@ -14,3 +14,13 @@ describe('pageWindow', () => {
     expect(pageWindow(4, 10)).toEqual([1, 2, 3, 4, 5, 'gap', 9, 10])
   })
 })
+
+import { lastPageOf } from './pager'
+
+describe('lastPageOf', () => {
+  it('nunca é menor que 1 e arredonda para cima', () => {
+    expect(lastPageOf(0, 20)).toBe(1)
+    expect(lastPageOf(20, 20)).toBe(1)
+    expect(lastPageOf(21, 20)).toBe(2)
+  })
+})

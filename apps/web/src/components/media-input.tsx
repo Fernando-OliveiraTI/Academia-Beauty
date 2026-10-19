@@ -1,20 +1,16 @@
 'use client'
 
-import { useEffect, useId, useRef, useState, type ChangeEvent } from 'react'
+import { useId, useRef, useState, type ChangeEvent } from 'react'
 import type { MediaAsset, MediaKind } from '@academia/contracts'
 import { mediaIdOf } from '@academia/page-schema'
 import { MediaLibrary } from './media-library'
+import { useDialogSync } from './use-dialog'
 
 /** Janela modal (elemento `dialog` nativo: foco preso e Esc fecham) com a biblioteca para escolher um arquivo. */
 export function MediaPicker({ open, kind, onPick, onClose }: { open: boolean; kind?: MediaKind; onPick: (asset: MediaAsset) => void; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
-  useEffect(() => {
-    const dialog = ref.current
-    if (!dialog) return
-    if (open && !dialog.open) (typeof dialog.showModal === 'function' ? dialog.showModal() : dialog.setAttribute('open', ''))
-    if (!open && dialog.open) (typeof dialog.close === 'function' ? dialog.close() : dialog.removeAttribute('open'))
-  }, [open])
+  useDialogSync(ref, open)
   return (
     <dialog ref={ref} className="media-dialog" aria-labelledby={titleId} onClose={onClose} onCancel={onClose}>
       {open ? (

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 
 import type { MediaAsset, MediaKind } from '@academia/contracts'
 import { apiGet, apiSend, apiUpload } from '@/lib/api-client'
 import { MediaDropzone } from './media-dropzone'
+import { Pager, lastPageOf } from './pager'
+import { useDialogSync } from './use-dialog'
 
 type List = { items: MediaAsset[]; page: number; perPage: number; total: number }
 type Usage = { type: string; id: number; label: string; published: boolean }
@@ -118,12 +120,7 @@ export function MediaLibrary({ mode, kind: forcedKind, onPick, upload: showUploa
     }
   }
 
-  useEffect(() => {
-    const dialog = previewRef.current
-    if (!dialog) return
-    if (detail && !dialog.open) (typeof dialog.showModal === 'function' ? dialog.showModal() : dialog.setAttribute('open', ''))
-    if (!detail && dialog.open) (typeof dialog.close === 'function' ? dialog.close() : dialog.removeAttribute('open'))
-  }, [detail])
+  useDialogSync(previewRef, detail !== null)
 
   // No seletor a busca acontece enquanto digita (sem botão).
   useEffect(() => {
@@ -132,7 +129,7 @@ export function MediaLibrary({ mode, kind: forcedKind, onPick, upload: showUploa
     return () => window.clearTimeout(timer)
   }, [q, mode])
 
-  const lastPage = list ? Math.max(1, Math.ceil(list.total / list.perPage)) : 1
+  const lastPage = list ? lastPageOf(list.total, list.perPage) : 1
 
   return (
     <section className="media-lib" aria-label="Biblioteca de mídia">
@@ -218,11 +215,7 @@ export function MediaLibrary({ mode, kind: forcedKind, onPick, upload: showUploa
       )}
 
       {lastPage > 1 ? (
-        <nav className="admin-pager" aria-label="Paginação da biblioteca">
-          <button type="button" className="link-button" disabled={page <= 1} onClick={() => setPage(page - 1)}>Anterior</button>
-          <span>Página {page} de {lastPage}</span>
-          <button type="button" className="link-button" disabled={page >= lastPage} onClick={() => setPage(page + 1)}>Próxima</button>
-        </nav>
+        <Pager page={page} lastPage={lastPage} total={list!.total} perPage={list!.perPage} onPageChange={setPage} />
       ) : null}
 
       <dialog ref={previewRef} className="media-dialog media-preview" aria-label={detail ? `Detalhes de ${detail.asset.name}` : 'Detalhes'} onClose={() => setDetail(null)} onCancel={() => setDetail(null)}>

@@ -27,6 +27,3 @@ export function placeOf(city: string | null, region: string | null, country: str
   const tail = countryName(country)
   return [head, tail].filter(Boolean).join(', ') || null
 }
-
-export const money = (cents: number | null, currency: string | null = 'BRL') =>
-  cents === null ? '—' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: currency ?? 'BRL' }).format(cents / 100)

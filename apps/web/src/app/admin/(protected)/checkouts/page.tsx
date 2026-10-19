@@ -1,7 +1,10 @@
 import { redirect } from 'next/navigation'
 import { adminGet, getCurrentUser } from '@/lib/api-server'
 import { ListToolbar, type StatusTab } from '@/components/list-toolbar'
-import { Pager } from '@/components/pager'
+import { ListEmpty } from '@/components/list-empty'
+import { Pager, lastPageOf } from '@/components/pager'
+import { isPerPage, listHref, pageOf } from '@/lib/list-params'
+import { parsePeriod } from '@/components/period-filter'
 import { CheckoutSessions, type SessionItem } from '@/components/checkout-sessions'
 import { AudienceInsights, type Insights } from '@/components/audience-insights'
 import { STATE_LABEL } from '@/lib/checkout-labels'
@@ -42,27 +45,23 @@ export default async function CheckoutsPage({ searchParams }: { searchParams: Pr
     return <main><h1>Checkouts</h1><p>Só administradores veem este módulo: ele guarda o IP e os dados de navegação dos visitantes.</p></main>
   }
   const { status = '', q = '', page = '1', sort = '', perPage = '', days = '30' } = await searchParams
+  const period = parsePeriod(days)
   const params = new URLSearchParams()
   if ((STATES as readonly string[]).includes(status)) params.set('state', status)
   if (q) params.set('q', q.slice(0, 80))
   if (sort === 'oldest') params.set('sort', sort)
-  if (['10', '20', '50'].includes(perPage)) params.set('perPage', perPage)
-  params.set('page', String(Math.max(1, Number(page) || 1)))
+  if (isPerPage(perPage)) params.set('perPage', perPage)
+  params.set('page', String(pageOf(page)))
   const [{ data }, { data: insights }] = await Promise.all([
     adminGet<List>(`/admin/checkout-sessions?${params}`),
-    adminGet<Insights>(`/admin/checkout-sessions/insights?days=${['7', '30', '90'].includes(days) ? days : '30'}`),
+    adminGet<Insights>(`/admin/checkout-sessions/insights?days=${period}`),
   ])
 
   const tabs: StatusTab[] = [
     { value: '', label: 'Todas', icon: dot('all'), count: data?.counts.all ?? 0 },
     ...STATES.map((s) => ({ value: s, label: STATE_LABEL[s], icon: dot(TONE[s]), count: data?.counts[s] ?? 0 })),
   ]
-  const hrefFor = (p: number) => {
-    const next = new URLSearchParams()
-    for (const [k, v] of [['status', status], ['q', q], ['sort', sort], ['perPage', perPage], ['days', days]] as const) if (v) next.set(k, v)
-    next.set('page', String(p))
-    return `/admin/checkouts?${next}`
-  }
+  const hrefFor = (p: number) => listHref('/admin/checkouts', { status, q, sort, perPage, days }, p)
 
   return (
     <main>
@@ -88,14 +87,13 @@ export default async function CheckoutsPage({ searchParams }: { searchParams: Pr
       {!data ? (
         <p role="alert" className="form-error">Não foi possível carregar as visitas. Tente recarregar a página.</p>
       ) : data.items.length === 0 ? (
-        <section className="list-empty">
-          <b>{q || status ? 'Nenhuma visita encontrada' : 'Nenhuma visita registrada ainda'}</b>
-          <p>{q || status ? 'Ajuste a busca ou limpe os filtros para ver mais resultados.' : 'Abra a página de um curso com checkout da The Members: a visita aparece aqui assim que o checkout ficar visível na tela.'}</p>
-        </section>
+        <ListEmpty title={q || status ? 'Nenhuma visita encontrada' : 'Nenhuma visita registrada ainda'}>
+          {q || status ? 'Ajuste a busca ou limpe os filtros para ver mais resultados.' : 'Abra a página de um curso com checkout da The Members: a visita aparece aqui assim que o checkout ficar visível na tela.'}
+        </ListEmpty>
       ) : (
         <section className="admin-panel wh-panel">
           <CheckoutSessions items={data.items} />
-          <Pager page={data.page} lastPage={Math.max(1, Math.ceil(data.total / data.perPage))} total={data.total} perPage={data.perPage} hrefFor={hrefFor} />
+          <Pager page={data.page} lastPage={lastPageOf(data.total, data.perPage)} total={data.total} perPage={data.perPage} hrefFor={hrefFor} />
         </section>
       )}
     </main>

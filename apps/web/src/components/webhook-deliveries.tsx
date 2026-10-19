@@ -5,6 +5,9 @@ import { PAYMENT_EVENT_LABEL } from '@academia/contracts'
 import { apiGet } from '@/lib/api-client'
 import { relativeTime } from '@/lib/relative-time'
 import { RESULT_LABEL } from '@/lib/webhook-labels'
+import { CLOSE_ICON, EYE_ICON, svg } from './icons'
+import { useDialogSync } from './use-dialog'
+import { useNotice } from './use-notice'
 
 export type DeliveryItem = {
   id: number
@@ -25,19 +28,16 @@ type View = 'details' | 'raw'
 const tone = (result: string) => (result === 'accepted' ? 'ok' : result === 'duplicate' ? 'neutral' : 'bad')
 const bytes = (n: number) => (n < 1024 ? `${n} B` : `${(n / 1024).toFixed(1)} KB`)
 
-const svg = (d: ReactNode, size = 18) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>
-)
 const ICON = {
   check: svg(<path d="m5 12.5 4.5 4.5L19 7.500" />, 16),
   cross: svg(<path d="M6 6l12 12M18 6 6 18" />, 16),
   repeat: svg(<><path d="M17 2l3 3-3 3" /><path d="M4 11V9a4 4 0 0 1 4-4h12" /><path d="m7 22-3-3 3-3" /><path d="M20 13v2a4 4 0 0 1-4 4H4" /></>, 16),
   info: svg(<><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></>, 16),
   file: svg(<><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5M9 13h6M9 17h6" /></>),
-  eye: svg(<><path d="M2 12s3.600-7 10-7 10 7 10 7-3.600 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></>),
+  eye: EYE_ICON,
   code: svg(<><path d="m8 7-5 5 5 5" /><path d="m16 7 5 5-5 5" /></>),
   dots: <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" /></svg>,
-  close: svg(<path d="M6 6l12 12M18 6 6 18" />),
+  close: CLOSE_ICON,
 }
 const RESULT_ICON: Record<string, ReactNode> = { accepted: ICON.check, duplicate: ICON.repeat, invalid_signature: ICON.cross, invalid_payload: ICON.cross, not_configured: ICON.info, empty_body: ICON.info }
 
@@ -63,15 +63,10 @@ export function WebhookDeliveries({ items }: { items: DeliveryItem[] }) {
   const [formatted, setFormatted] = useState(true)
   const [copied, setCopied] = useState(false)
   const [menu, setMenu] = useState<number | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const { notice, flash, copyText } = useNotice()
   const root = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    const el = dialog.current
-    if (!el) return
-    if (openId !== null && !el.open) { if (typeof el.showModal === 'function') el.showModal(); else el.setAttribute('open', '') }
-    if (openId === null && el.open) el.close()
-  }, [openId])
+  useDialogSync(dialog, openId !== null)
 
   useEffect(() => {
     if (menu === null) return
@@ -90,10 +85,6 @@ export function WebhookDeliveries({ items }: { items: DeliveryItem[] }) {
     setOpenId(id); setView(next); setDetail(null); setState('loading'); setFormatted(next === 'details'); setCopied(false); setMenu(null)
     const found = await fetchDetail(id)
     if (found) { setDetail(found); setState('idle') } else setState('error')
-  }
-  const flash = (text: string) => { setNotice(text); setTimeout(() => setNotice(null), 2500) }
-  const copyText = async (text: string, message: string) => {
-    try { await navigator.clipboard.writeText(text); flash(message) } catch { flash('Não foi possível copiar.') }
   }
   const copyBody = async (id: number) => {
     setMenu(null)

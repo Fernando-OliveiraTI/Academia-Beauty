@@ -1,10 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { PAYMENT_EVENT_LABEL, PAYMENT_METHOD_LABEL } from '@academia/contracts'
+import { money } from '@/lib/format'
 import { relativeTime } from '@/lib/relative-time'
-import { DEVICE_LABEL, STATE_PILL, STATE_TONE, money, placeOf, type PaymentState } from '@/lib/checkout-labels'
+import { DEVICE_LABEL, STATE_PILL, STATE_TONE, placeOf, type PaymentState } from '@/lib/checkout-labels'
+import { CLOSE_ICON, EYE_ICON, svg } from './icons'
+import { useDialogSync } from './use-dialog'
+import { useNotice } from './use-notice'
 
 export type SessionPayment = {
   state: PaymentState
@@ -50,12 +54,9 @@ export type SessionItem = {
   payment: SessionPayment | null
 }
 
-const svg = (d: ReactNode, size = 18) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>
-)
 const ICON = {
-  eye: svg(<><path d="M2 12s3.600-7 10-7 10 7 10 7-3.600 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></>),
-  close: svg(<path d="M6 6l12 12M18 6 6 18" />),
+  eye: EYE_ICON,
+  close: CLOSE_ICON,
   copy: svg(<><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V6a2 2 0 0 1 2-2h9" /></>, 15),
   phone: svg(<><rect x="7" y="2" width="10" height="20" rx="2" /><path d="M11 18h2" /></>),
   tablet: svg(<><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M11 17h2" /></>),
@@ -71,20 +72,10 @@ const sourceLabel = (s: SessionItem) => s.utm.source ?? s.referrerHost ?? 'Diret
 export function CheckoutSessions({ items }: { items: SessionItem[] }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const [openId, setOpenId] = useState<number | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const { notice, copyText } = useNotice()
   const current = items.find((i) => i.id === openId) ?? null
 
-  useEffect(() => {
-    const el = dialog.current
-    if (!el) return
-    if (openId !== null && !el.open) { if (typeof el.showModal === 'function') el.showModal(); else el.setAttribute('open', '') }
-    if (openId === null && el.open) el.close()
-  }, [openId])
-
-  const copy = async (text: string, message: string) => {
-    try { await navigator.clipboard.writeText(text); setNotice(message) } catch { setNotice('Não foi possível copiar.') }
-    setTimeout(() => setNotice(null), 2500)
-  }
+  useDialogSync(dialog, openId !== null)
 
   return (
     <div>
@@ -126,7 +117,7 @@ export function CheckoutSessions({ items }: { items: SessionItem[] }) {
                   <td>
                     <div className="row-actions">
                       <button type="button" className="icon-button" onClick={() => setOpenId(s.id)} aria-label={`Ver detalhes da visita ${s.ref}`} title="Ver detalhes">{ICON.eye}</button>
-                      <button type="button" className="icon-button" onClick={() => void copy(s.ref, 'Código copiado.')} aria-label={`Copiar o código ${s.ref}`} title="Copiar código">{ICON.copy}</button>
+                      <button type="button" className="icon-button" onClick={() => void copyText(s.ref, 'Código copiado.')} aria-label={`Copiar o código ${s.ref}`} title="Copiar código">{ICON.copy}</button>
                     </div>
                   </td>
                 </tr>

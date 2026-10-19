@@ -11,10 +11,8 @@ import {
 } from '@academia/contracts'
 import Link from 'next/link'
 import { apiGet } from '@/lib/api-client'
+import { money } from '@/lib/format'
 import { relativeTime } from '@/lib/relative-time'
-
-const money = (cents: number | null, currency: string | null = 'BRL') =>
-  cents === null ? '—' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: currency ?? 'BRL' }).format(cents / 100)
 
 const icon = (d: React.ReactNode) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>
