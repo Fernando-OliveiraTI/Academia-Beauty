@@ -1,5 +1,6 @@
 'use client'
 
+import { useConfirm } from '@/components/confirm-dialog'
 import { useState } from 'react'
 import {
   COURSE_LEVELS,
@@ -15,8 +16,10 @@ import {
 } from '@academia/contracts'
 import { Button, Field, TextArea } from '@academia/design-system'
 import { apiSend } from '@/lib/api-client'
-import { MediaInput } from '@/components/media-input'
-import { canonical, centsToInput, emptyCourseData, emptyLines, fieldErrors, groupIssuesByStep, parseBRLToCents, STEPS, suggestSlug } from './form-model'
+import { mediaSrc } from '@academia/page-renderer'
+import { ActionCard, AddButton, Ico, InfoCard, IssueRow, NumberedSection, PanelHead, RemoveButton, SelectField, SummaryRow, WizardIcon, WizardSteps } from '@/components/wizard-ui'
+import { ImageField } from '@/components/image-field'
+import { canonical, centsToInput, emptyCourseData, emptyLines, fieldErrors, groupIssuesByStep, maskBRL, maskPercent, parseBRLToCents, STEPS, suggestSlug } from './form-model'
 
 type Loaded = AdminCourse & { readiness: ReadinessIssue[] }
 type ApiError = { message?: string; code?: string; errors?: Array<{ field: string; message: string }> }
@@ -44,13 +47,32 @@ const brl = (cents: number) => new Intl.NumberFormat('pt-BR', { style: 'currency
 const replaceAt = <T,>(list: readonly T[], index: number, value: T) => list.map((item, i) => (i === index ? value : item))
 const removeAt = <T,>(list: readonly T[], index: number) => list.filter((_, i) => i !== index)
 
-export function CourseWizard({ initial, professionals, permissions }: { initial?: Loaded; professionals: ProfessionalOption[]; permissions: readonly Permission[] }) {
+/** Título e ícone de cada pendência de publicação (o texto da pendência vem do servidor). */
+const ISSUE_META: Record<string, { title: string; icon: React.ReactNode }> = {
+  title: { title: 'Título do curso', icon: Ico.type },
+  lead: { title: 'Descrição do curso', icon: Ico.doc },
+  audience: { title: 'Público-alvo', icon: Ico.users },
+  coverSrc: { title: 'Imagem de capa', icon: Ico.image },
+  coverAlt: { title: 'Capa (texto alternativo)', icon: Ico.doc },
+  benefits: { title: 'Benefício', icon: Ico.star },
+  modules: { title: 'Módulo do conteúdo', icon: Ico.play },
+  deliverables: { title: 'O que o aluno recebe', icon: Ico.cap },
+  commercial: { title: 'Oferta e checkout', icon: Ico.cart },
+  checkoutUrl: { title: 'Link de checkout', icon: Ico.link },
+  active: { title: 'Oferta ativa', icon: Ico.cart },
+  professionalId: { title: 'Profissional', icon: Ico.person },
+}
+
+const STEP_ICONS = [WizardIcon.book, WizardIcon.list, WizardIcon.shield, WizardIcon.tag, WizardIcon.check]
+
+export function CourseWizard({ initial, professionals, permissions, initialStep = 0 }: { initial?: Loaded; professionals: ProfessionalOption[]; permissions: readonly Permission[]; initialStep?: number }) {
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [saved, setSaved] = useState<Loaded | undefined>(initial)
   const [data, setData] = useState<CourseData>(initial?.data ?? emptyCourseData)
   const [professionalId, setProfessionalId] = useState<number | ''>(initial?.professionalId ?? '')
   const [slug, setSlug] = useState(initial?.slug ?? '')
   const [slugTouched, setSlugTouched] = useState(Boolean(initial))
-  const [step, setStep] = useState(0)
+  const [step, setStep] = useState(initial ? Math.min(Math.max(initialStep, 0), STEPS.length - 1) : 0)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -61,6 +83,8 @@ export function CourseWizard({ initial, professionals, permissions }: { initial?
     discountPct: String(c0?.discountPct ?? 0),
     maxInstallments: String(c0?.maxInstallments ?? 1),
     checkoutUrl: c0?.checkoutUrl ?? '',
+    provider: (c0?.provider ?? 'academia') as 'academia' | 'themembers',
+    externalCourseId: c0?.externalCourseId ?? '',
     environment: c0?.environment ?? 'production',
     active: c0?.active ?? false,
   })
@@ -131,6 +155,8 @@ export function CourseWizard({ initial, professionals, permissions }: { initial?
         discountPct: Number(offer.discountPct) || 0,
         maxInstallments: Number(offer.maxInstallments) || 1,
         checkoutUrl: offer.checkoutUrl.trim(),
+        provider: offer.provider,
+        externalCourseId: offer.externalCourseId.trim(),
         environment: offer.environment,
         active: offer.active,
         revision: saved.commercial?.revision ?? 0,
@@ -182,6 +208,7 @@ export function CourseWizard({ initial, professionals, permissions }: { initial?
 
   return (
     <div className="wizard">
+      {confirmDialog}
       {saved && saved.documentRevision > 0 ? (
         <p role="note" className="ed-banner ed-banner-info">
           Esta página foi personalizada no editor visual: alterações feitas aqui no cadastro <strong>não alteram</strong> as seções já editadas
@@ -189,61 +216,50 @@ export function CourseWizard({ initial, professionals, permissions }: { initial?
           <a href={`/admin/editor/cursos/${saved.id}`}>«Restaurar do cadastro» no editor</a>.
         </p>
       ) : null}
-      <ol className="wizard-steps" aria-label="Etapas do cadastro">
-        {STEPS.map((s, i) => (
-          <li key={s.key}>
-            <button type="button" className="wizard-step" aria-current={i === step ? 'step' : undefined} disabled={!saved && i > 0} onClick={() => setStep(i)}>
-              <span aria-hidden="true">{i + 1}</span> {s.label}
-            </button>
-          </li>
-        ))}
-      </ol>
+      <WizardSteps steps={STEPS} step={step} onSelect={setStep} isDisabled={(i) => !saved && i > 0} />
 
       {message ? <p role={message.kind === 'error' ? 'alert' : 'status'} className={message.kind === 'error' ? 'form-error' : 'form-ok'}>{message.text}</p> : null}
 
       <section className="admin-card wizard-panel" aria-labelledby="wizard-title">
-        <h2 id="wizard-title">{STEPS[step]!.label}</h2>
+        <PanelHead icon={STEP_ICONS[step]} title={STEPS[step]!.label} desc={STEPS[step]!.desc} accent={step === 2} aside={step === 2 ? <InfoCard title="Estas seções só aparecem na página quando preenchidas.">Cadastre somente o que a Academia de fato oferece.</InfoCard> : undefined} />
 
         {step === 0 ? (
-          <div className="wizard-grid">
-            <div>
-              <label className="ds-label" htmlFor="professional">Profissional</label>
-              <select id="professional" className="ds-input" value={professionalId} disabled={Boolean(saved) || !canWrite} aria-invalid={errors.professionalId ? true : undefined}
-                onChange={(e) => setProfessionalId(e.target.value === '' ? '' : Number(e.target.value))}>
-                <option value="">Selecione…</option>
-                {professionals.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              {errors.professionalId ? <p className="form-error">{errors.professionalId}</p> : null}
-              {saved ? <p className="wizard-hint">O profissional não muda depois que o curso é criado.</p> : null}
-            </div>
-            <Field label="Título do curso" value={data.title} maxLength={80} disabled={!canWrite} error={errors.title}
+          <div className="wizard-grid wizard-grid--wide">
+            <SelectField label="Profissional" requiredMark icon={WizardIcon.person} id="professional" value={professionalId} disabled={Boolean(saved) || !canWrite} error={errors.professionalId}
+              hint={saved ? 'O profissional não muda depois que o curso é criado.' : undefined}
+              onChange={(e) => setProfessionalId(e.target.value === '' ? '' : Number(e.target.value))}>
+              <option value="">Selecione…</option>
+              {professionals.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </SelectField>
+            <SelectField label="Formato" requiredMark icon={WizardIcon.monitor} id="modality" value={data.modality} disabled={!canWrite} onChange={(e) => set('modality', e.target.value as CourseData['modality'])}>
+              {COURSE_MODALITIES.map((m) => <option key={m} value={m}>{COURSE_MODALITY_LABEL[m]}</option>)}
+            </SelectField>
+            <Field label="Título do curso" requiredMark icon={WizardIcon.type} value={data.title} maxLength={80} disabled={!canWrite} error={errors.title}
               onChange={(e) => { set('title', e.target.value); if (!slugTouched) setSlug(suggestSlug(e.target.value)) }} />
-            <Field label="Endereço da página (slug)" value={slug} maxLength={80} disabled={!slugEditable} error={errors.slug}
-              onChange={(e) => { setSlugTouched(true); setSlug(e.target.value.toLowerCase()) }} />
-            <p className="wizard-hint">A página ficará em <code>/cursos/{slug || '…'}</code>. O endereço não muda depois da primeira publicação.</p>
-            <div>
-              <label className="ds-label" htmlFor="modality">Formato</label>
-              <select id="modality" className="ds-input" value={data.modality} disabled={!canWrite} onChange={(e) => set('modality', e.target.value as CourseData['modality'])}>
-                {COURSE_MODALITIES.map((m) => <option key={m} value={m}>{COURSE_MODALITY_LABEL[m]}</option>)}
-              </select>
+            <SelectField label="Nível" requiredMark icon={WizardIcon.chart} id="level" value={data.level} disabled={!canWrite} onChange={(e) => set('level', e.target.value as CourseData['level'])}>
+              {COURSE_LEVELS.map((l) => <option key={l} value={l}>{COURSE_LEVEL_LABEL[l]}</option>)}
+            </SelectField>
+            <div className="wizard-full">
+              <Field label="Endereço da página (slug)" requiredMark prefix="/cursos/" suffix={WizardIcon.link} value={slug} maxLength={80} disabled={!slugEditable} error={errors.slug}
+                hint={<>A página ficará em <code>/cursos/{slug || '…'}</code>. O endereço não muda depois da primeira publicação.</>}
+                onChange={(e) => { setSlugTouched(true); setSlug(e.target.value.toLowerCase()) }} />
             </div>
-            <div>
-              <label className="ds-label" htmlFor="level">Nível</label>
-              <select id="level" className="ds-input" value={data.level} disabled={!canWrite} onChange={(e) => set('level', e.target.value as CourseData['level'])}>
-                {COURSE_LEVELS.map((l) => <option key={l} value={l}>{COURSE_LEVEL_LABEL[l]}</option>)}
-              </select>
+            <div className="wizard-full">
+              <Field label={<>Carga horária em horas <span className="wz-optional">(opcional)</span></>} icon={WizardIcon.clock} type="number" min={1} max={2000} inputMode="numeric" placeholder="Ex.: 10" value={data.workloadHours ?? ''} disabled={!canWrite} error={errors.workloadHours}
+                onChange={(e) => set('workloadHours', e.target.value === '' ? null : Number(e.target.value))} />
             </div>
-            <Field label="Carga horária em horas (opcional)" type="number" min={1} max={2000} inputMode="numeric" value={data.workloadHours ?? ''} disabled={!canWrite} error={errors.workloadHours}
-              onChange={(e) => set('workloadHours', e.target.value === '' ? null : Number(e.target.value))} />
-            <Field label="Para quem é o curso" value={data.audience} maxLength={80} placeholder="Cabeleireiros e coloristas" disabled={!canWrite} error={errors.audience} onChange={(e) => set('audience', e.target.value)} />
+            <div className="wizard-full">
+              <TextArea label="Para quem é o curso" icon={WizardIcon.users} rows={2} value={data.audience} maxLength={80} placeholder="Cabeleireiros e coloristas" disabled={!canWrite} error={errors.audience}
+                hint="Descreva o público-alvo do seu curso." onChange={(e) => set('audience', e.target.value)} />
+            </div>
           </div>
         ) : null}
 
         {step === 1 ? (
           <div className="wizard-grid">
             <TextArea label="Descrição do curso" value={data.lead} maxLength={400} rows={3} disabled={!canWrite} error={errors.lead} onChange={(e) => set('lead', e.target.value)} />
-            <p className="wizard-hint">Escolha a capa na biblioteca de mídia (botão “Biblioteca”, que também envia arquivos novos). Caminhos do site (<code>/site/…</code>) continuam valendo.</p>
-            <MediaInput label="Imagem de capa" kind="image" value={data.coverSrc} disabled={!canWrite} error={errors.coverSrc} onChange={(v) => set('coverSrc', v)} />
+            <p className="wizard-hint">Clique em “Editar” para trocar a capa: arraste o arquivo ou selecione do computador. Também dá para escolher um arquivo já enviado na biblioteca de mídia.</p>
+            <ImageField label="Imagem de capa" kind="image" value={data.coverSrc} disabled={!canWrite} error={errors.coverSrc} onChange={(v) => set('coverSrc', v)} />
             <Field label="Descrição da capa (texto alternativo)" value={data.coverAlt} maxLength={300} disabled={!canWrite} error={errors.coverAlt} onChange={(e) => set('coverAlt', e.target.value)} />
 
             <fieldset className="wizard-fieldset">
@@ -286,34 +302,50 @@ export function CourseWizard({ initial, professionals, permissions }: { initial?
         ) : null}
 
         {step === 2 ? (
-          <div className="wizard-grid">
-            <p className="wizard-hint">Estas seções só aparecem na página quando preenchidas. Cadastre somente o que a Academia de fato oferece.</p>
-            <Field label="Dias de garantia (vazio = sem garantia)" type="number" min={1} max={90} inputMode="numeric" value={data.guaranteeDays ?? ''} disabled={!canWrite} error={errors.guaranteeDays}
-              onChange={(e) => set('guaranteeDays', e.target.value === '' ? null : Number(e.target.value))} />
-            <fieldset className="wizard-fieldset">
-              <legend>Perguntas frequentes (até 10)</legend>
+          <div className="wz-sections">
+            <NumberedSection n={1} title="Garantia" desc="Informe quantos dias de garantia o aluno terá para solicitar reembolso."
+              aside={<InfoCard icon={Ico.shield} title="Como funciona?">Este texto será exibido na página do curso.</InfoCard>}>
+              <Field label="Dias de garantia (vazio = sem garantia)" icon={Ico.calendar} type="number" min={1} max={90} inputMode="numeric" placeholder="Ex.: 7, 15, 30" value={data.guaranteeDays ?? ''} disabled={!canWrite} error={errors.guaranteeDays}
+                onChange={(e) => set('guaranteeDays', e.target.value === '' ? null : Number(e.target.value))} />
+            </NumberedSection>
+
+            <NumberedSection n={2} boxed title="Perguntas frequentes" accent="(até 10)" desc="Adicione as principais dúvidas sobre o curso e suas respostas.">
               {data.faq.map((q, i) => (
-                <div key={i} className="wizard-row">
-                  <Field label={`Pergunta ${i + 1}`} value={q.title} maxLength={160} disabled={!canWrite} error={errors[`faq.${i}.title`]} onChange={(e) => set('faq', replaceAt(data.faq, i, { ...q, title: e.target.value }))} />
-                  <TextArea label="Resposta" value={q.text} maxLength={800} rows={3} disabled={!canWrite} error={errors[`faq.${i}.text`]} onChange={(e) => set('faq', replaceAt(data.faq, i, { ...q, text: e.target.value }))} />
-                  {canWrite ? <Button variant="secondary" onClick={() => set('faq', removeAt(data.faq, i))}>Remover pergunta {i + 1}</Button> : null}
+                <div key={i} className="wz-item">
+                  <div className="wz-item-fields">
+                    <Field label="Pergunta" icon={Ico.help} placeholder="Digite a pergunta" value={q.title} maxLength={160} disabled={!canWrite} error={errors[`faq.${i}.title`]} onChange={(e) => set('faq', replaceAt(data.faq, i, { ...q, title: e.target.value }))} />
+                    <TextArea label="Resposta" icon={Ico.doc} placeholder="Digite a resposta" value={q.text} maxLength={800} rows={3} disabled={!canWrite} error={errors[`faq.${i}.text`]} onChange={(e) => set('faq', replaceAt(data.faq, i, { ...q, text: e.target.value }))} />
+                  </div>
+                  {canWrite ? <RemoveButton label={`Remover pergunta ${i + 1}`} onClick={() => set('faq', removeAt(data.faq, i))} /> : null}
                 </div>
               ))}
-              {canWrite && data.faq.length < 10 ? <Button variant="secondary" onClick={() => set('faq', [...data.faq, { title: '', text: '' }])}>Adicionar pergunta</Button> : null}
-            </fieldset>
-            <fieldset className="wizard-fieldset">
-              <legend>Depoimentos reais (até 6)</legend>
+              {canWrite ? (
+                <div className="wz-add-row">
+                  <AddButton disabled={data.faq.length >= 10} onClick={() => set('faq', [...data.faq, { title: '', text: '' }])}>Adicionar pergunta</AddButton>
+                  <span>{data.faq.length} de 10 perguntas adicionadas</span>
+                </div>
+              ) : null}
+            </NumberedSection>
+
+            <NumberedSection n={3} boxed title="Depoimentos reais" accent="(até 6)" desc="Adicione depoimentos de alunos para gerar mais credibilidade.">
               {data.testimonials.map((t, i) => (
-                <div key={i} className="wizard-row">
-                  <TextArea label={`Depoimento ${i + 1}`} value={t.quote} maxLength={300} rows={2} disabled={!canWrite} error={errors[`testimonials.${i}.quote`]} onChange={(e) => set('testimonials', replaceAt(data.testimonials, i, { ...t, quote: e.target.value }))} />
-                  <Field label="Nome" value={t.name} maxLength={60} disabled={!canWrite} error={errors[`testimonials.${i}.name`]} onChange={(e) => set('testimonials', replaceAt(data.testimonials, i, { ...t, name: e.target.value }))} />
-                  <Field label="Profissão" value={t.role} maxLength={60} disabled={!canWrite} onChange={(e) => set('testimonials', replaceAt(data.testimonials, i, { ...t, role: e.target.value }))} />
-                  {canWrite ? <Button variant="secondary" onClick={() => set('testimonials', removeAt(data.testimonials, i))}>Remover depoimento {i + 1}</Button> : null}
+                <div key={i} className="wz-item">
+                  <div className="wz-item-fields">
+                    <TextArea label="Depoimento" icon={Ico.doc} value={t.quote} maxLength={300} rows={2} disabled={!canWrite} error={errors[`testimonials.${i}.quote`]} onChange={(e) => set('testimonials', replaceAt(data.testimonials, i, { ...t, quote: e.target.value }))} />
+                    <div className="wz-two">
+                      <Field label="Nome" icon={Ico.person} value={t.name} maxLength={60} disabled={!canWrite} error={errors[`testimonials.${i}.name`]} onChange={(e) => set('testimonials', replaceAt(data.testimonials, i, { ...t, name: e.target.value }))} />
+                      <Field label="Profissão" icon={Ico.users} value={t.role} maxLength={60} disabled={!canWrite} onChange={(e) => set('testimonials', replaceAt(data.testimonials, i, { ...t, role: e.target.value }))} />
+                    </div>
+                  </div>
+                  {canWrite ? <RemoveButton label={`Remover depoimento ${i + 1}`} onClick={() => set('testimonials', removeAt(data.testimonials, i))} /> : null}
                 </div>
               ))}
-              {canWrite && data.testimonials.length < 6 ? <Button variant="secondary" onClick={() => set('testimonials', [...data.testimonials, { quote: '', name: '', role: '' }])}>Adicionar depoimento</Button> : null}
-            </fieldset>
-            <TextArea label="Descrição para buscadores (opcional)" value={data.metaDescription} maxLength={200} rows={2} disabled={!canWrite} error={errors.metaDescription} onChange={(e) => set('metaDescription', e.target.value)} />
+              {canWrite ? <AddButton wide disabled={data.testimonials.length >= 6} onClick={() => set('testimonials', [...data.testimonials, { quote: '', name: '', role: '' }])}>Adicionar depoimento</AddButton> : null}
+            </NumberedSection>
+
+            <NumberedSection n={4} title="Descrição para buscadores" accent="(opcional)" desc="Texto curto usado por Google e redes sociais ao compartilhar o curso.">
+              <TextArea label="Descrição" icon={Ico.doc} value={data.metaDescription} maxLength={200} rows={2} disabled={!canWrite} error={errors.metaDescription} onChange={(e) => set('metaDescription', e.target.value)} />
+            </NumberedSection>
           </div>
         ) : null}
 
@@ -322,18 +354,26 @@ export function CourseWizard({ initial, professionals, permissions }: { initial?
             {!canCommerce ? (
               <p className="wizard-hint" role="note">Somente quem gerencia o comércio altera preço e link de checkout. Você vê a oferta atual abaixo.</p>
             ) : (
-              <p className="wizard-hint">A compra acontece na página do provedor (redirecionamento). O preço é sempre o definido aqui, nunca o que o navegador envia.</p>
+              <p className="wizard-hint">{offer.provider === 'themembers' ? 'A compra acontece dentro da página, no checkout da The Members (iframe); o formulário da Academia fica desabilitado.' : 'A compra acontece na página do provedor (redirecionamento) depois do formulário da Academia.'} O preço exibido é sempre o definido aqui, nunca o que o navegador envia.</p>
             )}
-            <Field label="Preço de tabela (R$)" inputMode="decimal" value={offer.price} placeholder="250,00" disabled={!canCommerce} error={errors.price ?? errors.listCents} onChange={(e) => setOffer((o) => ({ ...o, price: e.target.value }))} />
-            <Field label="Desconto (%)" type="number" min={0} max={90} inputMode="numeric" value={offer.discountPct} disabled={!canCommerce} error={errors.discountPct} onChange={(e) => setOffer((o) => ({ ...o, discountPct: e.target.value }))} />
+            <div>
+              <label className="ds-label" htmlFor="provider">Checkout</label>
+              <select id="provider" className="ds-input" value={offer.provider} disabled={!canCommerce} onChange={(e) => setOffer((o) => ({ ...o, provider: e.target.value as 'academia' | 'themembers' }))}>
+                <option value="academia">Academia (formulário da página + redirecionamento)</option>
+                <option value="themembers">The Members (embutido na página)</option>
+              </select>
+            </div>
+            <Field label="Preço de tabela" prefix="R$" inputMode="numeric" value={offer.price} placeholder="0,00" disabled={!canCommerce} error={errors.price ?? errors.listCents} onChange={(e) => setOffer((o) => ({ ...o, price: maskBRL(e.target.value) }))} />
+            <Field label="Desconto" suffix="%" inputMode="numeric" value={offer.discountPct} placeholder="0" disabled={!canCommerce} error={errors.discountPct} onChange={(e) => setOffer((o) => ({ ...o, discountPct: maskPercent(e.target.value) }))} />
             <div>
               <label className="ds-label" htmlFor="installments">Parcelas máximas (sem juros, exibição)</label>
               <select id="installments" className="ds-input" value={offer.maxInstallments} disabled={!canCommerce} onChange={(e) => setOffer((o) => ({ ...o, maxInstallments: e.target.value }))}>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}x</option>)}
               </select>
             </div>
-            <Field label="Link do checkout (https)" type="url" value={offer.checkoutUrl} placeholder="https://…" disabled={!canCommerce} error={errors.checkoutUrl} onChange={(e) => setOffer((o) => ({ ...o, checkoutUrl: e.target.value }))} />
+            <Field label={offer.provider === 'themembers' ? 'URL do checkout da The Members (https)' : 'Link do checkout (https)'} type="url" value={offer.checkoutUrl} placeholder="https://…" disabled={!canCommerce} error={errors.checkoutUrl} onChange={(e) => setOffer((o) => ({ ...o, checkoutUrl: e.target.value }))} />
             <p className="wizard-hint">Só aceita domínios autorizados no ambiente. Domínio fora da lista é recusado ao salvar.</p>
+            <Field label="ID do curso na The Members" value={offer.externalCourseId} placeholder="Ex.: 12345" disabled={!canCommerce} error={errors.externalCourseId} onChange={(e) => setOffer((o) => ({ ...o, externalCourseId: e.target.value }))} />
             <div>
               <label className="ds-label" htmlFor="environment">Ambiente</label>
               <select id="environment" className="ds-input" value={offer.environment} disabled={!canCommerce} onChange={(e) => setOffer((o) => ({ ...o, environment: e.target.value as 'production' | 'sandbox' }))}>
@@ -355,66 +395,100 @@ export function CourseWizard({ initial, professionals, permissions }: { initial?
         ) : null}
 
         {step === 4 ? (
-          <div className="wizard-grid">
-            {!saved ? <p>Salve o curso antes de publicar.</p> : (
-              <>
+          !saved ? <p>Salve o curso antes de publicar.</p> : (
+            <div className="wz-review">
+              <div className="wz-review-grid">
+                <aside className="wz-card wz-summary" aria-label="Resumo do curso">
+                  <h3>Resumo do curso</h3>
+                  {data.coverSrc ? (
+                    <div className="wz-cover">
+                      <img src={mediaSrc(data.coverSrc, 640)} alt="" loading="lazy" />
+                      <span className="wz-cover-badge">{Ico.monitor}{COURSE_MODALITY_LABEL[data.modality]}</span>
+                    </div>
+                  ) : null}
+                  <SummaryRow icon={Ico.type} label="Título" value={data.title} />
+                  <SummaryRow icon={Ico.link} label="Endereço (slug)" value={saved.slug} />
+                  <SummaryRow icon={Ico.person} label="Profissional" value={saved.professionalName} />
+                  <SummaryRow icon={Ico.chart} label="Nível" value={COURSE_LEVEL_LABEL[data.level]} />
+                  <SummaryRow icon={Ico.monitor} label="Formato" value={COURSE_MODALITY_LABEL[data.modality]} />
+                </aside>
+
+                <section className="wz-card wz-issues" aria-label="Pendências para publicar">
+                  <div className="wz-issues-head">
+                    <div>
+                      <h3>Pendências para publicar</h3>
+                      <p>Verifique os itens abaixo e complete todas as informações para publicar o seu curso.</p>
+                    </div>
+                    <InfoCard>Todos os itens devem ser preenchidos para que o curso possa ser publicado.</InfoCard>
+                  </div>
+                  {issues.length ? (
+                    <ul role="status">
+                      {groupIssuesByStep(issues).map((i) => {
+                        const meta = ISSUE_META[i.field]
+                        return <IssueRow key={`${i.field}-${i.message}`} icon={meta?.icon ?? Ico.info} title={meta?.title ?? 'Pendência'} desc={i.message} onGo={i.field === 'professionalId' ? undefined : () => setStep(i.step)} />
+                      })}
+                    </ul>
+                  ) : <p className="form-ok">Curso completo: pronto para publicar.</p>}
+                </section>
+              </div>
+
+              {dirty ? <p role="status" className="form-error">Há alterações não salvas. Salve antes de pré-visualizar ou publicar.</p> : null}
+
+              <div className="wz-card wz-actions-wrap"><div className="wz-actions-grid">
+                <ActionCard external href={`/admin/preview/cursos/${saved.id}`} icon={Ico.eye} title="Pré-visualizar o rascunho" desc="Veja como o curso ficará para os seus alunos." />
+                <ActionCard href={`/admin/editor/cursos/${saved.id}`} icon={Ico.pencil} title="Abrir editor visual" desc="Personalize seções, ordem e textos." />
+              </div></div>
+
+              <section className="wz-card wz-manage" aria-label="Situação e vitrine">
                 <p>
                   Situação: <strong>{({ draft: 'Rascunho', published: 'Publicado', archived: 'Arquivado' } as const)[saved.status]}</strong>
                   {saved.publishedVersion ? ` · versão ${saved.publishedVersion}` : ''}
                   {saved.hasUnpublishedChanges ? ' · há alterações não publicadas (conteúdo ou oferta)' : ''}
                 </p>
-                <p>Profissional: <strong>{saved.professionalName}</strong></p>
-                {issues.length ? (
-                  <div role="status">
-                    <p>Pendências para publicar:</p>
-                    <ul>
-                      {groupIssuesByStep(issues).map((i) => (
-                        <li key={`${i.field}-${i.message}`}>{i.message}{i.field === 'professionalId' ? '' : <> — <button type="button" className="link-button" onClick={() => setStep(i.step)}>ir para a etapa</button></>}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : <p className="form-ok">Curso completo: pronto para publicar.</p>}
-
-                {dirty ? <p role="status" className="form-error">Há alterações não salvas. Salve antes de pré-visualizar ou publicar.</p> : null}
-                <p><a href={`/admin/preview/cursos/${saved.id}`} target="_blank" rel="noreferrer">Abrir pré-visualização do rascunho (nova aba)</a></p>
-                <p><a href={`/admin/editor/cursos/${saved.id}`}>Abrir editor visual (personalizar seções, ordem e textos)</a></p>
-
                 {canPublish ? (
-                  <fieldset className="wizard-fieldset">
-                    <legend>Vitrine na página do profissional</legend>
-                    <label className="wizard-check"><input type="checkbox" checked={showcase.showcaseVisible} onChange={(e) => setShowcase((s) => ({ ...s, showcaseVisible: e.target.checked }))} /> Exibir na página do profissional quando publicado</label>
-                    <Field label="Posição (menor aparece primeiro)" type="number" min={0} max={9999} value={showcase.showcaseOrder} onChange={(e) => setShowcase((s) => ({ ...s, showcaseOrder: Number(e.target.value) || 0 }))} />
-                    <Button variant="secondary" disabled={busy || saved.status === 'archived'} onClick={() => action('/showcase', 'PUT', { ...showcase, featured: saved.featured }, 'Vitrine atualizada.')}>Salvar vitrine</Button>
-                  </fieldset>
-                ) : null}
-
-                {canPublish ? (
-                  <div className="wizard-actions">
-                    {saved.status !== 'archived' ? (
-                      <Button disabled={busy || dirty || issues.length > 0 || (saved.status === 'published' && !saved.hasUnpublishedChanges)} onClick={() => action('/publish', 'POST', undefined, 'Publicado. A página pública já foi atualizada.')}>
-                        {saved.status === 'published' ? 'Publicar alterações' : 'Publicar'}
-                      </Button>
-                    ) : null}
-                    {saved.status === 'published' ? <Button variant="secondary" disabled={busy} onClick={() => action('/unpublish', 'POST', undefined, 'Curso tirado do ar.')}>Despublicar</Button> : null}
-                    {saved.status !== 'archived' ? <Button variant="secondary" disabled={busy} onClick={() => { if (window.confirm('Arquivar tira o curso do ar e do site. Continuar?')) void action('/archive', 'POST', undefined, 'Curso arquivado.') }}>Arquivar</Button> : <Button variant="secondary" disabled={busy} onClick={() => action('/restore', 'POST', undefined, 'Curso restaurado como rascunho.')}>Restaurar</Button>}
-                  </div>
+                  <>
+                    <div className="wz-manage-vitrine">
+                      <label className="wizard-check"><input type="checkbox" checked={showcase.showcaseVisible} onChange={(e) => setShowcase((s) => ({ ...s, showcaseVisible: e.target.checked }))} /> Exibir na página do profissional quando publicado</label>
+                      <Field label="Posição (menor aparece primeiro)" type="number" min={0} max={9999} value={showcase.showcaseOrder} onChange={(e) => setShowcase((s) => ({ ...s, showcaseOrder: Number(e.target.value) || 0 }))} />
+                      <Button variant="secondary" disabled={busy || saved.status === 'archived'} onClick={() => action('/showcase', 'PUT', { ...showcase, featured: saved.featured }, 'Vitrine atualizada.')}>Salvar vitrine</Button>
+                    </div>
+                    <div className="wizard-actions">
+                      {saved.status === 'published' ? <Button variant="secondary" disabled={busy} onClick={() => action('/unpublish', 'POST', undefined, 'Curso tirado do ar.')}>Despublicar</Button> : null}
+                      {saved.status !== 'archived' ? <Button variant="secondary" disabled={busy} onClick={async () => { if (await confirm({ title: 'Arquivar curso?', message: 'O curso sai do ar e do site. Você pode restaurar depois.', confirmLabel: 'Arquivar' })) void action('/archive', 'POST', undefined, 'Curso arquivado.') }}>Arquivar</Button> : <Button variant="secondary" disabled={busy} onClick={() => action('/restore', 'POST', undefined, 'Curso restaurado.')}>Restaurar</Button>}
+                    </div>
+                  </>
                 ) : <p>Você pode editar, mas não publicar.</p>}
-              </>
-            )}
-          </div>
+              </section>
+            </div>
+          )
         ) : null}
 
+      </section>
         <div className="wizard-nav">
-          {step > 0 ? <Button variant="secondary" disabled={busy} onClick={() => setStep(step - 1)}>Voltar</Button> : <span />}
+          {step > 0 ? <Button variant="secondary" disabled={busy} onClick={() => setStep(step - 1)}>{Ico.arrowLeft}Voltar</Button> : <span />}
           {canWrite && step < 3 ? (
             <div className="wizard-actions">
-              <Button variant="secondary" disabled={busy} onClick={() => save()}>{saved ? 'Salvar' : 'Criar rascunho'}</Button>
-              {saved ? <Button disabled={busy} onClick={() => save(step + 1)}>Salvar e continuar</Button> : null}
+              <Button variant="secondary" disabled={busy} onClick={() => save()}>{Ico.save}{saved ? 'Salvar rascunho' : 'Criar rascunho'}</Button>
+              {saved ? <Button disabled={busy} onClick={() => save(step + 1)}>Salvar e continuar{Ico.arrowRight}</Button> : null}
             </div>
           ) : null}
-          {step === 3 ? <Button variant="secondary" disabled={busy} onClick={() => setStep(4)}>Continuar</Button> : null}
+          {step === 3 ? (
+            <div className="wizard-actions">
+              {canWrite ? <Button variant="secondary" disabled={busy} onClick={() => save()}>{Ico.save}Salvar rascunho</Button> : null}
+              <Button disabled={busy} onClick={() => setStep(4)}>Continuar{Ico.arrowRight}</Button>
+            </div>
+          ) : null}
+          {step === 4 && saved ? (
+            <div className="wizard-actions">
+              {canWrite ? <Button variant="secondary" disabled={busy} onClick={() => save()}>{Ico.save}Salvar rascunho</Button> : null}
+              {canPublish && saved.status !== 'archived' ? (
+                <Button disabled={busy || dirty || issues.length > 0 || (saved.status === 'published' && !saved.hasUnpublishedChanges)} onClick={() => action('/publish', 'POST', undefined, 'Publicado. A página pública já foi atualizada.')}>
+                  {saved.status === 'published' ? 'Publicar alterações' : 'Publicar curso'}{Ico.arrowRight}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
-      </section>
     </div>
   )
 }

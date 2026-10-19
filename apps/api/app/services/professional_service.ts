@@ -12,6 +12,7 @@ import ProfessionalVersion from '#models/professional_version'
 import CourseService from '#services/course_service'
 import { DomainError, toDomainError } from '#services/domain_error'
 import { PROFESSIONAL_KIND, assertValidDocument } from '#services/document_service'
+import { publicStatuses, showDraftsPublicly } from '#services/public_visibility'
 
 /** Template usado nas páginas de profissional (a composição vive em @academia/page-renderer). */
 export const PROFESSIONAL_TEMPLATE = { key: 'professional-original', version: 1 }
@@ -48,6 +49,16 @@ async function slugTaken(slug: string, exceptId?: number) {
   return (await query.first()) !== null
 }
 
+/** Slug livre para a cópia: `<slug>-copia`, `<slug>-copia-2`… (respeita o limite de 80 caracteres). */
+async function copySlug(slug: string, taken: (candidate: string) => Promise<boolean>) {
+  for (let n = 1; n <= 50; n++) {
+    const suffix = n === 1 ? '-copia' : `-copia-${n}`
+    const candidate = `${slug.slice(0, 80 - suffix.length).replace(/-+$/, '')}${suffix}`
+    if (!(await taken(candidate))) return candidate
+  }
+  throw new DomainError(409, 'slug_taken', 'Não foi possível gerar um endereço para a cópia')
+}
+
 export default class ProfessionalService {
   static async create(
     slug: string,
@@ -61,6 +72,29 @@ export default class ProfessionalService {
       data,
       name: data.name,
       templateKey,
+      status: 'draft',
+      revision: 1,
+      createdBy: actorId,
+      updatedBy: actorId,
+    })
+  }
+
+  /**
+   * Copia um profissional como rascunho novo: dados, modelo e documento do editor. Não leva publicação,
+   * histórico de versões, vitrine nem cursos. O nome ganha " (cópia)" e o slug é gerado livre.
+   */
+  static async duplicate(id: number, actorId: number) {
+    const source = await Professional.find(id)
+    if (!source) throw new DomainError(404, 'not_found', 'Profissional não encontrado')
+    const data = { ...source.data, name: `${source.data.name.slice(0, 73)} (cópia)` }
+    const slug = await copySlug(source.slug, (candidate) => slugTaken(candidate))
+    return Professional.create({
+      slug,
+      data,
+      name: data.name,
+      templateKey: source.templateKey,
+      document: source.document ? structuredClone(source.document) : null,
+      documentRevision: source.document ? source.documentRevision : 0,
       status: 'draft',
       revision: 1,
       createdBy: actorId,
@@ -199,6 +233,30 @@ export default class ProfessionalService {
     })
   }
 
+  /**
+   * Apaga de vez (cadastro e versões publicadas). Só rascunho ou arquivado: quem está no ar precisa ser despublicado
+   * antes, e profissional com cursos não sai (os cursos dependem dele; apague-os ou deixe o profissional arquivado).
+   */
+  static async destroy(id: number) {
+    return db.transaction(async (trx) => {
+      const current = await Professional.query({ client: trx }).where('id', id).forUpdate().first()
+      if (!current) throw new DomainError(404, 'not_found', 'Profissional não encontrado')
+      if (current.status === 'published')
+        throw new DomainError(422, 'published', 'Despublique o profissional antes de apagar')
+      const row = await trx.from('courses').where('professional_id', id).count('* as total').first()
+      const courses = Number(row?.total ?? 0)
+      if (courses > 0)
+        throw new DomainError(
+          409,
+          'has_courses',
+          `Este profissional tem ${courses} curso${courses === 1 ? '' : 's'}. Apague ${courses === 1 ? 'o curso' : 'os cursos'} antes.`
+        )
+      await trx.from('professional_versions').where('professional_id', id).delete()
+      await trx.from('professionals').where('id', id).delete()
+      return { id, slug: current.slug, name: current.name }
+    })
+  }
+
   static async setShowcase(
     id: number,
     input: { homeVisible: boolean; homeOrder: number; featured: boolean },
@@ -213,29 +271,48 @@ export default class ProfessionalService {
     return current
   }
 
-  /** Vitrine da Home: publicados e marcados para a Home, na ordem definida. Lê só o snapshot. */
+  /**
+   * Vitrine da Home: publicados e marcados para a Home, na ordem definida. Lê só o snapshot (com
+   * `PUBLIC_SHOW_DRAFTS`, fora de produção, rascunhos entram com os dados de trabalho).
+   */
   static async showcase(): Promise<ShowcaseItem[]> {
     const rows = await db
       .from('professionals as p')
-      .join('professional_versions as v', (join) =>
+      .leftJoin('professional_versions as v', (join) =>
         join.on('v.professional_id', 'p.id').andOn('v.version', 'p.published_version')
       )
-      .where('p.status', 'published')
+      .whereIn('p.status', publicStatuses())
       .where('p.home_visible', true)
       .orderBy([{ column: 'p.home_order' }, { column: 'p.name' }])
       .limit(24)
-      .select('p.slug', 'v.data')
-    return rows.map((row) => {
-      const data = (
-        typeof row.data === 'string' ? JSON.parse(row.data) : row.data
-      ) as ProfessionalData
-      return { slug: row.slug as string, name: data.name, cardPhotoSrc: data.cardPhotoSrc }
+      .select('p.slug', 'p.status', 'p.data as live', 'v.data')
+    return rows.flatMap((row) => {
+      const raw = row.status === 'published' ? row.data : row.live
+      if (!raw) return []
+      const data = (typeof raw === 'string' ? JSON.parse(raw) : raw) as ProfessionalData
+      return [{ slug: row.slug as string, name: data.name, cardPhotoSrc: data.cardPhotoSrc }]
     })
   }
 
   static async published(slug: string): Promise<PublicProfessional | null> {
-    const p = await Professional.query().where('slug', slug).where('status', 'published').first()
-    if (!p || p.publishedVersion === null) return null
+    const p = await Professional.query()
+      .where('slug', slug)
+      .whereIn('status', publicStatuses())
+      .first()
+    if (!p) return null
+    if (showDraftsPublicly() && p.status === 'draft') {
+      return {
+        slug: p.slug,
+        version: 1,
+        publishedAt: (p.updatedAt ?? p.createdAt).toISO()!,
+        templateKey: p.templateKey,
+        templateVersion: PROFESSIONAL_TEMPLATE.version,
+        data: p.data,
+        document: p.document ?? null,
+        courses: await CourseService.cardsFor(p.id),
+      }
+    }
+    if (p.publishedVersion === null) return null
     const v = await ProfessionalVersion.query()
       .where('professional_id', p.id)
       .where('version', p.publishedVersion)

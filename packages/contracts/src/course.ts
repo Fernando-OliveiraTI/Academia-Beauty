@@ -95,6 +95,13 @@ export type ListCoursesQuery = z.infer<typeof listCoursesQuerySchema>;
 
 export const CHECKOUT_ENVIRONMENTS = ['production', 'sandbox'] as const;
 
+/**
+ * Quem processa a compra. `academia` é o checkout da página (3 etapas, termina no link do provedor);
+ * `themembers` embute o checkout hospedado da The Members num iframe (a URL fica em `checkoutUrl`).
+ */
+export const CHECKOUT_PROVIDERS = ['academia', 'themembers'] as const;
+export type CheckoutProvider = (typeof CHECKOUT_PROVIDERS)[number];
+
 /** Preço mínimo/máximo em centavos (R$ 1,00 a R$ 100.000,00). */
 export const PRICE_MIN_CENTS = 100;
 export const PRICE_MAX_CENTS = 10_000_000;
@@ -107,6 +114,10 @@ export const commercialInputSchema = z.object({
   maxInstallments: z.number().int().min(1).max(12),
   /** Vazio enquanto não houver link; para ativar precisa ser https e de domínio autorizado. */
   checkoutUrl: z.union([z.literal(''), z.string().trim().max(2048)]),
+  /** Ausente em ofertas antigas = `academia`. */
+  provider: z.enum(CHECKOUT_PROVIDERS).default('academia'),
+  /** ID do curso na The Members (só referência; vazio = não informado). */
+  externalCourseId: z.string().trim().max(128).regex(/^[A-Za-z0-9_.:-]*$/, 'Use apenas letras, números e _ . : -').default(''),
   environment: z.enum(CHECKOUT_ENVIRONMENTS),
   active: z.boolean(),
 });
@@ -261,7 +272,7 @@ export const publicCourseSchema = z.object({
   data: courseDataSchema,
   offer: computedOfferSchema,
   /** `url` é null quando o link deixou de ser autorizado: a página mostra a compra indisponível. */
-  checkout: z.object({ mode: z.literal('redirect'), url: z.string().nullable() }),
+  checkout: z.object({ mode: z.enum(['redirect', 'embed']), url: z.string().nullable() }),
   professional: z.object({ slug: z.string(), data: professionalDataSchema }),
   /** Documento editado no editor visual (D-020); null = página derivada do cadastro. */
   document: z.unknown().nullable().default(null),

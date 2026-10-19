@@ -3,6 +3,7 @@ import type { CourseCard, ProfessionalData } from '@academia/contracts';
 import { PROFESSIONAL_TEMPLATE_KEY, professionalOriginalTemplate } from './template';
 import { SCHEMA_VERSION } from '../schemas-version';
 import { clip } from '../clip';
+import { PLACEHOLDER_IMAGE } from '../media';
 import { professionalCourseCards } from '../course/build';
 import type * as S from './schemas';
 
@@ -79,7 +80,7 @@ export function buildProfessionalDocument(
     ...(data.instagramHandle ? [{ label: 'Instagram', value: data.instagramHandle }] : []),
     ...(data.instagramFollowers ? [{ label: 'Comunidade', value: data.instagramFollowers, gold: true }] : []),
   ];
-  hero.portrait = { src: data.portraitSrc, alt: data.name };
+  hero.portrait = { src: data.portraitSrc || PLACEHOLDER_IMAGE, alt: data.name };
   hero.hud = {
     label: clip(`Expert / ${data.specialty}`, 40),
     accent: data.experienceYears === null ? '' : String(data.experienceYears),
@@ -88,8 +89,8 @@ export function buildProfessionalDocument(
 
   const bio = byId('bio').content as S.BioContent;
   bio.tickerUnit = `${clip(upper(firstName), 30)} • ACADEMIA BEAUTY • `;
-  bio.paragraphs = data.bio;
-  bio.instagram = { handle: data.instagramHandle, followers: data.instagramFollowers, href: data.instagramUrl };
+  bio.paragraphs = data.bio.length ? data.bio : ['Escreva aqui a trajetória do profissional.'];
+  bio.instagram = { handle: data.instagramHandle, followers: data.instagramFollowers, href: data.instagramUrl || '#' };
 
   const works = byId('works');
   const worksContent = works.content as S.WorksContent;

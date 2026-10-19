@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import type { PageDocument } from '@academia/page-schema'
 import { validatePageDocument } from '@academia/section-schemas'
-import { courseCardSchema, professionalDataSchema, publishReadiness, type AdminProfessional, type DocumentState, type DocumentVersion } from '@academia/contracts'
+import { courseCardSchema, professionalDataSchema, type AdminProfessional, type DocumentState, type DocumentVersion } from '@academia/contracts'
 import { resolveProfessionalDocument } from '@academia/page-renderer'
 import { z } from 'zod'
 import { adminGet, getCurrentUser, publicGet } from '@/lib/api-server'
@@ -27,16 +27,6 @@ export default async function ProfessionalEditorPage({ params }: { params: Promi
 
   const data = professionalDataSchema.parse(professional.data)
   const back = `/admin/profissionais/${id}`
-  const issues = publishReadiness(data)
-  if (!state.document && issues.length) {
-    return (
-      <main>
-        <h1>Complete o cadastro para abrir o editor</h1>
-        <ul>{issues.map((m) => <li key={m.field}>{m.message}</li>)}</ul>
-        <Link className="admin-button secondary" href={back}>Voltar ao cadastro</Link>
-      </main>
-    )
-  }
   const published = await publicGet<{ courses?: unknown }>(`/professionals/${encodeURIComponent(professional.slug)}`, ['professionals', `professional:${professional.slug}`])
   const courseCards = z.array(courseCardSchema).catch([]).parse(published?.courses ?? [])
 
@@ -50,7 +40,7 @@ export default async function ProfessionalEditorPage({ params }: { params: Promi
       kind="professional" id={Number(id)} title={data.name} status={professional.status}
       initial={initial} library={library} documentRevision={state.documentRevision} cadastroRevision={state.revision} templateKey={state.templateKey}
       canWrite={user.permissions.includes('professionals.write')} canPublish={user.permissions.includes('professionals.publish')}
-      versions={versions?.items ?? []} dynamicTypes={['professional.courses']} backHref={back}
+      versions={versions?.items ?? []} dynamicTypes={['professional.courses']} backHref={back} viewHref={professional.status === 'published' ? `/profissionais/${professional.slug}` : `/admin/preview/profissionais/${id}`} registryHref={`/admin/profissionais/${id}`}
     />
   )
 }

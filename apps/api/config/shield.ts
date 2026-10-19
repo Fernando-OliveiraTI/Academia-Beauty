@@ -17,7 +17,8 @@ const shieldConfig = defineConfig({
    */
   csrf: {
     enabled: true,
-    exceptRoutes: [],
+    // Coleta pública de métricas: o visitante anônimo não tem token CSRF e a rota não altera nada dele.
+    exceptRoutes: ['/public/track'],
     enableXsrfCookie: true,
     methods: ['POST', 'PUT', 'PATCH', 'DELETE'],
   },

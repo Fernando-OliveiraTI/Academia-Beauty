@@ -1,5 +1,6 @@
 'use client'
 
+import { useConfirm } from '@/components/confirm-dialog'
 import { useState } from 'react'
 import {
   professionalDataSchema,
@@ -11,8 +12,9 @@ import {
 } from '@academia/contracts'
 import { Button, Field, TextArea } from '@academia/design-system'
 import { apiSend } from '@/lib/api-client'
+import { PanelHead, WizardIcon, WizardSteps } from '@/components/wizard-ui'
 import { PROFESSIONAL_TEMPLATES } from '@academia/section-schemas'
-import { MediaInput } from '@/components/media-input'
+import { ImageField } from '@/components/image-field'
 import { canonical, emptyProfessionalData, fieldErrors, groupIssuesByStep, parseTags, STEPS, suggestSlug } from './form-model'
 
 type Loaded = AdminProfessional & { readiness: ReadinessIssue[] }
@@ -35,13 +37,16 @@ function describe(status: number, body: ApiError | null): string {
   return 'Não foi possível concluir agora. Tente novamente.'
 }
 
-export function ProfessionalWizard({ initial, permissions }: { initial?: Loaded; permissions: readonly Permission[] }) {
+const STEP_ICONS = [WizardIcon.user, WizardIcon.sparkle, WizardIcon.image, WizardIcon.list, WizardIcon.check]
+
+export function ProfessionalWizard({ initial, permissions, initialStep = 0 }: { initial?: Loaded; permissions: readonly Permission[]; initialStep?: number }) {
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [saved, setSaved] = useState<Loaded | undefined>(initial)
   const [data, setData] = useState<ProfessionalData>(initial?.data ?? emptyProfessionalData)
   const [slug, setSlug] = useState(initial?.slug ?? '')
   const [templateKey, setTemplateKey] = useState<string>(initial?.templateKey ?? 'professional-original')
   const [slugTouched, setSlugTouched] = useState(Boolean(initial))
-  const [step, setStep] = useState(0)
+  const [step, setStep] = useState(initial ? Math.min(Math.max(initialStep, 0), STEPS.length - 1) : 0)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -120,6 +125,7 @@ export function ProfessionalWizard({ initial, permissions }: { initial?: Loaded;
 
   return (
     <div className="wizard">
+      {confirmDialog}
       {saved && saved.documentRevision > 0 ? (
         <p role="note" className="ed-banner ed-banner-info">
           Esta página foi personalizada no editor visual: alterações feitas aqui no cadastro <strong>não alteram</strong> as seções já editadas
@@ -127,32 +133,26 @@ export function ProfessionalWizard({ initial, permissions }: { initial?: Loaded;
           <a href={`/admin/editor/profissionais/${saved.id}`}>«Restaurar do cadastro» no editor</a>.
         </p>
       ) : null}
-      <ol className="wizard-steps" aria-label="Etapas do cadastro">
-        {STEPS.map((s, i) => (
-          <li key={s.key}>
-            <button type="button" className="wizard-step" aria-current={i === step ? 'step' : undefined} disabled={!saved && i > 0} onClick={() => setStep(i)}>
-              <span aria-hidden="true">{i + 1}</span> {s.label}
-            </button>
-          </li>
-        ))}
-      </ol>
+      <WizardSteps steps={STEPS} step={step} onSelect={setStep} isDisabled={(i) => !saved && i > 0} />
 
       {message ? <p role={message.kind === 'error' ? 'alert' : 'status'} className={message.kind === 'error' ? 'form-error' : 'form-ok'}>{message.text}</p> : null}
 
       <section className="admin-card wizard-panel" aria-labelledby="wizard-title">
-        <h2 id="wizard-title">{STEPS[step]!.label}</h2>
+        <PanelHead icon={STEP_ICONS[step]} title={STEPS[step]!.label} desc={STEPS[step]!.desc} />
 
         {step === 0 ? (
           <div className="wizard-grid">
-            <Field label="Nome completo" value={data.name} maxLength={80} disabled={!canWrite} error={errors.name}
+            <Field label="Nome completo" requiredMark icon={WizardIcon.person} value={data.name} maxLength={80} disabled={!canWrite} error={errors.name}
               onChange={(e) => {
                 set('name', e.target.value)
                 if (!slugTouched) setSlug(suggestSlug(e.target.value))
               }} />
-            <Field label="Especialidade" value={data.specialty} maxLength={40} disabled={!canWrite} error={errors.specialty} placeholder="Hair, Barber, Make…" onChange={(e) => set('specialty', e.target.value)} />
-            <Field label="Endereço da página (slug)" value={slug} maxLength={80} disabled={!slugEditable} error={errors.slug}
-              onChange={(e) => { setSlugTouched(true); setSlug(e.target.value.toLowerCase()) }} />
-            <p className="wizard-hint">A página ficará em <code>/profissionais/{slug || '…'}</code>. O endereço não muda depois da primeira publicação.</p>
+            <Field label="Especialidade" requiredMark icon={WizardIcon.sparkle} value={data.specialty} maxLength={40} disabled={!canWrite} error={errors.specialty} placeholder="Hair, Barber, Make…" onChange={(e) => set('specialty', e.target.value)} />
+            <div className="wizard-full">
+              <Field label="Endereço da página (slug)" requiredMark prefix="/profissionais/" suffix={WizardIcon.link} value={slug} maxLength={80} disabled={!slugEditable} error={errors.slug}
+                hint={<>A página ficará em <code>/profissionais/{slug || '…'}</code>. O endereço não muda depois da primeira publicação.</>}
+                onChange={(e) => { setSlugTouched(true); setSlug(e.target.value.toLowerCase()) }} />
+            </div>
             <fieldset className="template-picker" disabled={!canWrite || Boolean(saved && saved.documentRevision > 0)}>
               <legend className="ds-label">Modelo da página</legend>
               {PROFESSIONAL_TEMPLATES.map((t) => (
@@ -183,10 +183,10 @@ export function ProfessionalWizard({ initial, permissions }: { initial?: Loaded;
 
         {step === 2 ? (
           <div className="wizard-grid">
-            <p className="wizard-hint">Escolha os arquivos na biblioteca de mídia (botão “Biblioteca”, que também envia arquivos novos). Caminhos do site (<code>/site/…</code>) continuam valendo.</p>
-            <MediaInput label="Retrato da página" kind="image" value={data.portraitSrc} disabled={!canWrite} error={errors.portraitSrc} onChange={(v) => set('portraitSrc', v)} />
-            <MediaInput label="Foto do cartão na Home" kind="image" value={data.cardPhotoSrc} disabled={!canWrite} error={errors.cardPhotoSrc} onChange={(v) => set('cardPhotoSrc', v)} />
-            <MediaInput label="Vídeo de apresentação (opcional, MP4)" kind="video" value={data.videoSrc} disabled={!canWrite} error={errors.videoSrc} onChange={(v) => set('videoSrc', v)} />
+            <p className="wizard-hint">Clique em “Editar” para trocar uma imagem: arraste o arquivo ou selecione do computador. Também dá para escolher um arquivo já enviado na biblioteca de mídia.</p>
+            <ImageField label="Retrato da página" kind="image" value={data.portraitSrc} disabled={!canWrite} error={errors.portraitSrc} onChange={(v) => set('portraitSrc', v)} />
+            <ImageField label="Foto do cartão na Home" kind="image" value={data.cardPhotoSrc} disabled={!canWrite} error={errors.cardPhotoSrc} onChange={(v) => set('cardPhotoSrc', v)} />
+            <ImageField label="Vídeo de apresentação (opcional, MP4)" kind="video" value={data.videoSrc} disabled={!canWrite} error={errors.videoSrc} onChange={(v) => set('videoSrc', v)} onClear={() => set('videoSrc', '')} />
           </div>
         ) : null}
 
@@ -210,7 +210,7 @@ export function ProfessionalWizard({ initial, permissions }: { initial?: Loaded;
                 return (
                   <div key={i} className="wizard-row wizard-work">
                     <Field label={`Trabalho ${i + 1} · título`} value={work.title} maxLength={120} disabled={!canWrite} error={errors[`works.${i}.title`]} onChange={(e) => update({ title: e.target.value })} />
-                    <MediaInput label="Imagem" kind="image" value={work.imageSrc} disabled={!canWrite} error={errors[`works.${i}.imageSrc`]} onChange={(v) => update({ imageSrc: v })} />
+                    <ImageField label="Imagem" kind="image" value={work.imageSrc} disabled={!canWrite} error={errors[`works.${i}.imageSrc`]} onChange={(v) => update({ imageSrc: v })} />
                     <Field label="Texto alternativo da imagem" value={work.alt} maxLength={300} disabled={!canWrite} error={errors[`works.${i}.alt`]} onChange={(e) => update({ alt: e.target.value })} />
                     <Field key={work.tags.join('|')} label="Etiquetas (até 2, separadas por vírgula)" defaultValue={work.tags.join(', ')} disabled={!canWrite} onBlur={(e) => update({ tags: parseTags(e.target.value) })} />
                     {canWrite ? <Button variant="secondary" onClick={() => set('works', data.works.filter((_, j) => j !== i))}>Remover trabalho {i + 1}</Button> : null}
@@ -263,7 +263,7 @@ export function ProfessionalWizard({ initial, permissions }: { initial?: Loaded;
                       </Button>
                     ) : null}
                     {saved.status === 'published' ? <Button variant="secondary" disabled={busy} onClick={() => action('/unpublish', 'POST', undefined, 'Página tirada do ar.')}>Despublicar</Button> : null}
-                    {saved.status !== 'archived' ? <Button variant="secondary" disabled={busy} onClick={() => { if (window.confirm('Arquivar tira a página do ar e do site. Continuar?')) void action('/archive', 'POST', undefined, 'Profissional arquivado.') }}>Arquivar</Button> : <Button variant="secondary" disabled={busy} onClick={() => action('/restore', 'POST', undefined, 'Profissional restaurado como rascunho.')}>Restaurar</Button>}
+                    {saved.status !== 'archived' ? <Button variant="secondary" disabled={busy} onClick={async () => { if (await confirm({ title: 'Arquivar profissional?', message: 'A página do profissional sai do ar e do site. Você pode restaurar depois.', confirmLabel: 'Arquivar' })) void action('/archive', 'POST', undefined, 'Profissional arquivado.') }}>Arquivar</Button> : <Button variant="secondary" disabled={busy} onClick={() => action('/restore', 'POST', undefined, 'Profissional restaurado como rascunho.')}>Restaurar</Button>}
                   </div>
                 ) : <p>Você pode editar, mas não publicar.</p>}
               </>

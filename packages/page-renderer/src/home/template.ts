@@ -15,7 +15,7 @@ const nav: S.NavContent = {
   brandLead: 'ACADEMIA', brandAccent: 'BEAUTY', brandHref: '#',
   links: [{ label: 'CURSOS', href: '#cursos-home' }, { label: 'PROFISSIONAIS', href: '#profissionais' }, { label: 'QUEM SOMOS', href: '#beneficios' }],
   // O destino real é o login da plataforma (a definir); o original apontava para a loja Shopify.
-  account: { label: 'ACESSAR CONTA', href: '#' },
+  account: { label: 'ACESSAR CONTA', href: '/admin/login' },
 };
 
 const hero: S.HeroContent = {

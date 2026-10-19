@@ -19,6 +19,12 @@ export const headerSchema = z.object({
   navLabel: text(60),
   nav: z.array(link).min(1).max(8),
   ctaLabel: text(40),
+  /** Menu principal do site (sempre no topo); ausente = Início, Profissionais, Cursos. O `nav` acima vira o menu lateral desta página. */
+  siteLinks: z.array(link).max(5).optional(),
+  /** Botão da conta no menu principal; ausente = "ACESSAR CONTA" → /admin/login. */
+  account: link.optional(),
+  /** Oculta o item "Mais cursos" (menu lateral) que leva aos outros cursos do profissional. */
+  hideBackLink: z.boolean().optional(),
 });
 
 export const heroSchema = z.object({
@@ -121,6 +127,44 @@ export const faqSchema = z.object({
   items: z.array(z.object({ title: text(160), text: text(800) })).min(1).max(20),
 });
 
+/** Tipos de campo do comprador: cada um traz máscara e validação próprias (nunca regex ou HTML livres). */
+export const BUYER_FIELD_TYPES = ['name', 'text', 'email', 'cpf', 'phone'] as const;
+
+const buyerFieldSchema = z.object({
+  type: z.enum(BUYER_FIELD_TYPES),
+  label: text(60),
+  placeholder: text(80).default(''),
+  help: text(60).default(''),
+  required: z.boolean().default(true),
+});
+
+const paymentMethodSchema = z.object({ title: text(30), sub: text(40), info: text(240) });
+
+/** Textos padrão do checkout. Valem para documentos salvos antes de existirem os campos novos (sem migração de versão). */
+export const CHECKOUT_DEFAULTS = {
+  stepData: 'Seus dados', stepPayment: 'Pagamento', stepConfirmation: 'Confirmação',
+  summaryTitle: 'Seu pedido', summaryProduct: 'Produto', summaryDiscount: 'Desconto', summaryTotal: 'Total',
+  dataTitle: 'Seus dados', dataLead: 'O acesso ao curso será enviado para este e-mail.',
+  buyerFields: [
+    { type: 'name', label: 'Nome completo', placeholder: 'Como está no seu documento', help: '', required: true },
+    { type: 'email', label: 'E-mail', placeholder: 'voce@email.com', help: '', required: true },
+    { type: 'cpf', label: 'CPF', placeholder: '000.000.000-00', help: 'para a nota fiscal', required: true },
+    { type: 'phone', label: 'Celular com DDD', placeholder: '(11) 90000-0000', help: '', required: true },
+  ] as Array<z.output<typeof buyerFieldSchema>>,
+  dataButton: 'Continuar para o pagamento', dataNote: 'Seus dados estão protegidos',
+  paymentTitle: 'Forma de pagamento', paymentLead: 'Escolha como prefere pagar.',
+  methods: [
+    { title: 'Cartão', sub: 'parcelado sem juros', info: 'Você escolhe as parcelas no ambiente seguro de pagamento.' },
+    { title: 'PIX', sub: 'aprovação na hora', info: 'Ao finalizar, você gera um QR Code PIX. O acesso é liberado assim que o pagamento é confirmado.' },
+    { title: 'Boleto', sub: 'até 3 dias úteis', info: 'O boleto vence em 3 dias úteis. A liberação acontece após a compensação bancária.' },
+  ],
+  paymentButton: 'Revisar pedido', paymentNote: 'Pagamento criptografado', paymentBack: 'Voltar e editar meus dados',
+  confirmTitle: 'Tudo certo!', confirmLead: 'Você será levado ao ambiente seguro de pagamento para concluir a compra.',
+  confirmButton: 'Ir para o pagamento seguro', confirmBack: 'Voltar',
+  confirmUnavailable: 'A compra deste curso está temporariamente indisponível.',
+} as const;
+const D = CHECKOUT_DEFAULTS;
+
 export const checkoutSchema = z.object({
   eyebrow: text(60),
   title: text(160),
@@ -129,6 +173,29 @@ export const checkoutSchema = z.object({
   productImage: z.object({ src: safeMediaSchema }),
   notice: text(300),
   seals: z.array(z.object({ icon: iconSchema, label: text(40) })).length(3),
+  stepData: text(30).default(D.stepData),
+  stepPayment: text(30).default(D.stepPayment),
+  stepConfirmation: text(30).default(D.stepConfirmation),
+  summaryTitle: text(30).default(D.summaryTitle),
+  summaryProduct: text(30).default(D.summaryProduct),
+  summaryDiscount: text(30).default(D.summaryDiscount),
+  summaryTotal: text(30).default(D.summaryTotal),
+  dataTitle: text(60).default(D.dataTitle),
+  dataLead: text(160).default(D.dataLead),
+  buyerFields: z.array(buyerFieldSchema).min(1).max(8).default(D.buyerFields),
+  dataButton: text(50).default(D.dataButton),
+  dataNote: text(80).default(D.dataNote),
+  paymentTitle: text(60).default(D.paymentTitle),
+  paymentLead: text(160).default(D.paymentLead),
+  methods: z.array(paymentMethodSchema).length(3).default(D.methods.map((m) => ({ ...m }))),
+  paymentButton: text(50).default(D.paymentButton),
+  paymentNote: text(100).default(D.paymentNote),
+  paymentBack: text(60).default(D.paymentBack),
+  confirmTitle: text(60).default(D.confirmTitle),
+  confirmLead: text(240).default(D.confirmLead),
+  confirmButton: text(60).default(D.confirmButton),
+  confirmBack: text(40).default(D.confirmBack),
+  confirmUnavailable: text(160).default(D.confirmUnavailable),
 });
 
 export const guaranteeSchema = z.object({

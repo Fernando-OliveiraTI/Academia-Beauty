@@ -63,6 +63,16 @@ export default await Env.create(new URL('../', import.meta.url), {
 
   /*
   |----------------------------------------------------------
+  | Só fora de produção: `true` faz a leitura pública (site) servir também profissionais e cursos em
+  | rascunho, mesmo sem checkout, para testar as páginas. Em produção é ignorada: só publicados.
+  |----------------------------------------------------------
+  */
+  /** Token da API da The Members (somente leitura no servidor; nunca vai ao navegador). */
+  TOKEN_THE_MEMBERS: Env.schema.string.optional(),
+  PUBLIC_SHOW_DRAFTS: Env.schema.boolean.optional(),
+
+  /*
+  |----------------------------------------------------------
   | Proxies confiáveis (lista de IPs/CIDR separados por vírgula, ou `loopback`) cujo
   | X-Forwarded-For é usado como IP do cliente (limite de login, auditoria). Em produção atrás
   | de proxy/ingress, informe-os; sem isto vale o padrão do Adonis (somente loopback).

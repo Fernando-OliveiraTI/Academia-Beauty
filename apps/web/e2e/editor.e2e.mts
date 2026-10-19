@@ -47,6 +47,12 @@ const send = async (ctx: BrowserContext, method: 'post' | 'put' | 'delete', path
 const saved = (p: Page) => p.getByRole('status').filter({ hasText: 'Salvo' }).waitFor({ timeout: 10_000 })
 const frame = (p: Page) => p.frameLocator('iframe[title="Pré-visualização da página"]')
 const treeNames = (p: Page) => p.locator('.ed-item .ed-name').allTextContents()
+const menu = async (p: Page, item: string) => { await p.getByRole('button', { name: 'Mais ações' }).click(); await p.getByRole('menuitem', { name: item }).click() }
+/** Seleciona a seção na lista e abre a aba Avançado (mover/remover moram lá). */
+const advanced = async (p: Page, section: string) => {
+  await p.locator('.ed-item').filter({ has: p.locator('.ed-name', { hasText: section }) }).locator('.ed-select').click()
+  await p.getByRole('tab', { name: 'Avançado' }).click()
+}
 
 const professional = {
   name: 'Editor E2e', specialty: 'Hair', tagline: 'Técnica e carreira.', experienceYears: 10,
@@ -89,13 +95,16 @@ try {
   })
 
   await step('regras: hero não remove, nav não desce para o conteúdo, cursos é automática', async () => {
+    await advanced(page, 'Topo (hero)')
     assert.equal(await page.getByRole('button', { name: 'Remover Topo (hero)' }).isDisabled(), true)
+    await advanced(page, 'Navegação')
     assert.equal(await page.getByRole('button', { name: 'Mover Navegação para baixo' }).isDisabled(), true)
     assert.equal(await page.getByRole('button', { name: /(Ocultar|Mostrar) Cursos/ }).isDisabled(), true)
   })
 
   await step('reordenar por botão e por arrastar; ordem refletida na árvore', async () => {
     const before = await treeNames(page)
+    await advanced(page, 'Trajetória')
     await page.getByRole('button', { name: 'Mover Trajetória para baixo' }).click()
     const after = await treeNames(page)
     assert.equal(after[2], before[3])
@@ -112,11 +121,11 @@ try {
     assert.equal(await worksVisible(), true)
     await page.getByRole('button', { name: 'Ocultar Trabalhos em destaque' }).click()
     await frame(page).locator('#trabalhos').waitFor({ state: 'detached', timeout: 10_000 })
-    await page.getByRole('button', { name: 'Desfazer' }).click()
+    await menu(page, 'Desfazer')
     await frame(page).locator('#trabalhos').waitFor({ timeout: 10_000 })
-    await page.getByRole('button', { name: 'Refazer' }).click()
+    await menu(page, 'Refazer')
     await frame(page).locator('#trabalhos').waitFor({ state: 'detached', timeout: 10_000 })
-    await page.getByRole('button', { name: 'Desfazer' }).click()
+    await menu(page, 'Desfazer')
     await saved(page)
   })
 
@@ -126,7 +135,7 @@ try {
     await page.getByRole('status').filter({ hasText: 'Corrija os campos para salvar' }).waitFor()
     await page.getByRole('alert').filter({ hasText: 'URL não permitida' }).waitFor()
     assert.equal(await page.getByRole('button', { name: 'Publicar' }).isDisabled(), true)
-    await page.getByRole('button', { name: 'Desfazer' }).click()
+    await menu(page, 'Desfazer')
     await saved(page)
   })
 
@@ -152,7 +161,7 @@ try {
   })
 
   await step('histórico lista as versões e marca a que está no ar', async () => {
-    await page.getByRole('button', { name: 'Histórico' }).click()
+    await menu(page, 'Histórico')
     await page.getByText('Versão 2 (no ar)').waitFor()
     await page.getByText(/Versão 1.*gerada pelo cadastro|Versão 1/).first().waitFor()
   })
@@ -162,7 +171,7 @@ try {
     watch(other)
     await other.goto(`${BASE}/admin/editor/profissionais/${id}`)
     await other.locator('.ed-item').first().waitFor()
-    await page.getByRole('button', { name: 'Histórico' }).click() // volta ao painel de propriedades
+    await menu(page, 'Histórico') // volta ao painel de propriedades
     await page.getByRole('button', { name: /Trajetória/ }).first().click()
     await page.getByLabel('Conteúdo de Parágrafos 1').fill(`${EDITED} (aba 1)`)
     await saved(page)
@@ -176,7 +185,7 @@ try {
   })
 
   await step('restaurar do cadastro descarta o documento e volta ao texto do cadastro', async () => {
-    await page.getByRole('button', { name: 'Restaurar do cadastro' }).click()
+    await menu(page, 'Restaurar do cadastro')
     await page.getByRole('button', { name: 'Confirmar' }).click()
     await page.waitForLoadState('load')
     await page.locator('.ed-item').first().waitFor()
@@ -238,6 +247,7 @@ try {
     await page.locator('.ed-item').first().waitFor()
     const names = await treeNames(page)
     assert.ok(names.includes('Oferta') && names.includes('Chamada final'), names.join(','))
+    await advanced(page, 'Oferta')
     assert.equal(await page.getByRole('button', { name: 'Remover Oferta' }).isDisabled(), true)
     await frame(page).locator('.pg-course').waitFor({ timeout: 15_000 })
     await page.getByRole('button', { name: /Chamada final/ }).first().click()

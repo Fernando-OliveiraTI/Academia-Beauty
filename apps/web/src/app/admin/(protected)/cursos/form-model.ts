@@ -21,11 +21,11 @@ export const emptyCourseData: CourseData = {
 }
 
 export const STEPS = [
-  { key: 'basico', label: 'Dados básicos' },
-  { key: 'conteudo', label: 'Conteúdo' },
-  { key: 'confianca', label: 'Dúvidas e garantia' },
-  { key: 'oferta', label: 'Oferta e checkout' },
-  { key: 'publicacao', label: 'Revisão e publicação' },
+  { key: 'basico', label: 'Dados básicos', desc: 'Defina as informações principais do seu curso.' },
+  { key: 'conteudo', label: 'Conteúdo', desc: 'Descrição, capa, benefícios, módulos e o que o aluno recebe.' },
+  { key: 'confianca', label: 'Dúvidas e garantia', desc: 'Garantia, perguntas frequentes e depoimentos reais.' },
+  { key: 'oferta', label: 'Oferta e checkout', desc: 'Preço, desconto, parcelas e o link de pagamento.' },
+  { key: 'publicacao', label: 'Revisão e publicação', desc: 'Confira as pendências e publique quando estiver tudo certo.' },
 ] as const
 
 /** A etapa em que cada pendência é resolvida. */
@@ -51,11 +51,25 @@ export function parseBRLToCents(input: string): number | null {
   return Number.isSafeInteger(cents) ? cents : null
 }
 
-/** 25000 → "250,00" (campo de edição, sem símbolo). */
+/** Máscara de reais enquanto digita: só os dígitos contam e entram como centavos ("25000" → "250,00", "1234567" → "12.345,67"). */
+export function maskBRL(input: string): string {
+  const digits = input.replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, 8) // até R$ 999.999,99
+  if (!digits) return ''
+  const padded = digits.padStart(3, '0')
+  const whole = padded.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  return `${whole},${padded.slice(-2)}`
+}
+
+/** Máscara de porcentagem: só dígitos, até 2 casas, limitado ao máximo permitido (o símbolo % fica fora do valor). */
+export function maskPercent(input: string, max = 90): string {
+  const digits = input.replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, 3)
+  if (!digits) return ''
+  return String(Math.min(Number(digits), max))
+}
+
+/** 25000 → "250,00"; 123456 → "1.234,56" (campo de edição, sem símbolo). */
 export function centsToInput(cents: number): string {
-  const whole = Math.floor(cents / 100)
-  const frac = String(cents % 100).padStart(2, '0')
-  return `${whole},${frac}`
+  return maskBRL(String(Math.max(0, Math.round(cents))))
 }
 
 export const emptyLines = (value: string) => value.split('\n').map((l) => l.trim()).filter(Boolean)

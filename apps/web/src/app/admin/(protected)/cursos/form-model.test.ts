@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { centsToInput, emptyLines, groupIssuesByStep, parseBRLToCents, stepForField } from './form-model'
+import { centsToInput, emptyLines, groupIssuesByStep, maskBRL, maskPercent, parseBRLToCents, stepForField } from './form-model'
 
 describe('parseBRLToCents', () => {
   it.each([
@@ -32,5 +32,29 @@ describe('etapas e linhas', () => {
   })
   it('emptyLines ignora linhas vazias', () => {
     expect(emptyLines('a\n\n  b  \n')).toEqual(['a', 'b'])
+  })
+})
+
+describe('máscaras de valores', () => {
+  it('maskBRL formata como centavos enquanto digita', () => {
+    expect(maskBRL('')).toBe('')
+    expect(maskBRL('1')).toBe('0,01')
+    expect(maskBRL('25')).toBe('0,25')
+    expect(maskBRL('25000')).toBe('250,00')
+    expect(maskBRL('1234567')).toBe('12.345,67')
+    expect(maskBRL('R$ 1.250,00')).toBe('1.250,00')
+    expect(maskBRL('99999999999')).toBe('999.999,99')
+  })
+  it('o valor mascarado volta ao mesmo número em centavos', () => {
+    for (const cents of [1, 99, 25000, 123456, 10_000_000 - 1]) {
+      expect(parseBRLToCents(centsToInput(cents))).toBe(cents)
+    }
+  })
+  it('maskPercent aceita só dígitos e limita ao máximo', () => {
+    expect(maskPercent('')).toBe('')
+    expect(maskPercent('3a0%')).toBe('30')
+    expect(maskPercent('95')).toBe('90')
+    expect(maskPercent('007')).toBe('7')
+    expect(maskPercent('150', 100)).toBe('100')
   })
 })

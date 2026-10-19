@@ -8,6 +8,12 @@ const mediaHosts = (process.env.MEDIA_CDN_HOST ?? '')
   .map((h) => h.trim().toLowerCase())
   .filter((h) => /^[a-z0-9.-]+$/.test(h))
 const mediaSources = mediaHosts.map((h) => `https://${h}`).join(' ')
+// Domínios de checkout autorizados (mesmo valor da API): só eles podem ser embutidos em iframe (The Members).
+const checkoutHosts = (process.env.CHECKOUT_ALLOWED_HOSTS ?? '')
+  .split(',')
+  .map((h) => h.trim().toLowerCase())
+  .filter((h) => /^(\*\.)?[a-z0-9.-]+$/.test(h))
+const frameSources = ["'self'", ...checkoutHosts.map((h) => `https://${h}`)].join(' ')
 
 // CSP do painel e do site. Em dev o Next precisa de 'unsafe-eval' (React refresh); em produção não.
 const cspDirectives = (frameAncestors: string) => [
@@ -17,6 +23,7 @@ const cspDirectives = (frameAncestors: string) => [
   `img-src 'self' data: blob:${mediaSources ? ` ${mediaSources}` : ''}`,
   `media-src 'self' blob:${mediaSources ? ` ${mediaSources}` : ''}`,
   "font-src 'self' data:",
+  `frame-src ${frameSources}`,
   "connect-src 'self'",
   `frame-ancestors ${frameAncestors}`,
   "base-uri 'self'",

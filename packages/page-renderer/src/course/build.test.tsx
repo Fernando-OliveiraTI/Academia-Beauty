@@ -61,10 +61,11 @@ describe('buildCourseDocument', () => {
     expect(JSON.stringify(buildCourseDocument({ data: course, professional: pro }))).toBe(a);
   });
 
-  it('Modo A: sem checkout de demonstração; botões levam à URL do provedor com rel seguro', () => {
+  it('Modo A: checkout próprio sem campos de cartão; botões levam à URL do provedor com rel seguro', () => {
     const html = render(buildCourseDocument({ data: course, professional: pro }), 30);
-    expect(html).not.toContain('id="checkout"');
-    expect(html).not.toContain('name="cpf"');
+    expect(html).toContain('id="checkout"');
+    expect(html).toContain('id="buyer-0"');
+    expect(html).not.toMatch(/cardNumber|cvv|Ambiente de demonstração/i);
     const ctas = [...html.matchAll(/<a [^>]*data-cta[^>]*>/g)].map((m) => m[0]);
     expect(ctas.length).toBeGreaterThanOrEqual(5);
     for (const cta of ctas) {

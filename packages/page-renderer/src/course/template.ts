@@ -1,6 +1,7 @@
 import type { PageDocument } from '@academia/page-schema';
 import { SCHEMA_VERSION } from '../schemas-version';
 import type * as S from './schemas';
+import { checkoutSchema } from './schemas';
 
 export const COURSE_TEMPLATE_KEY = 'course-original';
 
@@ -161,7 +162,7 @@ const faq: S.FaqContent = {
   ],
 };
 
-const checkout: S.CheckoutContent = {
+const checkout: S.CheckoutContent = checkoutSchema.parse({
   eyebrow: 'Checkout seguro',
   title: 'Finalize em menos de um minuto.',
   productName: 'Morena Iluminada',
@@ -171,7 +172,8 @@ const checkout: S.CheckoutContent = {
   seals: [
     { icon: 'lock', label: 'Conexão segura' }, { icon: 'shield', label: '7 dias de garantia' }, { icon: 'bolt', label: 'Acesso imediato' },
   ],
-};
+  paymentNote: 'Pagamento criptografado · Garantia de 7 dias',
+});
 
 const guarantee: S.GuaranteeContent = {
   sealValue: '7', sealUnit: 'dias',

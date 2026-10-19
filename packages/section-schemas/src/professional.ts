@@ -9,6 +9,8 @@ export const navSchema = z.object({
   brandAccent: text(30),
   links: z.array(link).max(6),
   account: link,
+  /** Menu principal do site (topo); ausente = Cursos, Profissionais, Quem somos. `links` vira o menu lateral desta página. */
+  siteLinks: z.array(link).max(5).optional(),
 });
 
 export const heroSchema = z.object({
@@ -35,6 +37,12 @@ export const worksSchema = z.object({
   titleLead: text(80),
   titleAccent: text(60),
   copy: text(400),
+  /** Colunas da galeria; ausente = 4 (todos os trabalhos em uma linha). */
+  columns: z.enum(['4', '3']).optional(),
+  /** Ausentes = ocultos: a galeria mostra só as fotos. */
+  showPerson: z.boolean().optional(),
+  showTitle: z.boolean().optional(),
+  showPlus: z.boolean().optional(),
   items: z.array(z.object({
     image,
     tags: z.array(z.object({ label: text(30), gold: z.boolean().optional() })).max(3),
@@ -57,6 +65,8 @@ export const coursesSchema = z.object({
   sectionIndex: text(40),
   title: text(60),
   text: text(300),
+  /** Cursos por linha; ausente = 4. */
+  columns: z.enum(['4', '3', '2']).optional(),
   /** Cursos publicados do profissional; sem cursos a seção não é renderizada. */
   cards: z.array(z.object({
     href: safeUrlSchema,

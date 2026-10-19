@@ -4,6 +4,7 @@ import { publicCourseSchema } from '@academia/contracts'
 import { PageRenderer, resolveCourseDocument } from '@academia/page-renderer'
 import type { PageDocument } from '@academia/page-schema'
 import { publicGet } from '@/lib/api-server'
+import { PageTracker } from '@/components/page-tracker'
 import '@academia/page-renderer/course.css'
 
 type Params = { params: Promise<{ slug: string }> }
@@ -41,5 +42,10 @@ export default async function CoursePage({ params }: Params) {
   const course = await load(slug)
   if (!course) notFound()
   const document = resolveCourseDocument({ data: course.data, professional: course.professional.data, document: course.document as PageDocument | null })
-  return <PageRenderer document={document} ctx={{ offer: course.offer, year: new Date().getFullYear(), checkout: course.checkout }} />
+  return (
+    <>
+      <PageRenderer document={document} ctx={{ offer: course.offer, year: new Date().getFullYear(), checkout: course.checkout, professional: { slug: course.professional.slug, name: course.professional.data.name } }} />
+      <PageTracker type="course" slug={slug} />
+    </>
+  )
 }

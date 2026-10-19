@@ -27,12 +27,38 @@ export function ProfessionalEffects() {
       seen.add(el);
       io.observe(el);
     });
+    // Menu lateral: marca a seção que está no meio da tela (igual ao menu do curso). Refaz a observação quando os links mudam.
+    let spy: IntersectionObserver | null = null;
+    let signature = '';
+    const bindSpy = () => {
+      const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('.pg-pro .pro-side-nav a'));
+      const sig = links.map((a) => a.getAttribute('href') ?? '').join('|');
+      if (sig === signature) return;
+      signature = sig;
+      spy?.disconnect();
+      // O menu é editável: só âncoras internas (#id) viram seção observada; qualquer outro href é ignorado.
+      const targets = links
+        .map((a) => {
+          const href = a.getAttribute('href') ?? '';
+          return href.length > 1 && href.startsWith('#') ? document.getElementById(href.slice(1)) : null;
+        })
+        .filter((t): t is HTMLElement => !!t);
+      spy = new IntersectionObserver((entries) => {
+        entries.forEach((e) => {
+          if (!e.isIntersecting) return;
+          links.forEach((a) => a.classList.toggle('is-active', a.getAttribute('href') === `#${e.target.id}`));
+        });
+      }, { rootMargin: '-45% 0px -50% 0px' });
+      targets.forEach((t) => spy!.observe(t));
+    };
     scan();
-    const mo = new MutationObserver(scan);
+    bindSpy();
+    const mo = new MutationObserver(() => { scan(); bindSpy(); });
     mo.observe(document.body, { childList: true, subtree: true });
     return () => {
       mo.disconnect();
       io.disconnect();
+      spy?.disconnect();
       timers.forEach(clearTimeout);
     };
   }, []);

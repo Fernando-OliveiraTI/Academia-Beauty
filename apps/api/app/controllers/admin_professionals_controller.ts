@@ -17,6 +17,7 @@ import ProfessionalService, {
 } from '#services/professional_service'
 import CourseService from '#services/course_service'
 import RevalidationService from '#services/revalidation_service'
+import { applySort } from '#services/list_sort'
 
 /** 422 no formato { message, errors: [{ field, message }] }. */
 function parse<T>(schema: ZodType<T>, input: unknown, ctx: HttpContext): T | null {
@@ -54,16 +55,27 @@ export default class AdminProfessionalsController {
   async index(ctx: HttpContext) {
     const query = parse(listProfessionalsQuerySchema, ctx.request.qs(), ctx)
     if (!query) return
-    const builder = Professional.query().orderBy('updated_at', 'desc').orderBy('id', 'desc')
+    // A busca vale para a lista e para as contagens por situação (que ignoram só o filtro de situação).
+    const filtered = () => {
+      const builder = Professional.query()
+      if (query.q) {
+        const like = `%${escapeLike(query.q)}%`
+        builder.where((q) =>
+          q
+            .whereRaw("name like ? escape '\\\\'", [like])
+            .orWhereRaw("slug like ? escape '\\\\'", [like])
+        )
+      }
+      return builder
+    }
+    const builder = filtered()
+    applySort(builder, String(ctx.request.input('sort') ?? ''), 'name')
     if (query.status) builder.where('status', query.status)
     else builder.whereNot('status', 'archived')
-    if (query.q) {
-      const like = `%${escapeLike(query.q)}%`
-      builder.where((q) =>
-        q
-          .whereRaw("name like ? escape '\\\\'", [like])
-          .orWhereRaw("slug like ? escape '\\\\'", [like])
-      )
+    const countRows = await filtered().groupBy('status').select('status').count('* as total')
+    const counts = { draft: 0, published: 0, archived: 0 }
+    for (const row of countRows) {
+      counts[row.status as keyof typeof counts] = Number(row.$extras.total)
     }
     const page = await builder.paginate(query.page, query.perPage)
     return {
@@ -73,6 +85,7 @@ export default class AdminProfessionalsController {
         page: page.currentPage,
         perPage: page.perPage,
         lastPage: page.lastPage,
+        counts,
       },
     }
   }
@@ -100,6 +113,23 @@ export default class AdminProfessionalsController {
         resourceType: 'professional',
         resourceId: p.id,
         metadata: { slug: p.slug, templateKey: p.templateKey },
+      })
+      return ctx.response.created({ ...toAdmin(p), readiness: publishReadiness(p.data) })
+    } catch (error) {
+      return fail(ctx, error)
+    }
+  }
+
+  async duplicate(ctx: HttpContext) {
+    const actor = ctx.auth.getUserOrFail()
+    try {
+      const p = await ProfessionalService.duplicate(Number(ctx.params.id), actor.id)
+      await AuditService.record(ctx, {
+        action: 'professional.duplicate',
+        actorId: actor.id,
+        resourceType: 'professional',
+        resourceId: p.id,
+        metadata: { slug: p.slug, sourceId: Number(ctx.params.id) },
       })
       return ctx.response.created({ ...toAdmin(p), readiness: publishReadiness(p.data) })
     } catch (error) {
@@ -169,6 +199,24 @@ export default class AdminProfessionalsController {
       })
       await RevalidationService.revalidate(professionalTags(p.slug))
       return toAdmin(p)
+    } catch (error) {
+      return fail(ctx, error)
+    }
+  }
+
+  async destroy(ctx: HttpContext) {
+    const actor = ctx.auth.getUserOrFail()
+    try {
+      const gone = await ProfessionalService.destroy(Number(ctx.params.id))
+      await AuditService.record(ctx, {
+        action: 'professional.delete',
+        actorId: actor.id,
+        resourceType: 'professional',
+        resourceId: gone.id,
+        metadata: { slug: gone.slug, name: gone.name },
+      })
+      await RevalidationService.revalidate(professionalTags(gone.slug))
+      return ctx.response.noContent()
     } catch (error) {
       return fail(ctx, error)
     }

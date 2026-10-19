@@ -122,6 +122,8 @@ export default class extends BaseSeeder {
         discountPct: 30,
         maxInstallments: 6,
         checkoutUrl: 'https://pay.example.com/morena-iluminada',
+        provider: 'academia',
+        externalCourseId: '',
         environment: 'sandbox',
         active: true,
         revision: 0,

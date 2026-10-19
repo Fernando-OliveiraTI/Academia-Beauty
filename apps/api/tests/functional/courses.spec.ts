@@ -54,7 +54,7 @@ const slug = (p = 'curso') => `${p}-${Date.now()}-${++seq}`
 
 /** Chamadas autenticadas com CSRF, no estilo dos testes de profissionais. */
 function api(client: Client, user: User) {
-  const call = (method: 'post' | 'put', path: string, body?: object) => {
+  const call = (method: 'post' | 'put' | 'delete', path: string, body?: object) => {
     const req = client[method](path).withCsrfToken().loginAs(user)
     return body ? req.json(body) : req
   }
@@ -62,6 +62,7 @@ function api(client: Client, user: User) {
     get: (path: string) => client.get(path).loginAs(user),
     post: (path: string, body?: object) => call('post', path, body),
     put: (path: string, body?: object) => call('put', path, body),
+    delete: (path: string) => call('delete', path),
   }
 }
 
@@ -557,6 +558,25 @@ test.group('Cursos · vitrine no profissional e cascata', (group) => {
     const percent = await a.get('/admin/courses?q=%25')
     assert.lengthOf(percent.body().items, 0)
   })
+
+  test('a busca da lista também acha pelo nome do profissional', async ({ client, assert }) => {
+    const admin = await makeUser('admin')
+    const a = api(client, admin)
+    const created = await a.post('/admin/professionals', {
+      slug: slug('nome'),
+      data: professionalData('Zeferino Quaresma'),
+    })
+    created.assertStatus(201)
+    const proId = created.body().id as number
+    await readyCourse(a, proId, slug('curso-z'))
+    const other = await publishedProfessional(a)
+    await readyCourse(a, other.id, slug('curso-outro'))
+
+    const found = await a.get('/admin/courses?q=Quaresma')
+    assert.lengthOf(found.body().items, 1)
+    assert.equal(found.body().items[0].professionalId, proId)
+    assert.lengthOf((await a.get('/admin/courses?q=ninguem-assim')).body().items, 0)
+  })
 })
 
 test.group('Cursos · pausar vendas e hosts do checkout', (group) => {
@@ -596,6 +616,62 @@ test.group('Cursos · pausar vendas e hosts do checkout', (group) => {
     )
   })
 
+  test('provedor The Members: a página pública vira embed; voltar para a Academia vale na hora; padrão é Academia', async ({
+    client,
+    assert,
+  }) => {
+    const a = api(client, await makeUser('admin'))
+    const professional = await publishedProfessional(a)
+    const { id, slug: s } = await readyCourse(a, professional.id)
+    ;(await a.post(`/admin/courses/${id}/publish`)).assertStatus(200)
+    const before = (await client.get(`/public/courses/${s}`)).body()
+    assert.equal(before.checkout.mode, 'redirect')
+
+    const saved = await a.put(
+      `/admin/courses/${id}/commercial`,
+      commercial({ provider: 'themembers', revision: 1 })
+    )
+    saved.assertStatus(200)
+    assert.equal(saved.body().commercial.provider, 'themembers')
+    // O snapshot publicado é imutável: o modo só muda ao republicar.
+    assert.equal((await client.get(`/public/courses/${s}`)).body().checkout.mode, 'redirect')
+    ;(await a.post(`/admin/courses/${id}/publish`)).assertStatus(200)
+    const embed = (await client.get(`/public/courses/${s}`)).body()
+    assert.equal(embed.checkout.mode, 'embed')
+    assert.equal(embed.checkout.url, 'https://pay.example.com/c/abc')
+
+    // ID do curso na The Members: guardado na oferta, sem caracteres estranhos, e a cópia não o herda.
+    const withId = await a.put(
+      `/admin/courses/${id}/commercial`,
+      commercial({ provider: 'themembers', externalCourseId: 'crs_123', revision: 2 })
+    )
+    withId.assertStatus(200)
+    assert.equal(withId.body().commercial.externalCourseId, 'crs_123')
+    ;(
+      await a.put(
+        `/admin/courses/${id}/commercial`,
+        commercial({ provider: 'themembers', externalCourseId: '<x>', revision: 3 })
+      )
+    ).assertStatus(422)
+    const copy = await a.post(`/admin/courses/${id}/duplicate`)
+    copy.assertStatus(201)
+    assert.equal(copy.body().commercial.externalCourseId, '')
+
+    // O iframe também só aceita domínio autorizado.
+    const bad = await a.put(
+      `/admin/courses/${id}/commercial`,
+      commercial({ provider: 'themembers', checkoutUrl: 'https://evil.example.org/c', revision: 3 })
+    )
+    bad.assertStatus(422)
+    assert.equal(bad.body().code, 'checkout_url_invalid')
+
+    const invalid = await a.put(
+      `/admin/courses/${id}/commercial`,
+      commercial({ provider: 'outro', revision: 3 })
+    )
+    invalid.assertStatus(422)
+  })
+
   test('a lista de domínios vale para o host exato: subdomínio do host listado é recusado', async ({
     client,
   }) => {
@@ -607,5 +683,145 @@ test.group('Cursos · pausar vendas e hosts do checkout', (group) => {
       commercial({ checkoutUrl: 'https://outro-vendedor.pay.example.com/c', revision: 1 })
     )
     sub.assertStatus(422)
+  })
+})
+
+test.group('Duplicar profissional e curso', (group) => {
+  group.each.setup(() => testUtils.db().withGlobalTransaction())
+
+  test('duplicar profissional: rascunho novo com dados copiados, nome "(cópia)" e slug livre', async ({
+    client,
+    assert,
+  }) => {
+    const a = api(client, await makeUser('admin'))
+    const professional = await publishedProfessional(a)
+    const first = await a.post(`/admin/professionals/${professional.id}/duplicate`)
+    first.assertStatus(201)
+    assert.equal(first.body().status, 'draft')
+    assert.notEqual(first.body().id, professional.id)
+    assert.equal(first.body().data.name, 'Ana Souza (cópia)')
+    assert.equal(first.body().data.bio[0], 'Trajetória de dez anos.')
+    assert.match(first.body().slug, /-copia$/)
+    const second = await a.post(`/admin/professionals/${professional.id}/duplicate`)
+    second.assertStatus(201)
+    assert.match(second.body().slug, /-copia-2$/)
+    // O original segue publicado e intacto.
+    const original = await a.get(`/admin/professionals/${professional.id}`)
+    assert.equal(original.body().status, 'published')
+    assert.equal(original.body().data.name, 'Ana Souza')
+  })
+
+  test('duplicar curso: mesmo profissional, sem publicação, e a oferta só vai para quem tem commerce.manage', async ({
+    client,
+    assert,
+  }) => {
+    const admin = api(client, await makeUser('admin'))
+    const editor = api(client, await makeUser('editor'))
+    const professional = await publishedProfessional(admin)
+    const { id } = await readyCourse(admin, professional.id)
+    ;(await admin.post(`/admin/courses/${id}/publish`)).assertStatus(200)
+
+    const byAdmin = await admin.post(`/admin/courses/${id}/duplicate`)
+    byAdmin.assertStatus(201)
+    assert.equal(byAdmin.body().status, 'draft')
+    assert.equal(byAdmin.body().professionalId, professional.id)
+    assert.equal(byAdmin.body().data.title, 'Morena Iluminada (cópia)')
+    assert.equal(byAdmin.body().commercial.listCents, 25000)
+    assert.equal(byAdmin.body().commercial.checkoutUrl, '')
+    assert.isFalse(byAdmin.body().commercial.active)
+
+    const byEditor = await editor.post(`/admin/courses/${id}/duplicate`)
+    byEditor.assertStatus(201)
+    assert.isNull(byEditor.body().commercial)
+  })
+
+  test('viewer não duplica e id inexistente dá 404', async ({ client }) => {
+    const viewer = api(client, await makeUser('viewer'))
+    ;(await viewer.post('/admin/courses/1/duplicate')).assertStatus(403)
+    ;(await viewer.post('/admin/professionals/1/duplicate')).assertStatus(403)
+    const admin = api(client, await makeUser('admin'))
+    ;(await admin.post('/admin/courses/999999/duplicate')).assertStatus(404)
+    ;(await admin.post('/admin/professionals/999999/duplicate')).assertStatus(404)
+  })
+})
+
+test.group('Despublicar e apagar', (group) => {
+  group.each.setup(() => testUtils.db().withGlobalTransaction())
+
+  test('apagar exige permissão, recusa publicado e profissional com curso; despublicar libera', async ({
+    client,
+    assert,
+  }) => {
+    const a = api(client, await makeUser('admin'))
+    const professional = await publishedProfessional(a)
+    const course = await readyCourse(a, professional.id)
+    ;(await a.post(`/admin/courses/${course.id}/publish`)).assertStatus(200)
+
+    ;(
+      await api(client, await makeUser('viewer')).delete(`/admin/courses/${course.id}`)
+    ).assertStatus(403)
+    // No ar: precisa despublicar primeiro.
+    const blocked = await a.delete(`/admin/courses/${course.id}`)
+    blocked.assertStatus(422)
+    assert.equal(blocked.body().code, 'published')
+    ;(await a.post(`/admin/courses/${course.id}/unpublish`)).assertStatus(200)
+    ;(await client.get(`/public/courses/${course.slug}`)).assertStatus(404)
+
+    // Profissional com curso não é apagado, mesmo despublicado.
+    ;(await a.post(`/admin/professionals/${professional.id}/unpublish`)).assertStatus(200)
+    const hasCourses = await a.delete(`/admin/professionals/${professional.id}`)
+    hasCourses.assertStatus(409)
+    assert.equal(hasCourses.body().code, 'has_courses')
+
+    // Curso apagado de vez (com oferta e versões); depois o profissional também.
+    ;(await a.delete(`/admin/courses/${course.id}`)).assertStatus(204)
+    ;(await a.get(`/admin/courses/${course.id}`)).assertStatus(404)
+    assert.equal((await db.from('course_versions').where('course_id', course.id)).length, 0)
+    assert.equal((await db.from('commercial_configs').where('course_id', course.id)).length, 0)
+    ;(await a.delete(`/admin/professionals/${professional.id}`)).assertStatus(204)
+    ;(await a.get(`/admin/professionals/${professional.id}`)).assertStatus(404)
+    assert.equal(
+      (await db.from('professional_versions').where('professional_id', professional.id)).length,
+      0
+    )
+    ;(await a.delete('/admin/courses/999999')).assertStatus(404)
+  })
+
+  test('apagar registra auditoria com o identificador do item', async ({ client, assert }) => {
+    const a = api(client, await makeUser('admin'))
+    const created = await a.post('/admin/professionals', {
+      slug: slug('prof'),
+      data: professionalData(),
+    })
+    created.assertStatus(201)
+    ;(await a.delete(`/admin/professionals/${created.body().id}`)).assertStatus(204)
+    const log = await db.from('audit_logs').where('action', 'professional.delete').first()
+    assert.equal(String(log?.resource_id), String(created.body().id))
+  })
+
+  test('a lista ordena por nome, aceita busca e devolve contagens por situação', async ({
+    client,
+    assert,
+  }) => {
+    const a = api(client, await makeUser('admin'))
+    for (const name of ['Bia Lima', 'Ana Souza']) {
+      ;(
+        await a.post('/admin/professionals', { slug: slug('ord'), data: professionalData(name) })
+      ).assertStatus(201)
+    }
+    const published = await publishedProfessional(a)
+    const sorted = await a.get('/admin/professionals?sort=name')
+    const names = sorted.body().items.map((p: { data: { name: string } }) => p.data.name)
+    assert.deepEqual(
+      names,
+      [...names].sort((x: string, y: string) => x.localeCompare(y))
+    )
+    assert.deepInclude(sorted.body().meta.counts, { published: 1, draft: 2, archived: 0 })
+    // A contagem ignora o filtro de situação, mas respeita a busca.
+    const searched = await a.get('/admin/professionals?q=Bia&status=published')
+    assert.equal(searched.body().items.length, 0)
+    assert.equal(searched.body().meta.counts.draft, 1)
+    ;(await a.post(`/admin/professionals/${published.id}/archive`)).assertStatus(200)
+    assert.equal((await a.get('/admin/professionals')).body().meta.counts.archived, 1)
   })
 })

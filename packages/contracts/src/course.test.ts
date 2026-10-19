@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  commercialInputSchema,
   commercialReadiness,
   computeOffer,
   courseDataSchema,
@@ -74,7 +75,7 @@ describe('validateCheckoutUrl', () => {
 });
 
 describe('readiness', () => {
-  const base: CommercialInput = { listCents: 25000, discountPct: 0, maxInstallments: 1, checkoutUrl: 'https://pay.example.com/c', environment: 'production', active: true };
+  const base: CommercialInput = { listCents: 25000, discountPct: 0, maxInstallments: 1, checkoutUrl: 'https://pay.example.com/c', provider: 'academia', externalCourseId: '', environment: 'production', active: true };
 
   it('curso vazio lista pendências; curso completo não', () => {
     const empty = courseDataSchema.parse({ title: 'Curso X' });
@@ -102,5 +103,18 @@ describe('courseDataSchema', () => {
     expect(courseDataSchema.safeParse({ title: '<b>x</b>' }).success).toBe(false);
     expect(courseDataSchema.safeParse({ title: 'ab' }).success).toBe(false);
     expect(courseDataSchema.safeParse({ title: 'Curso', faq: [{ title: 'p', text: '<script>' }] }).success).toBe(false);
+  });
+});
+
+describe('provedor de checkout', () => {
+  const input = { listCents: 25000, discountPct: 0, maxInstallments: 1, checkoutUrl: '', environment: 'production', active: false };
+
+  it('oferta sem provedor (antiga) vale como Academia', () => {
+    expect(commercialInputSchema.parse(input).provider).toBe('academia');
+  });
+
+  it('aceita The Members e recusa provedor desconhecido', () => {
+    expect(commercialInputSchema.parse({ ...input, provider: 'themembers' }).provider).toBe('themembers');
+    expect(commercialInputSchema.safeParse({ ...input, provider: 'outro' }).success).toBe(false);
   });
 });

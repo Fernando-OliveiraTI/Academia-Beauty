@@ -37,7 +37,7 @@ pnpm dev                                                         # web em :3100,
 Em desenvolvimento use as credenciais do `docker-compose.yml` (`academia` / `academia_dev_only`, banco `academia`). `ADMIN_EMAIL` e `ADMIN_PASSWORD` (mínimo 12 caracteres) criam o primeiro administrador no seed. Nunca reutilize essas senhas fora do ambiente local.
 
 ## Variáveis de ambiente da API (produção)
-- `CHECKOUT_ALLOWED_HOSTS`: hosts exatos autorizados para o link de checkout (Modo A); subdomínios exigem curinga (`*.dominio.com`). Vazio = nenhum link aceito.
+- `CHECKOUT_ALLOWED_HOSTS`: hosts exatos autorizados para o link de checkout (Modo A); subdomínios exigem curinga (`*.dominio.com`). Vazio = nenhum link aceito. O mesmo valor também precisa estar no ambiente do **web** (CSP `frame-src` do checkout embutido da The Members; ver D-030).
 - `REVALIDATE_URL` e `REVALIDATE_SECRET` (≥ 24 caracteres, o mesmo no web): invalidação do cache do site ao publicar.
 - `TRUSTED_PROXIES`: IPs/CIDR do proxy/ingress (ou `loopback`) cujo `X-Forwarded-For` vale como IP do cliente (limite de login, auditoria). Sem isto, só loopback é confiável: atrás de um proxy não listado todos os acessos parecem vir do mesmo IP.
 - Defina `NODE_ENV=production` também em staging (stack traces só em dev/teste).

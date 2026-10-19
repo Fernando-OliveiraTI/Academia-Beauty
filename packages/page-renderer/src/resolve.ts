@@ -4,6 +4,7 @@ import { buildProfessionalDocument } from './professional/build';
 import { buildCourseDocument, professionalCourseCards } from './course/build';
 import { homeCourseItems, homeProfessionalItems } from './home/build';
 import { homeOriginalTemplate } from './home/template';
+import { checkoutSchema } from '@academia/section-schemas/course';
 
 /**
  * Documento da página do profissional. Sem `document` (página nunca personalizada no editor) segue o
@@ -40,8 +41,30 @@ export function resolveCourseDocument(input: {
   professional: ProfessionalData;
   document?: PageDocument | null;
 }): PageDocument {
-  if (input.document) return structuredClone(input.document);
+  if (input.document) return withInstructorPhoto(withCheckoutDefaults(structuredClone(input.document)), input.professional);
   return buildCourseDocument({ data: input.data, professional: input.professional });
+}
+
+/** Documentos salvos sem retrato do instrutor usam o retrato do cadastro do profissional. */
+function withInstructorPhoto(doc: PageDocument, pro: ProfessionalData): PageDocument {
+  if (!pro.portraitSrc) return doc;
+  doc.sections = doc.sections.map((s) => {
+    if (s.type !== 'course.instructor') return s;
+    const content = s.content as { photo?: { src?: string } };
+    if (content.photo?.src) return s;
+    return { ...s, content: { ...s.content, photo: { src: pro.portraitSrc, alt: `Retrato de ${pro.name}`.slice(0, 300) } } };
+  });
+  return doc;
+}
+
+/** Documentos salvos antes dos campos novos do checkout ganham os textos padrão (o editor mostra o que a página exibe). */
+function withCheckoutDefaults(doc: PageDocument): PageDocument {
+  doc.sections = doc.sections.map((s) => {
+    if (s.type !== 'course.checkout') return s;
+    const parsed = checkoutSchema.safeParse(s.content);
+    return parsed.success ? { ...s, content: parsed.data as Record<string, unknown> } : s;
+  });
+  return doc;
 }
 
 /**

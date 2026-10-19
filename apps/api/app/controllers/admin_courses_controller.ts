@@ -1,5 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
-import type { ZodType } from 'zod'
+import { z, type ZodType } from 'zod'
 import {
   commercialReadiness,
   courseReadiness,
@@ -18,11 +18,14 @@ import AuditService from '#services/audit_service'
 import CourseService, {
   allowedCheckoutHosts,
   commercialInput,
+  providerOf,
   courseTags,
   toAdmin,
 } from '#services/course_service'
 import { DomainError, toDomainError } from '#services/domain_error'
+import ThemembersSyncService from '#services/themembers_sync_service'
 import RevalidationService from '#services/revalidation_service'
+import { applySort } from '#services/list_sort'
 
 /** 422 no formato { message, errors: [{ field, message }] }. */
 function parse<T>(schema: ZodType<T>, input: unknown, ctx: HttpContext): T | null {
@@ -44,6 +47,15 @@ function fail(ctx: HttpContext, raw: unknown) {
   }
   throw error
 }
+
+const themembersLinkSchema = z.object({
+  externalCourseId: z
+    .string()
+    .trim()
+    .min(1, 'Informe o ID da The Members')
+    .max(128)
+    .regex(/^[A-Za-z0-9_.:-]+$/, 'Use apenas letras, números e _ . : -'),
+})
 
 const withoutUrl = ({ checkoutUrl: _url, ...rest }: CommercialInput) => rest
 
@@ -77,20 +89,109 @@ async function respond(course: Course) {
 }
 
 export default class AdminCoursesController {
+  /** Resumo do que a sincronização com a The Members mudaria (não grava nada). */
+  async themembersPreview(ctx: HttpContext) {
+    try {
+      return await new ThemembersSyncService().preview()
+    } catch (error) {
+      return fail(ctx, error)
+    }
+  }
+
+  /** Aplica o resumo: nome e valor da The Members nos cursos vinculados. */
+  async themembersApply(ctx: HttpContext) {
+    const actor = ctx.auth.getUserOrFail()
+    try {
+      const results = await new ThemembersSyncService().apply(actor.id)
+      for (const r of results.filter((x) => x.applied.length)) {
+        await AuditService.record(ctx, {
+          action: 'course.themembers.sync',
+          actorId: actor.id,
+          resourceType: 'course',
+          resourceId: r.courseId,
+          metadata: { applied: r.applied },
+        })
+      }
+      return { results }
+    } catch (error) {
+      return fail(ctx, error)
+    }
+  }
+
+  /** Grava só o ID da The Members de um curso (botão "Salvar" do modal de sincronização). */
+  async themembersLink(ctx: HttpContext) {
+    const input = parse(themembersLinkSchema, ctx.request.body(), ctx)
+    if (!input) return
+    const actor = ctx.auth.getUserOrFail()
+    try {
+      const { course, config, previous } = await new ThemembersSyncService().link(
+        Number(ctx.params.id),
+        input.externalCourseId,
+        actor.id
+      )
+      await AuditService.record(ctx, {
+        action: 'course.themembers.link',
+        actorId: actor.id,
+        resourceType: 'course',
+        resourceId: course.id,
+        metadata: { revision: config.revision, previous, next: config.externalCourseId },
+      })
+      return { courseId: course.id, externalCourseId: config.externalCourseId }
+    } catch (error) {
+      return fail(ctx, error)
+    }
+  }
+
+  /** Remove o vínculo com a The Members (botão "Remover vínculo" do modal de sincronização). */
+  async themembersUnlink(ctx: HttpContext) {
+    const actor = ctx.auth.getUserOrFail()
+    try {
+      const { course, config, previous } = await new ThemembersSyncService().unlink(
+        Number(ctx.params.id),
+        actor.id
+      )
+      if (previous) {
+        await AuditService.record(ctx, {
+          action: 'course.themembers.unlink',
+          actorId: actor.id,
+          resourceType: 'course',
+          resourceId: course.id,
+          metadata: { revision: config.revision, previous },
+        })
+      }
+      return { courseId: course.id, externalCourseId: '' }
+    } catch (error) {
+      return fail(ctx, error)
+    }
+  }
+
   async index(ctx: HttpContext) {
     const query = parse(listCoursesQuerySchema, ctx.request.qs(), ctx)
     if (!query) return
-    const builder = Course.query().orderBy('updated_at', 'desc').orderBy('id', 'desc')
+    const filtered = () => {
+      const builder = Course.query()
+      if (query.professionalId) builder.where('professional_id', query.professionalId)
+      if (query.q) {
+        const like = `%${escapeLike(query.q)}%`
+        builder.where((q) =>
+          q
+            .whereRaw("title like ? escape '\\\\'", [like])
+            .orWhereRaw("slug like ? escape '\\\\'", [like])
+            .orWhereIn('professional_id', (sub) =>
+              sub.from('professionals').select('id').whereRaw("name like ? escape '\\\\'", [like])
+            )
+        )
+      }
+      return builder
+    }
+    const builder = filtered()
+    applySort(builder, String(ctx.request.input('sort') ?? ''), 'title')
     if (query.status) builder.where('status', query.status)
     else builder.whereNot('status', 'archived')
-    if (query.professionalId) builder.where('professional_id', query.professionalId)
-    if (query.q) {
-      const like = `%${escapeLike(query.q)}%`
-      builder.where((q) =>
-        q
-          .whereRaw("title like ? escape '\\\\'", [like])
-          .orWhereRaw("slug like ? escape '\\\\'", [like])
-      )
+    const countRows = await filtered().groupBy('status').select('status').count('* as total')
+    const counts = { draft: 0, published: 0, archived: 0 }
+    for (const row of countRows) {
+      counts[row.status as keyof typeof counts] = Number(row.$extras.total)
     }
     const page = await builder.paginate(query.page, query.perPage)
     const rows = page.all()
@@ -112,6 +213,7 @@ export default class AdminCoursesController {
         page: page.currentPage,
         perPage: page.perPage,
         lastPage: page.lastPage,
+        counts,
       },
     }
   }
@@ -139,6 +241,42 @@ export default class AdminCoursesController {
         resourceType: 'course',
         resourceId: course.id,
         metadata: { slug: course.slug, professionalId: course.professionalId },
+      })
+      return ctx.response.created(await respond(course))
+    } catch (error) {
+      return fail(ctx, error)
+    }
+  }
+
+  async duplicate(ctx: HttpContext) {
+    const actor = ctx.auth.getUserOrFail()
+    try {
+      const course = await CourseService.duplicate(Number(ctx.params.id), actor.id)
+      // Preço, desconto e parcelas vão junto só para quem gerencia a oferta; sem link e inativa (nunca vende por engano).
+      const offer = await CommercialConfig.query().where('course_id', Number(ctx.params.id)).first()
+      if (offer && actor.permissions.includes('commerce.manage')) {
+        await CourseService.saveCommercial(
+          course.id,
+          {
+            listCents: offer.listCents,
+            discountPct: offer.discountPct,
+            maxInstallments: offer.maxInstallments,
+            checkoutUrl: '',
+            provider: providerOf(offer.provider),
+            externalCourseId: '', // a cópia não herda IDs externos
+            environment: offer.environment,
+            active: false,
+            revision: 0,
+          },
+          actor.id
+        )
+      }
+      await AuditService.record(ctx, {
+        action: 'course.duplicate',
+        actorId: actor.id,
+        resourceType: 'course',
+        resourceId: course.id,
+        metadata: { slug: course.slug, sourceId: Number(ctx.params.id) },
       })
       return ctx.response.created(await respond(course))
     } catch (error) {
@@ -242,6 +380,26 @@ export default class AdminCoursesController {
       })
       await this.#revalidate(course)
       return respond(course)
+    } catch (error) {
+      return fail(ctx, error)
+    }
+  }
+
+  async destroy(ctx: HttpContext) {
+    const actor = ctx.auth.getUserOrFail()
+    try {
+      const gone = await CourseService.destroy(Number(ctx.params.id))
+      await AuditService.record(ctx, {
+        action: 'course.delete',
+        actorId: actor.id,
+        resourceType: 'course',
+        resourceId: gone.id,
+        metadata: { slug: gone.slug, title: gone.title },
+      })
+      const professional = await Professional.find(gone.professionalId)
+      if (professional)
+        await RevalidationService.revalidate(courseTags(gone.slug, professional.slug))
+      return ctx.response.noContent()
     } catch (error) {
       return fail(ctx, error)
     }

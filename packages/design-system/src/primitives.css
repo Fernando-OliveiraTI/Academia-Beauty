@@ -21,3 +21,19 @@
 .ds-error { color: var(--color-error); font-size: var(--fs-caption); }
 @media (prefers-reduced-motion: reduce) { .ds-button { transition: none; } .ds-button:hover:not(:disabled) { transform: none; } }
 textarea.ds-input { padding: var(--space-3) var(--space-4); resize: vertical; line-height: 1.5; }
+
+/* Campos decorados: ícone, prefixo, asterisco, dica e contador */
+.ds-req { color: var(--color-error); }
+.ds-hint { margin: 0; color: var(--color-text-secondary); font-size: var(--fs-caption); }
+.ds-hint--row { display: flex; justify-content: space-between; gap: var(--space-3); }
+.ds-counter { margin-left: auto; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.ds-input-wrap { display: flex; align-items: stretch; min-width: 0; border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); background: var(--color-surface); overflow: hidden; }
+.ds-input-wrap:focus-within { border-color: var(--color-primary); }
+.ds-input-wrap[data-invalid] { border-color: var(--color-error); }
+.ds-input-wrap[data-disabled] { opacity: .6; }
+.ds-input-wrap .ds-input { flex: 1; min-width: 0; border: 0; background: transparent; border-radius: 0; outline: none; }
+.ds-icon, .ds-prefix, .ds-suffix { display: grid; place-items: center; flex: none; color: var(--color-text-secondary); }
+.ds-icon { width: 56px; border-right: 1px solid var(--color-border); }
+.ds-prefix { padding: 0 var(--space-4); background: rgba(255, 255, 255, .03); border-right: 1px solid var(--color-border); font-family: var(--font-mono); font-size: .9rem; }
+.ds-suffix { width: 52px; border-left: 1px solid var(--color-border); }
+.ds-input-wrap--area .ds-icon { align-content: start; padding-top: 16px; }

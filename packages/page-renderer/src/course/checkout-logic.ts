@@ -27,16 +27,31 @@ export function isValidCPF(value: string): boolean {
   return calc(9) === Number(c[9]) && calc(10) === Number(c[10]);
 }
 
-export type BuyerField = 'name' | 'email' | 'cpf' | 'phone';
-export const BUYER_FIELDS: readonly BuyerField[] = ['name', 'email', 'cpf', 'phone'];
+export type BuyerFieldType = 'name' | 'text' | 'email' | 'cpf' | 'phone';
 
 /** Devolve `true` ou a mensagem de erro, com os mesmos textos do original. */
-export const rules: Record<BuyerField, (v: string) => true | string> = {
+export const rules: Record<BuyerFieldType, (v: string) => true | string> = {
   name: (v) => v.trim().split(/\s+/).filter((p) => p.length > 1).length >= 2 || 'Digite seu nome e sobrenome.',
+  text: (v) => v.trim().length > 0 || 'Preencha este campo.',
   email: (v) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) || 'Digite um e-mail válido, como voce@email.com.',
   cpf: (v) => isValidCPF(v) || 'Este CPF não é válido. Confira os números.',
   phone: (v) => {
     const d = onlyDigits(v);
     return d.length === 10 || d.length === 11 || 'Digite o celular com DDD.';
   },
+};
+
+/** Campo opcional vazio é válido; preenchido segue a regra do tipo. Campo obrigatório vazio pede o preenchimento. */
+export function validateBuyer(type: BuyerFieldType, value: string, required: boolean): true | string {
+  if (!value.trim()) return required ? (type === 'text' ? 'Preencha este campo.' : rules[type](value)) : true;
+  return rules[type](value);
+}
+
+/** Máscara, teclado e autopreenchimento de cada tipo. */
+export const FIELD_INPUT: Record<BuyerFieldType, { type: string; inputMode?: 'text' | 'email' | 'numeric' | 'tel'; autoComplete: string; maxLength?: number; numeric?: boolean; mask?: (v: string) => string }> = {
+  name: { type: 'text', autoComplete: 'name' },
+  text: { type: 'text', autoComplete: 'off' },
+  email: { type: 'email', inputMode: 'email', autoComplete: 'email' },
+  cpf: { type: 'text', inputMode: 'numeric', autoComplete: 'off', maxLength: 14, numeric: true, mask: masks.cpf },
+  phone: { type: 'tel', inputMode: 'tel', autoComplete: 'tel-national', maxLength: 15, numeric: true, mask: masks.phone },
 };

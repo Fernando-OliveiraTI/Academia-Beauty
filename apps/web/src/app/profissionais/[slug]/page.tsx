@@ -4,6 +4,7 @@ import { publicProfessionalSchema } from '@academia/contracts'
 import { NO_OFFER, PageRenderer, resolveProfessionalDocument } from '@academia/page-renderer'
 import type { PageDocument } from '@academia/page-schema'
 import { publicGet } from '@/lib/api-server'
+import { PageTracker } from '@/components/page-tracker'
 import '@academia/page-renderer/professional.css'
 
 type Params = { params: Promise<{ slug: string }> }
@@ -39,5 +40,10 @@ export default async function ProfessionalPage({ params }: Params) {
   if (!professional) notFound()
   // `document` nulo = página derivada do cadastro; com documento do editor, os cursos publicados são reinjetados.
   const document = resolveProfessionalDocument({ data: professional.data, document: professional.document as PageDocument | null, courseCards: professional.courses, templateKey: professional.templateKey })
-  return <PageRenderer document={document} ctx={{ offer: NO_OFFER, year: new Date().getFullYear() }} />
+  return (
+    <>
+      <PageRenderer document={document} ctx={{ offer: NO_OFFER, year: new Date().getFullYear() }} />
+      <PageTracker type="professional" slug={slug} />
+    </>
+  )
 }

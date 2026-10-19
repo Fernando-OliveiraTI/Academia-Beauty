@@ -15,6 +15,8 @@ const AdminHomeController = () => import('#controllers/admin_home_controller')
 const PublicHomeController = () => import('#controllers/public_home_controller')
 const AdminMediaController = () => import('#controllers/admin_media_controller')
 const PublicMediaController = () => import('#controllers/public_media_controller')
+const PublicTrackController = () => import('#controllers/public_track_controller')
+const AdminDashboardController = () => import('#controllers/admin_dashboard_controller')
 
 router.get('/health', async ({ response }) => {
   try {
@@ -40,8 +42,12 @@ router
     router.get('/professionals', [PublicProfessionalsController, 'showcase'])
     router.get('/professionals/:slug', [PublicProfessionalsController, 'show'])
     router.get('/courses/:slug', [PublicCoursesController, 'show'])
+    router.post('/track', [PublicTrackController, 'store'])
   })
   .prefix('/public')
+
+// Painel de indicadores: qualquer usuário autenticado do painel.
+router.get('/admin/dashboard', [AdminDashboardController, 'show']).use(middleware.auth())
 
 // Administração de profissionais. Leitura, escrita e publicação têm permissões distintas.
 router
@@ -56,12 +62,16 @@ router
       .post('/', [AdminProfessionalsController, 'store'])
       .use(middleware.can({ permission: 'professionals.write' }))
     router
+      .post('/:id/duplicate', [AdminProfessionalsController, 'duplicate'])
+      .use(middleware.can({ permission: 'professionals.write' }))
+    router
       .put('/:id', [AdminProfessionalsController, 'update'])
       .use(middleware.can({ permission: 'professionals.write' }))
     const publish = middleware.can({ permission: 'professionals.publish' })
     router.post('/:id/publish', [AdminProfessionalsController, 'publish']).use(publish)
     router.post('/:id/unpublish', [AdminProfessionalsController, 'unpublish']).use(publish)
     router.post('/:id/archive', [AdminProfessionalsController, 'archive']).use(publish)
+    router.delete('/:id', [AdminProfessionalsController, 'destroy']).use(publish)
     router.post('/:id/restore', [AdminProfessionalsController, 'restore']).use(publish)
     router.put('/:id/showcase', [AdminProfessionalsController, 'showcase']).use(publish)
   })
@@ -75,14 +85,29 @@ router
       .get('/', [AdminCoursesController, 'index'])
       .use(middleware.can({ permission: 'courses.read' }))
     router
+      .get('/themembers/preview', [AdminCoursesController, 'themembersPreview'])
+      .use(middleware.can({ permission: 'commerce.manage' }))
+    router
+      .post('/themembers/sync', [AdminCoursesController, 'themembersApply'])
+      .use(middleware.can({ permission: 'commerce.manage' }))
+    router
       .get('/:id', [AdminCoursesController, 'show'])
       .use(middleware.can({ permission: 'courses.read' }))
     router
       .post('/', [AdminCoursesController, 'store'])
       .use(middleware.can({ permission: 'courses.write' }))
     router
+      .post('/:id/duplicate', [AdminCoursesController, 'duplicate'])
+      .use(middleware.can({ permission: 'courses.write' }))
+    router
       .put('/:id', [AdminCoursesController, 'update'])
       .use(middleware.can({ permission: 'courses.write' }))
+    router
+      .put('/:id/themembers-id', [AdminCoursesController, 'themembersLink'])
+      .use(middleware.can({ permission: 'commerce.manage' }))
+    router
+      .delete('/:id/themembers-id', [AdminCoursesController, 'themembersUnlink'])
+      .use(middleware.can({ permission: 'commerce.manage' }))
     router
       .put('/:id/commercial', [AdminCoursesController, 'commercial'])
       .use(middleware.can({ permission: 'commerce.manage' }))
@@ -90,6 +115,7 @@ router
     router.post('/:id/publish', [AdminCoursesController, 'publish']).use(publish)
     router.post('/:id/unpublish', [AdminCoursesController, 'unpublish']).use(publish)
     router.post('/:id/archive', [AdminCoursesController, 'archive']).use(publish)
+    router.delete('/:id', [AdminCoursesController, 'destroy']).use(publish)
     router.post('/:id/restore', [AdminCoursesController, 'restore']).use(publish)
     router.put('/:id/showcase', [AdminCoursesController, 'showcase']).use(publish)
   })

@@ -103,10 +103,10 @@ describe('SchemaForm · campos opcionais e números', () => {
   it('objeto opcional: adicionar cria só os campos obrigatórios e remover apaga a chave', async () => {
     const onChange = vi.fn()
     const { rerender } = render(<SchemaForm schema={schema} value={{ title: 'T', value: 1 }} onChange={onChange} />)
-    await userEvent.click(screen.getByRole('button', { name: 'Adicionar photo' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Adicionar foto' }))
     expect(onChange).toHaveBeenLastCalledWith({ title: 'T', value: 1, photo: { src: '', alt: '' } })
     rerender(<SchemaForm schema={schema} value={{ title: 'T', value: 1, photo: { src: 'a', alt: 'b' } }} onChange={onChange} />)
-    await userEvent.click(screen.getByRole('button', { name: 'Remover photo' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Remover foto' }))
     const last = onChange.mock.calls.at(-1)![0] as Record<string, unknown>
     expect('photo' in last).toBe(false)
   })

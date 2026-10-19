@@ -13,9 +13,11 @@ export default async function MediaPage() {
   }
   return (
     <main>
-      <p className="admin-eyebrow">Arquivos</p>
-      <div className="admin-title-row"><h1>Biblioteca de mídia</h1></div>
-      <p>Envie imagens e vídeos uma vez e use nas páginas pelo botão “Biblioteca” de cada campo. Arquivos em uso não podem ser excluídos.</p>
+      <header className="media-head">
+        <p className="admin-eyebrow">Arquivos</p>
+        <h1>Biblioteca de <span>mídia</span></h1>
+        <p>Envie imagens e vídeos uma vez e use nas páginas pelo botão “Editar” de cada campo.<br />Arquivos em uso não podem ser excluídos.</p>
+      </header>
       <MediaLibrary mode="manage" />
     </main>
   )

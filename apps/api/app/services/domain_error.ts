@@ -1,7 +1,7 @@
 /** Erro de regra de negócio com status HTTP e código estável para o cliente. */
 export class DomainError extends Error {
   constructor(
-    public readonly status: 404 | 409 | 422,
+    public readonly status: 404 | 409 | 422 | 502 | 503,
     public readonly code: string,
     message: string,
     public readonly details?: unknown

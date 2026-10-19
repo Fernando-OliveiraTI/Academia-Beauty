@@ -7,6 +7,7 @@ import {
   courseReadiness,
   parseAllowedHosts,
   validateCheckoutUrl,
+  type CheckoutProvider,
   type AdminCourse,
   type CommercialInput,
   type CommercialView,
@@ -24,6 +25,7 @@ import Professional from '#models/professional'
 import ProfessionalVersion from '#models/professional_version'
 import { DomainError } from '#services/domain_error'
 import { COURSE_KIND, assertValidDocument } from '#services/document_service'
+import { publicStatuses, showDraftsPublicly } from '#services/public_visibility'
 
 /** Template usado nas páginas de curso (a composição vive em @academia/page-renderer). */
 export const COURSE_TEMPLATE = { key: 'course-original', version: 1 }
@@ -46,10 +48,20 @@ export function toCommercialView(c: CommercialConfig | null): CommercialView | n
     discountPct: c.discountPct,
     maxInstallments: c.maxInstallments,
     checkoutUrl: c.checkoutUrl,
+    provider: providerOf(c.provider),
+    externalCourseId: c.externalCourseId ?? '',
     environment: c.environment,
     active: c.active,
   }
 }
+
+/** Linhas e snapshots antigos guardam `redirect` (ou nada): tudo que não é The Members é o checkout da Academia. */
+export const providerOf = (value: string | undefined | null): CheckoutProvider =>
+  value === 'themembers' ? 'themembers' : 'academia'
+
+/** Como a página pública compra: `embed` mostra o iframe da The Members no lugar do formulário. */
+export const checkoutModeOf = (provider: string | undefined | null): 'redirect' | 'embed' =>
+  providerOf(provider) === 'themembers' ? 'embed' : 'redirect'
 
 export function commercialInput(view: CommercialView | CommercialConfig): CommercialInput {
   return {
@@ -57,6 +69,8 @@ export function commercialInput(view: CommercialView | CommercialConfig): Commer
     discountPct: view.discountPct,
     maxInstallments: view.maxInstallments,
     checkoutUrl: view.checkoutUrl,
+    provider: providerOf(view.provider),
+    externalCourseId: view.externalCourseId ?? '',
     environment: view.environment,
     active: view.active,
   }
@@ -102,6 +116,16 @@ async function hasVersions(courseId: number, trx: TransactionClientContract) {
   return row !== undefined && row !== null
 }
 
+/** Slug livre para a cópia: `<slug>-copia`, `<slug>-copia-2`… (respeita o limite de 80 caracteres). */
+async function copySlug(slug: string, taken: (candidate: string) => Promise<boolean>) {
+  for (let n = 1; n <= 50; n++) {
+    const suffix = n === 1 ? '-copia' : `-copia-${n}`
+    const candidate = `${slug.slice(0, 80 - suffix.length).replace(/-+$/, '')}${suffix}`
+    if (!(await taken(candidate))) return candidate
+  }
+  throw new DomainError(409, 'slug_taken', 'Não foi possível gerar um endereço para a cópia')
+}
+
 export default class CourseService {
   /** Carrega o curso com o nome do profissional e a oferta (para respostas administrativas). */
   static async load(id: number) {
@@ -129,6 +153,29 @@ export default class CourseService {
       slug,
       data,
       title: data.title,
+      status: 'draft',
+      revision: 1,
+      createdBy: actorId,
+      updatedBy: actorId,
+    })
+  }
+
+  /**
+   * Copia um curso como rascunho novo, do mesmo profissional: dados e documento do editor. Não leva publicação,
+   * versões, vitrine, link de checkout nem a oferta ativa (a cópia nasce sem venda, para não vender o produto errado).
+   */
+  static async duplicate(id: number, actorId: number) {
+    const source = await Course.find(id)
+    if (!source) throw new DomainError(404, 'not_found', 'Curso não encontrado')
+    const data = { ...source.data, title: `${source.data.title.slice(0, 73)} (cópia)` }
+    const slug = await copySlug(source.slug, (candidate) => slugTaken(candidate))
+    return Course.create({
+      professionalId: source.professionalId,
+      slug,
+      data,
+      title: data.title,
+      document: source.document ? structuredClone(source.document) : null,
+      documentRevision: source.document ? source.documentRevision : 0,
       status: 'draft',
       revision: 1,
       createdBy: actorId,
@@ -219,7 +266,8 @@ export default class CourseService {
         checkoutUrl,
         environment: input.environment,
         active: input.active,
-        provider: 'redirect',
+        provider: input.provider,
+        externalCourseId: input.externalCourseId,
         currency: 'BRL',
         updatedBy: actorId,
       }
@@ -345,6 +393,25 @@ export default class CourseService {
     })
   }
 
+  /** Apaga o curso, a oferta e as versões publicadas. Só rascunho ou arquivado: publicado precisa ser despublicado antes. */
+  static async destroy(id: number) {
+    return db.transaction(async (trx) => {
+      const current = await Course.query({ client: trx }).where('id', id).forUpdate().first()
+      if (!current) throw new DomainError(404, 'not_found', 'Curso não encontrado')
+      if (current.status === 'published')
+        throw new DomainError(422, 'published', 'Despublique o curso antes de apagar')
+      await trx.from('course_versions').where('course_id', id).delete()
+      await trx.from('commercial_configs').where('course_id', id).delete()
+      await trx.from('courses').where('id', id).delete()
+      return {
+        id,
+        slug: current.slug,
+        professionalId: current.professionalId,
+        title: current.title,
+      }
+    })
+  }
+
   static async setShowcase(
     id: number,
     input: { showcaseVisible: boolean; showcaseOrder: number; featured: boolean },
@@ -369,29 +436,47 @@ export default class CourseService {
     return rows.map((r) => r.slug)
   }
 
-  /** Cursos publicados na vitrine do profissional, na ordem definida. Lê só os snapshots. */
+  /**
+   * Cursos publicados na vitrine do profissional, na ordem definida. Lê só os snapshots (com
+   * `PUBLIC_SHOW_DRAFTS`, fora de produção, rascunhos entram com os dados de trabalho).
+   */
   static async cardsFor(professionalId: number): Promise<CourseCard[]> {
     const rows = await db
       .from('courses as c')
-      .join('course_versions as v', (join) =>
+      .leftJoin('course_versions as v', (join) =>
         join.on('v.course_id', 'c.id').andOn('v.version', 'c.published_version')
       )
+      .leftJoin('commercial_configs as cc', 'cc.course_id', 'c.id')
       .where('c.professional_id', professionalId)
-      .where('c.status', 'published')
+      .whereIn('c.status', publicStatuses())
       .where('c.showcase_visible', true)
       .orderBy([{ column: 'c.showcase_order' }, { column: 'c.title' }])
       .limit(12)
-      .select('c.slug', 'v.data', 'v.commercial')
-    return rows.map((row) => {
-      const data = parse<CourseData>(row.data)
-      const commercial = parse<CommercialInput>(row.commercial)
-      return {
-        slug: row.slug as string,
-        title: data.title,
-        coverSrc: data.coverSrc,
-        coverAlt: data.coverAlt,
-        discountPct: commercial.discountPct,
-      }
+      .select(
+        'c.slug',
+        'c.status',
+        'c.data as live',
+        'v.data',
+        'v.commercial',
+        'cc.discount_pct as live_discount'
+      )
+    return rows.flatMap((row) => {
+      const published = row.status === 'published'
+      const raw = published ? row.data : row.live
+      if (!raw) return []
+      const data = parse<CourseData>(raw)
+      const discountPct = published
+        ? parse<CommercialInput>(row.commercial).discountPct
+        : Number(row.live_discount ?? 0)
+      return [
+        {
+          slug: row.slug as string,
+          title: data.title,
+          coverSrc: data.coverSrc,
+          coverAlt: data.coverAlt,
+          discountPct,
+        },
+      ]
     })
   }
 
@@ -402,31 +487,46 @@ export default class CourseService {
   static async homeCards(): Promise<HomeCourseCard[]> {
     const rows = await db
       .from('courses as c')
-      .join('course_versions as v', (join) =>
+      .leftJoin('course_versions as v', (join) =>
         join.on('v.course_id', 'c.id').andOn('v.version', 'c.published_version')
       )
       .join('professionals as p', 'p.id', 'c.professional_id')
-      .join('professional_versions as pv', (join) =>
+      .leftJoin('professional_versions as pv', (join) =>
         join.on('pv.professional_id', 'p.id').andOn('pv.version', 'p.published_version')
       )
-      .where('c.status', 'published')
+      .whereIn('c.status', publicStatuses())
       .where('c.showcase_visible', true)
-      .where('p.status', 'published')
+      .whereIn('p.status', publicStatuses())
       .orderBy([{ column: 'c.showcase_order' }, { column: 'c.title' }])
       .limit(12)
-      .select('c.slug', 'c.featured', 'v.data as course_data', 'pv.data as professional_data')
-    return rows.map((row) => {
-      const data = parse<CourseData>(row.course_data)
-      const professional = parse<{ name: string }>(row.professional_data)
-      return {
-        slug: row.slug as string,
-        title: data.title,
-        person: professional.name,
-        coverSrc: data.coverSrc,
-        coverAlt: data.coverAlt,
-        featured: Boolean(row.featured),
-        modality: data.modality,
-      }
+      .select(
+        'c.slug',
+        'c.featured',
+        'c.status',
+        'p.status as professional_status',
+        'c.data as live_course',
+        'p.data as live_professional',
+        'v.data as course_data',
+        'pv.data as professional_data'
+      )
+    return rows.flatMap((row) => {
+      const courseRaw = row.status === 'published' ? row.course_data : row.live_course
+      const professionalRaw =
+        row.professional_status === 'published' ? row.professional_data : row.live_professional
+      if (!courseRaw || !professionalRaw) return []
+      const data = parse<CourseData>(courseRaw)
+      const professional = parse<{ name: string }>(professionalRaw)
+      return [
+        {
+          slug: row.slug as string,
+          title: data.title,
+          person: professional.name,
+          coverSrc: data.coverSrc,
+          coverAlt: data.coverAlt,
+          featured: Boolean(row.featured),
+          modality: data.modality,
+        },
+      ]
     })
   }
 
@@ -435,16 +535,55 @@ export default class CourseService {
    * a partir do snapshot, e o link de checkout é revalidado contra a lista de domínios atual.
    */
   static async published(slug: string): Promise<PublicCourse | null> {
-    const course = await Course.query().where('slug', slug).where('status', 'published').first()
-    if (!course || course.publishedVersion === null) return null
+    const course = await Course.query()
+      .where('slug', slug)
+      .whereIn('status', publicStatuses())
+      .first()
+    if (!course) return null
     const professional = await Professional.find(course.professionalId)
-    if (
-      !professional ||
-      professional.status !== 'published' ||
-      professional.publishedVersion === null
-    ) {
-      return null
+    if (!professional || !publicStatuses().includes(professional.status)) return null
+    const live = await CommercialConfig.findBy('courseId', course.id)
+
+    // Rascunho (só com PUBLIC_SHOW_DRAFTS, fora de produção): dados de trabalho e oferta atual.
+    if (showDraftsPublicly() && (course.status === 'draft' || professional.status === 'draft')) {
+      if (!live) return null
+      let professionalData = professional.data
+      if (professional.status === 'published' && professional.publishedVersion !== null) {
+        const pv = await ProfessionalVersion.query()
+          .where('professional_id', professional.id)
+          .where('version', professional.publishedVersion)
+          .first()
+        if (!pv) return null
+        professionalData = pv.data
+      }
+      const courseVersion =
+        course.status === 'published' && course.publishedVersion !== null
+          ? await CourseVersion.query()
+              .where('course_id', course.id)
+              .where('version', course.publishedVersion)
+              .first()
+          : null
+      const commercial = courseVersion ? courseVersion.commercial : commercialInput(live)
+      const check =
+        commercial.active && live.active
+          ? validateCheckoutUrl(commercial.checkoutUrl, allowedCheckoutHosts())
+          : null
+      return {
+        slug: course.slug,
+        version: courseVersion?.version ?? 1,
+        publishedAt: (courseVersion?.createdAt ?? course.updatedAt ?? course.createdAt).toISO()!,
+        templateKey: courseVersion?.templateKey ?? COURSE_TEMPLATE.key,
+        templateVersion: courseVersion?.templateVersion ?? COURSE_TEMPLATE.version,
+        data: courseVersion ? courseVersion.data : course.data,
+        document: (courseVersion ? courseVersion.document : course.document) ?? null,
+        offer: computeOffer(commercial),
+        checkout: { mode: checkoutModeOf(commercial.provider), url: check?.ok ? check.url : null },
+        professional: { slug: professional.slug, data: professionalData },
+      }
     }
+
+    if (course.publishedVersion === null) return null
+    if (professional.publishedVersion === null) return null
     const [version, professionalVersion] = await Promise.all([
       CourseVersion.query()
         .where('course_id', course.id)
@@ -458,7 +597,6 @@ export default class CourseService {
     if (!version || !professionalVersion) return null
     const commercial = version.commercial
     // "Pausar vendas": desativar a oferta vale na hora, sem republicar (o preço continua o do snapshot).
-    const live = await CommercialConfig.findBy('courseId', course.id)
     const check =
       commercial.active && live?.active
         ? validateCheckoutUrl(commercial.checkoutUrl, allowedCheckoutHosts())
@@ -472,7 +610,7 @@ export default class CourseService {
       data: version.data,
       document: version.document ?? null,
       offer: computeOffer(commercial),
-      checkout: { mode: 'redirect', url: check?.ok ? check.url : null },
+      checkout: { mode: checkoutModeOf(commercial.provider), url: check?.ok ? check.url : null },
       professional: { slug: professional.slug, data: professionalVersion.data },
     }
   }

@@ -47,7 +47,11 @@ export function installmentLabel(option: { count: number; amountCents: number },
  * template). `redirect` é o Modo A: o botão de compra leva à URL do provedor (já validada pelo
  * backend); `url: null` = compra indisponível (oferta inativa ou domínio não mais autorizado).
  */
-export type CheckoutMode = { mode: 'demo' } | { mode: 'redirect'; url: string | null };
+export type CheckoutMode =
+  | { mode: 'demo' }
+  | { mode: 'redirect'; url: string | null }
+  /** Checkout hospedado da The Members embutido num iframe; `url: null` = compra indisponível. */
+  | { mode: 'embed'; url: string | null };
 
 export type RenderContext = {
   offer: OfferView;
@@ -55,6 +59,8 @@ export type RenderContext = {
   checkout?: CheckoutMode;
   /** Ano exibido no rodapé; vem do servidor para não divergir na hidratação. */
   year: number;
+  /** Profissional dono do curso: habilita o link de volta aos outros cursos dele (só páginas de curso). */
+  professional?: { slug: string; name: string };
 };
 
 /** Oferta vazia para páginas que não vendem (Home, Profissional). Nunca é exibida. */

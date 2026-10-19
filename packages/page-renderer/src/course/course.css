@@ -281,7 +281,6 @@ html:has(.pg-course) {
 .pg-course .hero-visual { position: relative; min-width: 0; }
 .pg-course .product-frame {
   position: relative;
-  aspect-ratio: 4 / 5;
   max-width: 100%;
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -289,14 +288,13 @@ html:has(.pg-course) {
   background: var(--color-surface);
   box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .8), 0 0 0 8px rgba(246, 242, 234, .02);
 }
-.pg-course .product-frame img { width: 100%; height: 100%; object-fit: cover; transition: transform 1.2s var(--ease-out); }
+.pg-course .product-frame img { display: block; width: 100%; height: auto; /* imagem inteira, sem corte */ transition: transform 1.2s var(--ease-out); }
 .pg-course .hero-visual:hover .product-frame img { transform: scale(1.03); }
 .pg-course .product-frame::after {
-  content: ""; position: absolute; inset: 0;
-  background: linear-gradient(180deg, transparent 55%, rgba(11, 10, 9, .85));
+  content: none; /* imagem inteira: a legenda fica abaixo dela, sem sobrepor */
 }
 .pg-course .frame-label {
-  position: absolute; left: var(--space-5); right: var(--space-5); bottom: var(--space-5); z-index: 2;
+  position: relative; z-index: 2; padding: var(--space-4) var(--space-5);
   display: flex; justify-content: space-between; align-items: flex-end; gap: var(--space-3);
 }
 .pg-course .frame-label strong { display: block; font-size: 1.35rem; letter-spacing: -.03em; }
@@ -698,7 +696,8 @@ html:has(.pg-course) {
   .pg-course .nav { display: block; }
   .pg-course .header { width: calc(100% - 34px); padding-left: 24px; }
   .pg-course .hero { padding-block: calc(var(--header-h) + 96px) var(--space-9); }
-  .pg-course .hero-grid { grid-template-columns: 1.1fr .9fr; gap: var(--space-8); }
+  .pg-course .hero-grid { grid-template-columns: minmax(0, .9fr) minmax(0, 1.3fr); gap: var(--space-7); }
+  .pg-course .hero-title { font-size: clamp(2.6rem, 4.3vw, 4.4rem); } /* títulos curtos cabem em duas linhas */
   .pg-course .facts { grid-template-columns: repeat(4, 1fr); }
   .pg-course .fact { padding: var(--space-5) var(--space-5); border-bottom: 0 !important; }
   .pg-course .fact:nth-child(odd) { border-right: 0; }
@@ -740,3 +739,52 @@ html:has(.pg-course) {
 
 /* Compra indisponível (Modo A sem URL válida): o botão aparece, mas não é acionável. */
 .pg-course .btn.is-disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
+
+/* Menu principal do site no cabeçalho (sempre visível) + menu lateral com as seções desta página. */
+.pg-course .site-nav { display: flex; align-items: center; gap: 4px; }
+.pg-course .site-nav ul { display: flex; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.pg-course .site-nav a { display: block; padding: 8px 12px; border-radius: var(--radius-pill); font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; color: var(--color-text-muted, var(--color-text)); }
+.pg-course .site-nav a.btn { display: inline-flex; margin-left: 8px; padding: 0 18px; color: inherit; }
+.pg-course .site-nav a:hover { color: var(--color-text); background: rgba(246, 242, 234, .07); }
+.pg-course .header { gap: var(--space-3); }
+.pg-course .header .site-nav { margin-left: auto; min-width: 0; }
+@media (max-width: 899px) {
+  .pg-course .header-cta { display: none; } /* no celular o botão de conta sai do topo para o menu caber */
+  .pg-course .site-nav a { padding: 8px 8px; font-size: .78rem; }
+}
+.pg-course .nav.side-nav { display: none; }
+@media (min-width: 900px) {
+  .pg-course .nav.side-nav {
+    display: block; position: fixed; z-index: 90; left: 14px; top: 50%; transform: translateY(-50%);
+  }
+  .pg-course .side-nav ul { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+  .pg-course .side-nav a { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: var(--radius-pill); font-size: .78rem; font-weight: 600; color: var(--color-text-muted, var(--color-text)); }
+  .pg-course .side-nav a i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .45; transition: opacity var(--dur-med), transform var(--dur-med); }
+  .pg-course .side-nav a:hover, .pg-course .side-nav a.is-active { color: var(--color-text); background: rgba(11, 10, 9, .72); }
+  .pg-course .side-nav a.is-active i { opacity: 1; transform: scale(1.3); background: var(--color-primary); }
+  /* Telas médias: só os pontos (rótulo no hover/foco) para não cobrir o conteúdo. */
+  .pg-course .side-nav a span { max-width: 0; overflow: hidden; white-space: nowrap; transition: max-width var(--dur-med); }
+  .pg-course .side-nav a:hover span, .pg-course .side-nav a:focus-visible span { max-width: 160px; }
+}
+@media (min-width: 1440px) {
+  .pg-course .side-nav a span { max-width: 160px; }
+}
+@media (max-width: 560px) {
+  .pg-course .header .brand div { display: none; } /* só o logo: o menu principal precisa caber */
+  .pg-course .header { padding-left: 14px; }
+  .pg-course .site-nav { overflow-x: auto; scrollbar-width: none; }
+}
+
+/* Legível sobre qualquer seção: cada item é uma pílula escura. */
+@media (min-width: 900px) {
+  .pg-course .side-nav a { background: rgba(11, 10, 9, .88); color: var(--color-text); box-shadow: 0 2px 10px rgba(0, 0, 0, .25); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  .pg-course .side-nav a i { opacity: .9; }
+}
+
+/* "Mais cursos": leva à página do profissional (seção de cursos). Separado dos itens da página e com ponto vazado, para indicar que sai desta página. */
+@media (min-width: 900px) {
+  .pg-course .side-nav .side-nav-more { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--color-border); }
+  .pg-course .side-nav .side-nav-more a { color: var(--color-primary); }
+  .pg-course .side-nav .side-nav-more a i { background: transparent; border: 1.5px solid currentColor; opacity: 1; }
+  .pg-course .side-nav .side-nav-more a:hover i, .pg-course .side-nav .side-nav-more a:focus-visible i { background: currentColor; }
+}

@@ -17,7 +17,8 @@
     "e2e:editor": "tsx e2e/editor.e2e.mts",
     "e2e:media": "tsx e2e/media.e2e.mts",
     "e2e:home-editor": "tsx e2e/home-editor.e2e.mts",
-    "e2e:templates": "tsx e2e/templates.e2e.mts"
+    "e2e:templates": "tsx e2e/templates.e2e.mts",
+    "section-thumbs": "tsx tools/section-thumbs.mts"
   },
   "dependencies": {
     "@academia/contracts": "workspace:*",

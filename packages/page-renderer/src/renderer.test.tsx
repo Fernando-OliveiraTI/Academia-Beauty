@@ -9,6 +9,26 @@ const ctx = { offer: sampleOffer, year: 2026 };
 const clone = () => structuredClone(courseOriginalTemplate);
 const html = (doc: unknown = courseOriginalTemplate) => renderToStaticMarkup(<PageRenderer document={doc} ctx={ctx} />);
 
+describe('menu lateral do curso · Mais cursos', () => {
+  const withPro = { ...ctx, professional: { slug: 'lukas-campos', name: 'Lukas Campos' } };
+  const render = (doc: unknown, c: object) => renderToStaticMarkup(<PageRenderer document={doc} ctx={c as typeof ctx} />);
+
+  it('acrescenta o item que leva à seção de cursos do profissional', () => {
+    const out = render(courseOriginalTemplate, withPro);
+    const side = out.slice(out.indexOf('class="nav side-nav"'), out.indexOf('</nav>', out.indexOf('class="nav side-nav"')));
+    expect(side).toContain('<li class="side-nav-more"><a href="/profissionais/lukas-campos#cursos" title="Mais cursos de Lukas">');
+    expect(side).toContain('<span>Mais cursos</span>');
+  });
+
+  it('não aparece sem profissional nem quando o link de volta está desligado', () => {
+    expect(render(courseOriginalTemplate, ctx)).not.toContain('side-nav-more');
+    const doc = structuredClone(courseOriginalTemplate);
+    const header = doc.sections.find((x) => x.type === 'course.header')!;
+    (header.content as { hideBackLink?: boolean }).hideBackLink = true;
+    expect(render(doc, withPro)).not.toContain('side-nav-more');
+  });
+});
+
 describe('template Curso Original', () => {
   it('é um documento válido e cobre todas as seções do registry', () => {
     registerSections();

@@ -32,7 +32,7 @@ export default async function HomeEditorPage() {
       kind="home" id={1} title="Home" status={admin.status}
       initial={initial} library={library} documentRevision={state.documentRevision} cadastroRevision={state.revision} templateKey={state.templateKey}
       canWrite={user.permissions.includes('pages.write')} canPublish={user.permissions.includes('pages.publish')}
-      versions={versions?.items ?? []} dynamicTypes={['home.professionals', 'home.courses']} backHref="/admin"
+      versions={versions?.items ?? []} dynamicTypes={['home.professionals', 'home.courses']} backHref="/admin" viewHref="/"
     />
   )
 }

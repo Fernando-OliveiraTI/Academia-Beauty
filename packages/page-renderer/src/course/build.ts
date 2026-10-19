@@ -7,6 +7,7 @@ import {
   type ProfessionalData,
 } from '@academia/contracts';
 import { clip } from '../clip';
+import { PLACEHOLDER_IMAGE } from '../media';
 import { courseOriginalTemplate } from './template';
 import type * as S from './schemas';
 
@@ -65,7 +66,7 @@ export function buildCourseDocument(input: { data: CourseData; professional: Pro
     ...(days ? [{ icon: 'shield' as const, label: `Garantia de ${days} ${plural(days, 'dia', 'dias')}` }] : []),
     ...(data.workloadHours ? [{ icon: 'check' as const, label: `${data.workloadHours} ${plural(data.workloadHours, 'hora', 'horas')} de conteúdo` }] : []),
   ];
-  hero.image = { src: data.coverSrc, alt: data.coverAlt };
+  hero.image = { src: data.coverSrc || PLACEHOLDER_IMAGE, alt: data.coverAlt };
   hero.frameTitle = clip(data.title, 60);
   hero.frameBadge = clip(pro.name, 40);
   hero.huds = [
@@ -131,7 +132,8 @@ export function buildCourseDocument(input: { data: CourseData; professional: Pro
     instructor.title = clip(`Aprenda com ${pro.name}.`, 160);
     instructor.paragraphs = pro.bio.slice(0, 6);
     instructor.places = [];
-    delete instructor.photo;
+    if (pro.portraitSrc) instructor.photo = { src: pro.portraitSrc, alt: clip(`Retrato de ${pro.name}`, 300) };
+    else delete instructor.photo;
   } else {
     instructorSection.visibility = { enabled: false };
   }
@@ -163,13 +165,15 @@ export function buildCourseDocument(input: { data: CourseData; professional: Pro
     faqSection.visibility = { enabled: false };
   }
 
-  // Modo A: o checkout de demonstração não existe; a compra acontece na página do provedor.
-  const checkoutSection = byId('checkout');
-  checkoutSection.visibility = { enabled: false };
-  const checkout = checkoutSection.content as S.CheckoutContent;
+  // Modo A: o checkout da página coleta os dados e leva ao link do provedor, onde a compra termina.
+  const checkout = byId('checkout').content as S.CheckoutContent;
+  checkout.notice = 'Você conclui o pagamento no ambiente seguro do provedor.';
+  checkout.paymentNote = 'Pagamento criptografado';
+  // O selo de garantia só existe se o curso tem garantia cadastrada.
+  checkout.seals = checkout.seals.map((s) => (s.icon === 'shield' ? { ...s, label: days ? `${days} ${plural(days, 'dia', 'dias')} de garantia` : 'Compra protegida' } : s));
   checkout.productName = clip(data.title, 80);
   checkout.productCaption = clip(`Curso ${modality.toLocaleLowerCase('pt-BR')} · ${pro.name}`, 80);
-  checkout.productImage = { src: data.coverSrc };
+  checkout.productImage = { src: data.coverSrc || PLACEHOLDER_IMAGE };
 
   const guaranteeSection = byId('guarantee');
   const guarantee = guaranteeSection.content as S.GuaranteeContent;

@@ -1,6 +1,6 @@
 'use client';
 
-import type { AnchorHTMLAttributes } from 'react';
+import type { AnchorHTMLAttributes, MouseEvent } from 'react';
 import { useCourse, useReducedMotion } from './state';
 
 /**
@@ -12,12 +12,39 @@ export function CtaLink({ href = '#checkout', onClick, className, id, children, 
   const { step, checkout } = useCourse();
   const reduced = useReducedMotion();
 
+  const goToCheckout = (ev: MouseEvent<HTMLAnchorElement>): boolean => {
+    const target = document.getElementById('checkout');
+    if (!target) return false;
+    ev.preventDefault();
+    target.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+    const first = document.getElementById('buyer-0');
+    if (first && step === 1) setTimeout(() => first.focus({ preventScroll: true }), reduced ? 0 : 650);
+    return true;
+  };
+
+  if (checkout.mode === 'embed') {
+    // O checkout está embutido na página: o botão só rola até ele (sem URL a compra está indisponível).
+    if (!checkout.url || !/^https:\/\//i.test(checkout.url)) {
+      return <span className={`${className ?? ''} is-disabled`.trim()} id={id} role="button" aria-disabled="true" tabIndex={tabIndex === undefined ? undefined : -1} data-cta="" data-unavailable="">{children}</span>;
+    }
+    return (
+      <a {...rest} tabIndex={tabIndex} className={className} id={id} href={href} data-cta="" onClick={(ev) => { onClick?.(ev); goToCheckout(ev); }}>
+        {children}
+      </a>
+    );
+  }
+
   if (checkout.mode === 'redirect') {
     // Defesa em profundidade: o backend já valida, mas o renderer nunca navega para algo que não seja https.
     if (!checkout.url || !/^https:\/\//i.test(checkout.url)) {
       return <span className={`${className ?? ''} is-disabled`.trim()} id={id} role="button" aria-disabled="true" tabIndex={tabIndex === undefined ? undefined : -1} data-cta="" data-unavailable="">{children}</span>;
     }
-    return <a className={className} id={id} href={checkout.url} rel="noopener noreferrer" tabIndex={tabIndex} data-cta="">{children}</a>;
+    // Com a seção de checkout na página o botão rola até ela; sem a seção (ou sem JS) vai direto ao provedor.
+    return (
+      <a className={className} id={id} href={checkout.url} rel="noopener noreferrer" tabIndex={tabIndex} data-cta="" onClick={(ev) => { onClick?.(ev); goToCheckout(ev); }}>
+        {children}
+      </a>
+    );
   }
 
   return (
@@ -34,7 +61,7 @@ export function CtaLink({ href = '#checkout', onClick, className, id, children, 
         if (!target) return;
         ev.preventDefault();
         target.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
-        const first = document.getElementById('name');
+        const first = document.getElementById('buyer-0');
         if (first && step === 1) setTimeout(() => first.focus({ preventScroll: true }), reduced ? 0 : 650);
       }}
     >

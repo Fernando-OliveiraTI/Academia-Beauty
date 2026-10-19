@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { NO_OFFER, PageRenderer, resolveHomeDocument } from '@academia/page-renderer'
 import { loadHome } from '@/lib/home-data'
+import { PageTracker } from '@/components/page-tracker'
 import '@academia/page-renderer/home.css'
 
 export const metadata: Metadata = {
@@ -15,5 +16,10 @@ export const dynamic = 'force-dynamic'
 export default async function HomePage() {
   const home = await loadHome()
   const document = resolveHomeDocument({ document: home.document, professionals: home.professionals, courses: home.courses })
-  return <PageRenderer document={document} ctx={{ offer: NO_OFFER, year: new Date().getFullYear() }} />
+  return (
+    <>
+      <PageRenderer document={document} ctx={{ offer: NO_OFFER, year: new Date().getFullYear() }} />
+      <PageTracker type="home" />
+    </>
+  )
 }

@@ -34,11 +34,11 @@ describe('robustez do renderer com documentos vindos do editor', () => {
     }
   });
 
-  it('em curso real (Modo A) a seção de checkout de demonstração não é renderizada, mesmo visível', () => {
+  it('em curso real (Modo A) o checkout não mostra campos de cartão nem a demonstração', () => {
     const doc = structuredClone(courseOriginalTemplate);
     for (const s of doc.sections) if (s.type === 'course.checkout') s.visibility = { enabled: true };
     const redirect = renderToStaticMarkup(<PageRenderer document={doc} ctx={{ ...base, checkout: { mode: 'redirect', url: 'https://pay.example.com/c' } }} />);
-    expect(redirect).not.toContain('id="checkout"');
+    expect(redirect).toContain('id="checkout"');
     expect(redirect).not.toMatch(/cvv|Finalizar compra/i);
     const demo = renderToStaticMarkup(<PageRenderer document={doc} ctx={base} />);
     expect(demo).toContain('id="checkout"');

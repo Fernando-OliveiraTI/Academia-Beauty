@@ -44,6 +44,12 @@ const get = async (path: string) => {
 const saved = (p: Page) => p.getByRole('status').filter({ hasText: 'Salvo' }).waitFor({ timeout: 10_000 })
 const frame = (p: Page) => p.frameLocator('iframe[title="Pré-visualização da página"]')
 const treeNames = (p: Page) => p.locator('.ed-item .ed-name').allTextContents()
+const menu = async (p: Page, item: string) => { await p.getByRole('button', { name: 'Mais ações' }).click(); await p.getByRole('menuitem', { name: item }).click() }
+/** Seleciona a seção na lista e abre a aba Avançado (mover/remover moram lá). */
+const advanced = async (p: Page, section: string) => {
+  await p.locator('.ed-item').filter({ has: p.locator('.ed-name', { hasText: section }) }).locator('.ed-select').click()
+  await p.getByRole('tab', { name: 'Avançado' }).click()
+}
 const homeHtml = async () => (await (await fetch(`${BASE}/`, { cache: 'no-store' })).text())
 const until = async (fn: () => Promise<boolean>, what: string, ms = 15_000) => {
   const end = Date.now() + ms
@@ -72,6 +78,7 @@ try {
   })
 
   await step('regras: hero não remove; profissionais e cursos são automáticas (sem ocultar)', async () => {
+    await advanced(page, 'Topo (hero)')
     assert.equal(await page.getByRole('button', { name: 'Remover Topo (hero)' }).isDisabled(), true)
     assert.equal(await page.getByRole('button', { name: /(Ocultar|Mostrar) Cursos/ }).isDisabled(), true)
     assert.equal(await page.getByRole('button', { name: /(Ocultar|Mostrar) Profissionais/ }).isDisabled(), true)
@@ -152,7 +159,7 @@ try {
     await page.getByLabel('Kicker', { exact: true }).fill(`${KICKER} (rascunho)`)
     await saved(page)
     assert.doesNotMatch(await homeHtml(), /\(rascunho\)/)
-    await page.getByRole('button', { name: 'Histórico' }).click()
+    await menu(page, 'Histórico')
     await page.getByText(/Versão \d+ \(no ar\)/).waitFor()
   })
 
@@ -165,7 +172,7 @@ try {
   })
 
   await step('"Restaurar padrão" volta ao template; ao publicar, a Home pública volta ao original', async () => {
-    await page.getByRole('button', { name: 'Restaurar padrão' }).click()
+    await menu(page, 'Restaurar padrão')
     await page.getByRole('button', { name: 'Confirmar' }).click()
     await page.waitForLoadState('load')
     await page.getByRole('button', { name: /Topo \(hero\)/ }).first().click()

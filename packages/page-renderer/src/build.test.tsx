@@ -31,6 +31,16 @@ describe('splitName', () => {
 });
 
 describe('buildProfessionalDocument', () => {
+  it('mostra nome, trabalho e botão + quando habilitados na seção', () => {
+    registerSections();
+    const doc = buildProfessionalDocument(data);
+    const works = doc.sections.find((x) => x.id === 'works')!;
+    Object.assign(works.content as object, { showPerson: true, showTitle: true, showPlus: true, columns: '3' });
+    const out = html(doc);
+    expect(out).toContain('Loiro Frio');
+    expect(out).toContain('cb-plus');
+    expect(out).toContain('data-cols="3"');
+  });
   it('gera documento válido e renderiza os dados do cadastro', () => {
     registerSections();
     const doc = buildProfessionalDocument(data);
@@ -40,7 +50,8 @@ describe('buildProfessionalDocument', () => {
     expect(out).toContain('Técnica e carreira.');
     expect(out).toContain('Expert / Colorista');
     expect(out).toContain('Segundo parágrafo.');
-    expect(out).toContain('Loiro Frio');
+    expect(out).not.toContain('Loiro Frio'); // textos da galeria ocultos por padrão
+    expect(out).toContain('data-cols="4"');
     expect(out).toContain('src="/site/v.mp4"');
     expect(out).toContain('ANA • ACADEMIA BEAUTY');
     expect(out).not.toContain('Lukas');

@@ -5,13 +5,26 @@ import { mediaSrc } from '../media';
 
 type Props<C> = { content: C; ctx: RenderContext };
 
+const DEFAULT_SITE_LINKS = [
+  { label: 'CURSOS', href: '/#cursos-home' },
+  { label: 'PROFISSIONAIS', href: '/#profissionais' },
+  { label: 'QUEM SOMOS', href: '/#beneficios' },
+];
+
 export function Nav({ content: c }: Props<NavContent>) {
   return (
-    <nav className="cb-nav">
-      <a className="cb-brand" href="#">{c.brandLead} <span>{c.brandAccent}</span></a>
-      <div className="cb-links">{c.links.map((l, ix) => <a key={`${ix}-${l.href}`} href={l.href}>{l.label}</a>)}</div>
-      <a className="cb-account" href={c.account.href}>{c.account.label}</a>
-    </nav>
+    <>
+      <nav className="cb-nav">
+        <a className="cb-brand" href="/">{c.brandLead} <span>{c.brandAccent}</span></a>
+        <div className="cb-links">{(c.siteLinks ?? DEFAULT_SITE_LINKS).map((l, ix) => <a key={`${ix}-${l.href}`} href={l.href}>{l.label}</a>)}</div>
+        <a className="cb-account" href={c.account.href}>{c.account.label}</a>
+      </nav>
+      {c.links.length ? (
+        <nav className="pro-side-nav" aria-label="Seções da página">
+          <ul>{c.links.map((l, ix) => <li key={`${ix}-${l.href}`}><a href={l.href} title={l.label}><i aria-hidden="true" /><span>{l.label}</span></a></li>)}</ul>
+        </nav>
+      ) : null}
+    </>
   );
 }
 
@@ -74,6 +87,7 @@ export function Bio({ content: c }: Props<BioContent>) {
 }
 
 export function Works({ content: c }: Props<WorksContent>) {
+  const showInfo = Boolean(c.showPerson || c.showTitle || c.showPlus);
   return (
     <section className="work-section" id="trabalhos">
       <div className="cb-container">
@@ -83,22 +97,28 @@ export function Works({ content: c }: Props<WorksContent>) {
           <p className="cb-section-copy">{c.copy}</p>
         </div>
 
-        <div className="cb-courses">
+        <div className="cb-courses" data-cols={c.columns ?? '4'}>
           {c.items.map((w, ix) => (
             <article className="cb-course reveal" key={`${ix}-${w.title}`}>
               <div className="cb-course-img-wrap">
                 <img className="cb-course-bg" src={mediaSrc(w.image.src, 640)} alt={w.image.alt} loading="lazy" />
               </div>
-              <div className="cb-course-content">
-                <div className="cb-course-meta">
-                  {w.tags.map((t, ix) => <span key={`${ix}-${t.label}`} className={t.gold ? 'cb-tag gold' : 'cb-tag'}>{t.label}</span>)}
+              {showInfo ? (
+                <div className="cb-course-content">
+                  {c.showTitle ? (
+                    <div className="cb-course-meta">
+                      {w.tags.map((t, ix) => <span key={`${ix}-${t.label}`} className={t.gold ? 'cb-tag gold' : 'cb-tag'}>{t.label}</span>)}
+                    </div>
+                  ) : null}
+                  {c.showPerson || c.showTitle ? (
+                    <div className="cb-course-copy">
+                      {c.showPerson ? <div className="cb-course-person">{w.person}</div> : null}
+                      {c.showTitle ? <div className="cb-course-title">{w.title}</div> : null}
+                    </div>
+                  ) : null}
+                  {c.showPlus ? <a className="cb-plus" href={w.href} aria-label={w.plusLabel}>+</a> : null}
                 </div>
-                <div className="cb-course-copy">
-                  <div className="cb-course-person">{w.person}</div>
-                  <div className="cb-course-title">{w.title}</div>
-                </div>
-                <a className="cb-plus" href={w.href} aria-label={w.plusLabel}>+</a>
-              </div>
+              ) : null}
             </article>
           ))}
         </div>
@@ -143,6 +163,7 @@ export function Courses({ content: c }: Props<CoursesContent>) {
           <p>{c.text}</p>
         </div>
 
+        <div className="course-grid" data-cols={c.columns ?? '4'}>
         {c.cards.map((card, ix) => (
           <a className="course-card reveal" href={card.href} key={`${ix}-${card.href}`}>
             <img className="course-card-bg" src={mediaSrc(card.image.src, 640)} alt={card.image.alt} loading="lazy" decoding="async" />
@@ -159,6 +180,7 @@ export function Courses({ content: c }: Props<CoursesContent>) {
             </div>
           </a>
         ))}
+        </div>
       </div>
     </section>
   );

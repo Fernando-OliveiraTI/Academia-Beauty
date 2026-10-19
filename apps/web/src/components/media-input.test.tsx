@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { MediaInput } from './media-input'
+import { ImageField } from './image-field'
 import { SchemaForm, type JsonSchema } from './schema-form'
 
 const id = 'c'.repeat(32)
@@ -75,14 +76,63 @@ describe('SchemaForm: campos de arquivo', () => {
     type: 'object', required: ['video'],
     properties: { video: { type: 'object', required: ['src', 'type'], properties: { src: { type: 'string', maxLength: 2048 }, type: { type: 'string', maxLength: 40 } } } },
   }
-  it('o campo src usa a biblioteca e, para vídeo, ajusta o tipo MIME junto', async () => {
+  it('o campo src escolhe da biblioteca e, para vídeo, ajusta o tipo MIME junto', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
     api.apiGet.mockResolvedValue({ ok: true, status: 200, data: { items: [asset({ kind: 'video', name: 'clip.mp4', mime: 'video/mp4' })], page: 1, perPage: 12, total: 1 } })
     render(<SchemaForm schema={schema} value={{ video: { src: '', type: '' } }} onChange={onChange} />)
-    await user.click(screen.getByRole('button', { name: /^Biblioteca/ }))
+    await user.click(screen.getByRole('button', { name: /^Editar/ }))
     await user.click(await screen.findByRole('button', { name: /Usar\s*clip\.mp4/ }))
     expect(onChange).toHaveBeenLastCalledWith({ video: { src: `/media/${id}`, type: 'video/mp4' } })
     expect(api.apiGet).toHaveBeenCalledWith(expect.stringContaining('kind=video'))
+  })
+})
+
+
+describe('ImageField', () => {
+  function Field({ initial = '' }: { initial?: string }) {
+    const [value, setValue] = useState(initial)
+    return <><ImageField label="Foto" value={value} onChange={setValue} /><output data-testid="value" data-value={value} /></>
+  }
+
+  it('mostra a imagem atual e nenhum texto de caminho', () => {
+    render(<Field initial="/site/home/lukas-campos.png" />)
+    expect(screen.getByAltText('Foto atual')).toHaveAttribute('src', '/site/home/lukas-campos.png')
+    expect(screen.queryByRole('textbox')).toBeNull()
+    expect(screen.queryByText(/lukas-campos\.png/)).toBeNull()
+  })
+
+  it('arquivo da biblioteca usa a miniatura pelo tamanho, sem mostrar o caminho', () => {
+    render(<Field initial={`/media/${id}`} />)
+    expect(screen.getByAltText('Foto atual')).toHaveAttribute('src', `/media/${id}?w=480`)
+  })
+
+  it('o botão Editar abre a janela, e escolher um arquivo envia e troca a imagem', async () => {
+    const user = userEvent.setup({ applyAccept: false })
+    api.apiUpload.mockResolvedValue({ ok: true, status: 201, data: asset({ id: 'f'.repeat(32), path: `/media/${'f'.repeat(32)}` }) })
+    render(<Field initial="/site/home/lukas-campos.png" />)
+    await user.click(screen.getByRole('button', { name: 'Editar Foto' }))
+    expect(await screen.findByRole('button', { name: 'Selecionar arquivo' })).toBeInTheDocument()
+    await user.upload(document.querySelector('input[type="file"]') as HTMLInputElement, new File(['x'], 'nova.png', { type: 'image/png' }))
+    await waitFor(() => expect(screen.getByTestId('value')).toHaveAttribute('data-value', `/media/${'f'.repeat(32)}`))
+    expect(api.apiUpload).toHaveBeenCalledWith('/admin/media', expect.any(File))
+  })
+
+  it('soltar um arquivo sobre a miniatura envia direto', async () => {
+    api.apiUpload.mockResolvedValue({ ok: true, status: 201, data: asset({ id: 'a'.repeat(32), path: `/media/${'a'.repeat(32)}` }) })
+    render(<Field />)
+    const box = document.querySelector('.img-preview') as HTMLElement
+    const file = new File(['x'], 'solta.png', { type: 'image/png' })
+    const { fireEvent } = await import('@testing-library/react')
+    fireEvent.drop(box, { dataTransfer: { files: [file] } })
+    await waitFor(() => expect(screen.getByTestId('value')).toHaveAttribute('data-value', `/media/${'a'.repeat(32)}`))
+  })
+
+  it('recusa arquivo de tipo errado antes de enviar e explica', async () => {
+    render(<Field />)
+    const { fireEvent } = await import('@testing-library/react')
+    fireEvent.drop(document.querySelector('.img-preview') as HTMLElement, { dataTransfer: { files: [new File(['x'], 'doc.pdf', { type: 'application/pdf' })] } })
+    expect(await screen.findByRole('alert')).toHaveTextContent('Envie uma imagem')
+    expect(api.apiUpload).not.toHaveBeenCalled()
   })
 })

@@ -29,15 +29,33 @@ const CheckItem = ({ title, text }: { title: string; text?: string }) => (
   </li>
 );
 
-export function Header({ content: c }: Props<HeaderContent>) {
+const DEFAULT_SITE_LINKS = [
+  { label: 'CURSOS', href: '/#cursos-home' },
+  { label: 'PROFISSIONAIS', href: '/#profissionais' },
+  { label: 'QUEM SOMOS', href: '/#beneficios' },
+];
+const DEFAULT_ACCOUNT = { label: 'ACESSAR CONTA', href: '/admin/login' };
+
+export function Header({ content: c, ctx }: Props<HeaderContent>) {
+  const account = c.account ?? DEFAULT_ACCOUNT;
+  const pro = c.hideBackLink ? undefined : ctx.professional;
+  const back = pro ? { href: `/profissionais/${pro.slug}#cursos`, label: `Mais cursos de ${pro.name.split(' ')[0]}` } : null;
   return (
-    <header className="header" id="header">
-      <Brand lead={c.brandLead} accent={c.brandAccent} logo={c.logoSrc} label={c.brandLabel} />
-      <nav className="nav" aria-label={c.navLabel}>
-        <ul>{c.nav.map((l, ix) => <li key={`${ix}-${l.href}`}><a href={l.href}>{l.label}</a></li>)}</ul>
+    <>
+      <header className="header" id="header">
+        <Brand lead={c.brandLead} accent={c.brandAccent} logo={c.logoSrc} label={c.brandLabel} href="/" />
+        <nav className="site-nav" aria-label="Menu principal">
+          <ul>{(c.siteLinks ?? DEFAULT_SITE_LINKS).map((l, ix) => <li key={`${ix}-${l.href}`}><a href={l.href}>{l.label}</a></li>)}</ul>
+          <a className="btn btn--primary btn--sm header-cta" href={account.href}>{account.label} ↗</a>
+        </nav>
+      </header>
+      <nav className="nav side-nav" aria-label={c.navLabel}>
+        <ul>
+          {c.nav.map((l, ix) => <li key={`${ix}-${l.href}`}><a href={l.href} title={l.label}><i aria-hidden="true" /><span>{l.label}</span></a></li>)}
+          {back ? <li className="side-nav-more"><a href={back.href} title={back.label}><i aria-hidden="true" /><span>Mais cursos</span></a></li> : null}
+        </ul>
       </nav>
-      <CtaLink className="btn btn--primary btn--sm">{c.ctaLabel}</CtaLink>
-    </header>
+    </>
   );
 }
 
@@ -195,7 +213,7 @@ export function Instructor({ content: c }: Props<InstructorContent>) {
     <section className="section section--surface" id="instrutor" aria-labelledby="instrutor-title">
       <div className="container instructor">
         <div className="instructor-portrait reveal">
-          <span className="monogram" aria-hidden="true">{c.monogram}</span>
+          {!c.photo && <span className="monogram" aria-hidden="true">{c.monogram}</span>}
           {c.photo && <img src={mediaSrc(c.photo.src, 640)} alt={c.photo.alt} loading="lazy" />}
           <span className="badge badge--gold">{c.handle}</span>
         </div>
@@ -279,7 +297,7 @@ export function Offer({ content: c, ctx }: Props<OfferContent>) {
           <hr />
           <ul className="check-list">{c.perks.map((p, ix) => <CheckItem key={`${ix}-${p}`} title={p} />)}</ul>
           <CtaLink className="btn btn--primary btn--block">{c.ctaLabel}<Arrow /></CtaLink>
-          {ctx.checkout?.mode === 'redirect' && !ctx.checkout.url && (
+          {(ctx.checkout?.mode === 'redirect' || ctx.checkout?.mode === 'embed') && !ctx.checkout.url && (
             <p className="field-error" role="status" style={{ marginTop: 'var(--space-3)' }}>A compra deste curso está temporariamente indisponível.</p>
           )}
         </div>
@@ -304,8 +322,6 @@ export function Faq({ content: c }: Props<FaqContent>) {
 }
 
 export function CheckoutSection({ content, ctx }: Props<CheckoutContent>) {
-  // O formulário é só a demonstração do template: em curso real (Modo A) a compra é o redirecionamento do CTA.
-  if (ctx.checkout?.mode === 'redirect') return null;
   return <Checkout content={content} offer={ctx.offer} />;
 }
 

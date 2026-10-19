@@ -16,7 +16,7 @@ const section = <C,>(id: string, type: string, content: C) => ({
 const nav: S.NavContent = {
   brandLead: 'ACADEMIA', brandAccent: 'BEAUTY',
   links: [{ label: 'Trabalhos', href: '#trabalhos' }, { label: 'Conheça', href: '#video' }, { label: 'Cursos', href: '#cursos' }],
-  account: { label: 'Acessar conta ↗', href: '#' },
+  account: { label: 'Acessar conta ↗', href: '/admin/login' },
 };
 
 const hero: S.HeroContent = {

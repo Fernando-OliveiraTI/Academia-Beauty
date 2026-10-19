@@ -30,6 +30,9 @@ export default class CommercialConfig extends BaseModel {
   declare provider: string
 
   @column()
+  declare externalCourseId: string
+
+  @column()
   declare checkoutUrl: string
 
   @column()
