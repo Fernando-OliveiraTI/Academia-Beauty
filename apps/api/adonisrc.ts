@@ -65,6 +65,7 @@ export default defineConfig({
   |
   */
   preloads: [
+    () => import('#start/production_checks'),
     () => import('#start/media'),
     () => import('#start/routes'),
     () => import('#start/kernel'),

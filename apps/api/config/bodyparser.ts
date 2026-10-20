@@ -12,6 +12,7 @@ const bodyParserConfig = defineConfig({
    * content-type parser
    */
   form: {
+    limit: '256kb',
     convertEmptyStringsToNull: true,
     types: ['application/x-www-form-urlencoded'],
   },
@@ -19,7 +20,9 @@ const bodyParserConfig = defineConfig({
   /**
    * Config for the JSON parser
    */
+  // Corpo JSON até 1 MB (documentos de página são o maior caso) e formulários até 256 KB: o que passa disso nunca é legítimo.
   json: {
+    limit: '1mb',
     // Desligado: os campos opcionais do cadastro chegam como "" e a validação (zod) já trata vazio explicitamente.
     convertEmptyStringsToNull: false,
     types: [

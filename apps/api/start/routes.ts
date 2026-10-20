@@ -3,6 +3,8 @@ import db from '@adonisjs/lucid/services/db'
 import { middleware } from '#start/kernel'
 
 const AuthController = () => import('#controllers/auth_controller')
+const AccountController = () => import('#controllers/account_controller')
+const AdminUsersController = () => import('#controllers/admin_users_controller')
 const AdminProfessionalsController = () => import('#controllers/admin_professionals_controller')
 const AdminCoursesController = () => import('#controllers/admin_courses_controller')
 const AdminProfessionalDocumentsController = () =>
@@ -39,8 +41,14 @@ router.get('/health', async ({ response }) => {
 router
   .group(() => {
     router.post('/login', [AuthController, 'login'])
+    router.post('/login/2fa', [AuthController, 'secondFactor'])
     router.post('/logout', [AuthController, 'logout']).use(middleware.auth())
     router.get('/me', [AuthController, 'me']).use(middleware.auth())
+    // Conta do próprio usuário: acessível mesmo com troca de senha ou 2FA pendentes.
+    router.post('/password', [AccountController, 'changePassword']).use(middleware.auth())
+    router.post('/2fa/setup', [AccountController, 'setupTwoFactor']).use(middleware.auth())
+    router.post('/2fa/enable', [AccountController, 'enableTwoFactor']).use(middleware.auth())
+    router.post('/2fa/disable', [AccountController, 'disableTwoFactor']).use(middleware.auth())
   })
   .prefix('/auth')
 
@@ -81,8 +89,24 @@ router
   .where('id', router.matchers.number())
   .use(middleware.can({ permission: 'users.manage' }))
 
+// Usuários do painel: só administrador.
+router
+  .group(() => {
+    router.get('/', [AdminUsersController, 'index'])
+    router.post('/', [AdminUsersController, 'store'])
+    router.put('/:id', [AdminUsersController, 'update'])
+    router.post('/:id/reset-password', [AdminUsersController, 'resetPassword'])
+    router.post('/:id/revoke-sessions', [AdminUsersController, 'revokeSessions'])
+    router.post('/:id/reset-2fa', [AdminUsersController, 'resetTwoFactor'])
+  })
+  .prefix('/admin/users')
+  .where('id', router.matchers.number())
+  .use(middleware.can({ permission: 'users.manage' }))
+
 // Painel de indicadores: qualquer usuário autenticado do painel.
-router.get('/admin/dashboard', [AdminDashboardController, 'show']).use(middleware.auth())
+router
+  .get('/admin/dashboard', [AdminDashboardController, 'show'])
+  .use(middleware.auth({ gate: true }))
 
 // Administração de profissionais. Leitura, escrita e publicação têm permissões distintas.
 router
@@ -243,8 +267,3 @@ router
   .prefix('/admin/media')
   .where('id', /^[0-9a-f]{32}$/)
   .use(middleware.can({ permission: 'media.manage' }))
-
-/** Exemplo mínimo de rota protegida por permissão; os módulos reais entram nas fases 3 e 4. */
-router
-  .get('/admin/ping', async () => ({ ok: true }))
-  .use(middleware.can({ permission: 'pages.write' }))

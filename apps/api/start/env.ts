@@ -67,6 +67,8 @@ export default await Env.create(new URL('../', import.meta.url), {
   | rascunho, mesmo sem checkout, para testar as páginas. Em produção é ignorada: só publicados.
   |----------------------------------------------------------
   */
+  /** `true` exige 2FA de todo administrador (ele só acessa a própria conta até ativar). Recomendado em produção. */
+  REQUIRE_2FA_FOR_ADMINS: Env.schema.boolean.optional(),
   /** Token da API da The Members (somente leitura no servidor; nunca vai ao navegador). */
   TOKEN_THE_MEMBERS: Env.schema.string.optional(),
   /** Segredo do webhook de checkout da The Members (HMAC-SHA256 em `X-Signature`). Sem ele o receptor responde 503. */
@@ -86,6 +88,12 @@ export default await Env.create(new URL('../', import.meta.url), {
   CHECKOUT_SESSIONS_IP_MODE: Env.schema.enum.optional(['full', 'truncated', 'none'] as const),
   /** Dias de retenção das visitas (1 a 730; padrão 180). */
   CHECKOUT_SESSIONS_RETENTION_DAYS: Env.schema.number.optional(),
+  /** Dias de retenção dos eventos de página (métricas do dashboard; 30 a 1095; padrão 400). */
+  PAGE_EVENTS_RETENTION_DAYS: Env.schema.number.optional(),
+  /** Dias de retenção do log de auditoria (90 a 3650; padrão 730). */
+  AUDIT_LOG_RETENTION_DAYS: Env.schema.number.optional(),
+  /** Dias de retenção dos eventos de pagamento da The Members (365 a 3650; padrão 1825 = 5 anos). */
+  PAYMENT_EVENTS_RETENTION_DAYS: Env.schema.number.optional(),
   /** Dias de retenção do registro bruto (1 a 365; padrão 30). */
   THEMEMBERS_LOG_RETENTION_DAYS: Env.schema.number.optional(),
   PUBLIC_SHOW_DRAFTS: Env.schema.boolean.optional(),

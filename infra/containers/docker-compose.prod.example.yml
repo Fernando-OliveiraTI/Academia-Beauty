@@ -1,0 +1,91 @@
+# EXEMPLO de produção (copie para fora do repositório, ajuste e use com um arquivo .env que NÃO é versionado).
+# Segredos vêm do ambiente/gestor de segredos, nunca deste arquivo. Termine o TLS num proxy reverso (nginx, Caddy, load balancer)
+# na frente do serviço `web` (HSTS e CSP já saem do Next).
+#
+#   docker compose -f docker-compose.prod.example.yml --env-file .env.prod up -d --build
+#   docker compose -f docker-compose.prod.example.yml run --rm api node ace migration:run --force
+#   docker compose -f docker-compose.prod.example.yml run --rm api node ace db:seed --files database/seeders/initial_seeder.ts
+#
+# Rotinas (cron do servidor):
+#   diário   docker compose -f ... run --rm api node ace maintenance:purge
+#   diário   infra/backup/backup.sh
+name: academia-beauty-prod
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+      MYSQL_DATABASE: academia
+      MYSQL_USER: academia
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+    volumes:
+      - mysql_data:/var/lib/mysql
+    secrets: [mysql_root_password, mysql_password]
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$(cat /run/secrets/mysql_root_password)"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: { context: ../.., dockerfile: infra/docker/api.Dockerfile }
+    restart: unless-stopped
+    depends_on: { mysql: { condition: service_healthy } }
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3333
+      LOG_LEVEL: info
+      APP_KEY: ${APP_KEY:?defina APP_KEY (32+ caracteres)}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: academia
+      DB_PASSWORD: ${DB_PASSWORD:?defina DB_PASSWORD}
+      DB_DATABASE: academia
+      SESSION_DRIVER: database
+      LIMITER_STORE: database
+      # IP/CIDR da rede interna: o web fala com a API por ela, e o IP real do visitante vem no X-Forwarded-For.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:?defina a faixa de IP da rede interna, ex.: 172.16.0.0/12}
+      REQUIRE_2FA_FOR_ADMINS: "true"
+      REVALIDATE_URL: http://web:3100/internal/revalidate
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:?defina REVALIDATE_SECRET (24+ caracteres)}
+      CHECKOUT_ALLOWED_HOSTS: ${CHECKOUT_ALLOWED_HOSTS}
+      MEDIA_CDN_HOST: ${MEDIA_CDN_HOST:-}
+      THEMEMBERS_WEBHOOK_SECRET: ${THEMEMBERS_WEBHOOK_SECRET:-}
+      THEMEMBERS_WEBHOOK_TOKEN: ${THEMEMBERS_WEBHOOK_TOKEN:-}
+      TOKEN_THE_MEMBERS: ${TOKEN_THE_MEMBERS:-}
+      CHECKOUT_SESSIONS_IP_MODE: truncated
+    volumes:
+      - media_data:/app/storage
+    networks: [internal]
+
+  web:
+    build:
+      context: ../..
+      dockerfile: infra/docker/web.Dockerfile
+      args:
+        API_ORIGIN: http://api:3333
+        MEDIA_CDN_HOST: ${MEDIA_CDN_HOST:-}
+        CHECKOUT_ALLOWED_HOSTS: ${CHECKOUT_ALLOWED_HOSTS}
+    restart: unless-stopped
+    depends_on: [api]
+    environment:
+      API_ORIGIN: http://api:3333
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET}
+    # Só o proxy reverso (TLS) deve alcançar esta porta.
+    ports: ["127.0.0.1:3100:3100"]
+    networks: [internal]
+
+volumes:
+  mysql_data:
+  media_data:
+
+networks:
+  internal:
+
+secrets:
+  mysql_root_password: { environment: MYSQL_ROOT_PASSWORD }
+  mysql_password: { environment: DB_PASSWORD }

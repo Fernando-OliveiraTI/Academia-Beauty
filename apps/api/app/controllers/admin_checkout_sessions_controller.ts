@@ -2,10 +2,10 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
 import CheckoutSession from '#models/checkout_session'
 import Course from '#models/course'
-import env from '#start/env'
 import {
   deliveryIdFor,
   latestEventsByRef,
+  ipMode,
   retentionDays,
   sessionsEnabled,
   stateOf,
@@ -180,7 +180,7 @@ export default class AdminCheckoutSessionsController {
       perPage,
       counts: { all, paid, pending, failed, none: Math.max(0, all - linkedSessions) },
       enabled: sessionsEnabled(),
-      ipMode: env.get('CHECKOUT_SESSIONS_IP_MODE') ?? 'full',
+      ipMode: ipMode(),
       retentionDays: retentionDays(),
     }
   }

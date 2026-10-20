@@ -123,28 +123,28 @@ test.group('RBAC', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction())
 
   test('anônimo recebe 401', async ({ client }) => {
-    const res1 = await client.get('/admin/ping')
+    const res1 = await client.get('/admin/media')
     res1.assertStatus(401)
   })
 
-  test('viewer recebe 403 (não escreve páginas)', async ({ client }) => {
+  test('viewer recebe 403 (não gerencia mídia)', async ({ client }) => {
     const user = await makeUser('viewer')
-    const res2 = await client.get('/admin/ping').loginAs(user)
+    const res2 = await client.get('/admin/media').loginAs(user)
     res2.assertStatus(403)
   })
 
   test('editor e admin acessam', async ({ client }) => {
     const editor = await makeUser('editor')
     const admin = await makeUser('admin')
-    const res3 = await client.get('/admin/ping').loginAs(editor)
+    const res3 = await client.get('/admin/media').loginAs(editor)
     res3.assertStatus(200)
-    const res4 = await client.get('/admin/ping').loginAs(admin)
+    const res4 = await client.get('/admin/media').loginAs(admin)
     res4.assertStatus(200)
   })
 
   test('usuário inativo com sessão antiga recebe 401', async ({ client }) => {
     const admin = await makeUser('admin', { isActive: false })
-    const res5 = await client.get('/admin/ping').loginAs(admin)
+    const res5 = await client.get('/admin/media').loginAs(admin)
     res5.assertStatus(401)
   })
 })

@@ -14,6 +14,23 @@ const loggerConfig = defineConfig({
       enabled: true,
       name: env.get('APP_NAME'),
       level: env.get('LOG_LEVEL'),
+      // Nunca registra cookies, tokens nem senhas, mesmo que um erro carregue a requisição inteira.
+      redact: {
+        paths: [
+          'req.headers.cookie',
+          'req.headers.authorization',
+          'req.headers["x-xsrf-token"]',
+          'headers.cookie',
+          'headers.authorization',
+          '*.password',
+          '*.currentPassword',
+          '*.newPassword',
+          '*.temporaryPassword',
+          '*.totpSecret',
+          '*.recoveryCodes',
+        ],
+        censor: '[redigido]',
+      },
       transport: {
         targets: targets()
           .pushIf(!app.inProduction, targets.pretty())

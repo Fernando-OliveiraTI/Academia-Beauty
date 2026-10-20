@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { LoginForm, messageForStatus } from './login-form'
+import { LoginForm, messageForStatus, secondFactorMessage } from './login-form'
 
 vi.mock('@/lib/api-client', () => ({ apiPost: vi.fn() }))
 import { apiPost } from '@/lib/api-client'
@@ -32,5 +32,41 @@ describe('LoginForm', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('E-mail ou senha inválidos.'))
     expect(apiPost).toHaveBeenCalledWith('/auth/login', { email: 'a@b.com', password: 'qualquer' })
+  })
+})
+
+describe('LoginForm · segundo fator', () => {
+  it('pede o código quando a API exige o segundo fator e envia ao endpoint certo', async () => {
+    vi.mocked(apiPost)
+      .mockResolvedValueOnce({ ok: true, status: 200, data: { twoFactorRequired: true } })
+      .mockResolvedValueOnce({ ok: false, status: 401, data: { code: 'invalid_code' } })
+    render(<LoginForm />)
+    await userEvent.type(screen.getByLabelText('E-mail'), 'a@b.com')
+    await userEvent.type(screen.getByLabelText('Senha'), 'qualquer')
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
+    const input = await screen.findByLabelText('Código de 6 dígitos')
+    await userEvent.type(input, '12a3456')
+    expect((input as HTMLInputElement).value).toBe('123456')
+    await userEvent.click(screen.getByRole('button', { name: 'Verificar' }))
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Código inválido'))
+    expect(apiPost).toHaveBeenLastCalledWith('/auth/login/2fa', { code: '123456' })
+  })
+
+  it('alterna para o código de recuperação', async () => {
+    vi.mocked(apiPost).mockResolvedValueOnce({ ok: true, status: 200, data: { twoFactorRequired: true } })
+    render(<LoginForm />)
+    await userEvent.type(screen.getByLabelText('E-mail'), 'a@b.com')
+    await userEvent.type(screen.getByLabelText('Senha'), 'qualquer')
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Usar um código de recuperação' }))
+    expect(screen.getByLabelText('Código de recuperação')).toBeInTheDocument()
+  })
+})
+
+describe('secondFactorMessage', () => {
+  it('trata bloqueio, expiração e código errado', () => {
+    expect(secondFactorMessage(429)).toMatch(/Muitas tentativas/)
+    expect(secondFactorMessage(401, 'pending_expired')).toMatch(/expirou/)
+    expect(secondFactorMessage(401, 'invalid_code')).toMatch(/Código inválido/)
   })
 })

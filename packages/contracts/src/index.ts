@@ -44,6 +44,10 @@ export const meSchema = z.object({
   fullName: z.string().nullable(),
   roles: z.array(z.enum(ROLES)),
   permissions: z.array(z.enum(PERMISSIONS)),
+  twoFactorEnabled: z.boolean().default(false),
+  mustChangePassword: z.boolean().default(false),
+  /** Administrador sem 2FA numa instalação que o exige: só acessa a própria conta. */
+  twoFactorRequired: z.boolean().default(false),
 });
 export type Me = z.infer<typeof meSchema>;
 

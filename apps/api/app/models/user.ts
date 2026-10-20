@@ -31,6 +31,38 @@ export default class User extends compose(BaseModel, AuthFinder) {
   @column.dateTime()
   declare lastLoginAt: DateTime | null
 
+  /** Sobe a cada troca/redefinição de senha, desativação ou revogação: sessões de época antiga deixam de valer. */
+  @column({ serializeAs: null })
+  declare sessionEpoch: number
+
+  @column({ consume: (v: number | boolean) => Boolean(v) })
+  declare mustChangePassword: boolean
+
+  @column.dateTime()
+  declare passwordChangedAt: DateTime | null
+
+  /** Segredo TOTP cifrado com a APP_KEY (nunca em claro no banco). */
+  @column({ serializeAs: null })
+  declare totpSecret: string | null
+
+  @column.dateTime()
+  declare totpEnabledAt: DateTime | null
+
+  /** Último passo de 30 s aceito: o mesmo código não vale duas vezes. */
+  @column({
+    serializeAs: null,
+    consume: (v: string | number | null) => (v === null ? null : Number(v)),
+  })
+  declare totpLastStep: number | null
+
+  /** JSON com os hashes (sha256) dos códigos de recuperação ainda não usados. */
+  @column({ serializeAs: null })
+  declare recoveryCodes: string | null
+
+  get twoFactorEnabled(): boolean {
+    return this.totpEnabledAt !== null && this.totpSecret !== null
+  }
+
   @manyToMany(() => Role, { pivotTable: 'user_roles' })
   declare roles: ManyToMany<typeof Role>
 

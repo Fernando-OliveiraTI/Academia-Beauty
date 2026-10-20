@@ -1,16 +1,17 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { errors as authErrors } from '@adonisjs/auth'
-import { createHash } from 'node:crypto'
 import { DateTime } from 'luxon'
 import limiter from '@adonisjs/limiter/services/main'
 import User from '#models/user'
 import AuditService from '#services/audit_service'
-import { loginValidator } from '#validators/auth'
+import LoginGuard, { digest } from '#services/login_guard'
+import TotpService from '#services/totp_service'
+import { EPOCH_KEY, requires2fa } from '#services/session_guard'
+import { loginValidator, secondFactorValidator } from '#validators/auth'
 
 const GENERIC_FAILURE = { message: 'E-mail ou senha inválidos' }
-
-/** Chave curta e de tamanho fixo (a coluna `rate_limits.key` tem 255 caracteres; o e-mail é entrada livre). */
-const digest = (value: string) => createHash('sha256').update(value).digest('hex').slice(0, 40)
+const PENDING_KEY = 'pending_2fa'
+const PENDING_TTL_MS = 5 * 60 * 1000
 
 /**
  * Auditoria de falhas de login sem flood: no máximo 1 registro de bloqueio por chave e 20 falhas por IP,
@@ -28,24 +29,39 @@ async function auditThrottled(
   if (allowed) await AuditService.record(ctx, entry)
 }
 
+export function describeUser(user: User) {
+  return {
+    id: user.id,
+    email: user.email,
+    fullName: user.fullName,
+    roles: user.roleNames,
+    permissions: user.permissions,
+    twoFactorEnabled: user.twoFactorEnabled,
+    mustChangePassword: user.mustChangePassword,
+    twoFactorRequired: requires2fa(user),
+  }
+}
+
 export default class AuthController {
   async login(ctx: HttpContext) {
-    const { request, response, auth } = ctx
+    const { request, response } = ctx
     const { email, password } = await request.validateUsing(loginValidator)
-
-    // Limite por IP + e-mail: 5 tentativas a cada 15 minutos, bloqueio por 15 minutos.
-    const loginLimiter = limiter.use({ requests: 5, duration: '15 mins', blockDuration: '15 mins' })
     const ip = request.ip()
-    const key = `login_${digest(`${ip}|${email.toLowerCase()}`)}`
-    let limitError: { response?: { remaining: number } } | null
-    let user: User | null = null
+
+    if (await LoginGuard.isBlocked(ip, email)) {
+      await auditThrottled(ctx, `audit_block_${digest(`${ip}|${email}`)}`, 1, {
+        action: 'auth.login_throttled',
+        metadata: { email },
+      })
+      return response.tooManyRequests({ message: 'Muitas tentativas. Tente novamente mais tarde.' })
+    }
+
+    let user: User
     try {
-      // penalize() conta a tentativa quando o callback lança; o erro de credenciais é relançado.
-      ;[limitError, user] = await loginLimiter.penalize(key, () =>
-        User.verifyCredentials(email, password)
-      )
+      user = await User.verifyCredentials(email, password)
     } catch (error) {
       if (error instanceof authErrors.E_INVALID_CREDENTIALS) {
+        await LoginGuard.recordFailure(ip, email)
         await auditThrottled(ctx, `audit_fail_${digest(ip)}`, 20, {
           action: 'auth.login_failed',
           metadata: { email },
@@ -55,25 +71,77 @@ export default class AuthController {
       throw error
     }
 
-    if (limitError || !user) {
-      await auditThrottled(ctx, `audit_block_${key}`, 1, {
-        action: 'auth.login_throttled',
-        metadata: { email },
-      })
-      return response.tooManyRequests({ message: 'Muitas tentativas. Tente novamente mais tarde.' })
-    }
-
     if (!user.isActive) {
       await AuditService.record(ctx, { action: 'auth.login_blocked_inactive', actorId: user.id })
       return response.unauthorized(GENERIC_FAILURE)
     }
 
-    await auth.use('web').login(user)
-    user.lastLoginAt = DateTime.now()
-    await user.save()
-    await user.load('roles')
-    await AuditService.record(ctx, { action: 'auth.login', actorId: user.id })
-    return this.#me(user)
+    await LoginGuard.clearPair(ip, email)
+
+    if (user.twoFactorEnabled) {
+      // Senha correta, falta o segundo fator: nada de login ainda; a sessão guarda só um "pendente" de 5 minutos.
+      ctx.session.put(PENDING_KEY, { userId: user.id, until: Date.now() + PENDING_TTL_MS })
+      return { twoFactorRequired: true }
+    }
+    return this.#complete(ctx, user)
+  }
+
+  /** Segundo passo do login: código do aplicativo ou código de recuperação. */
+  async secondFactor(ctx: HttpContext) {
+    const { request, response, session } = ctx
+    const { code, recoveryCode } = await request.validateUsing(secondFactorValidator)
+    const pending = session.get(PENDING_KEY) as { userId: number; until: number } | undefined
+    if (!pending || pending.until < Date.now()) {
+      session.forget(PENDING_KEY)
+      return response.unauthorized({
+        message: 'Sessão de verificação expirada. Entre novamente.',
+        code: 'pending_expired',
+      })
+    }
+    const user = await User.query().where('id', pending.userId).preload('roles').first()
+    if (!user || !user.isActive || !user.twoFactorEnabled || !user.totpSecret) {
+      session.forget(PENDING_KEY)
+      return response.unauthorized(GENERIC_FAILURE)
+    }
+    if (await LoginGuard.secondFactorBlocked(user.id)) {
+      return response.tooManyRequests({ message: 'Muitas tentativas. Tente novamente mais tarde.' })
+    }
+
+    let ok = false
+    let usedRecovery = false
+    if (code) {
+      const step = TotpService.verify(
+        TotpService.decrypt(user.totpSecret) ?? '',
+        code,
+        user.totpLastStep
+      )
+      if (step !== null) {
+        user.totpLastStep = step
+        ok = true
+      }
+    } else if (recoveryCode) {
+      const hashes: string[] = JSON.parse(user.recoveryCodes ?? '[]')
+      const hash = TotpService.hashRecoveryCode(recoveryCode)
+      if (hashes.includes(hash)) {
+        user.recoveryCodes = JSON.stringify(hashes.filter((h) => h !== hash))
+        ok = true
+        usedRecovery = true
+      }
+    }
+
+    if (!ok) {
+      await LoginGuard.secondFactorFailed(user.id)
+      await auditThrottled(ctx, `audit_2fa_${user.id}`, 5, {
+        action: 'auth.2fa_failed',
+        actorId: user.id,
+      })
+      return response.unauthorized({ message: 'Código inválido.', code: 'invalid_code' })
+    }
+    await LoginGuard.secondFactorOk(user.id)
+    session.forget(PENDING_KEY)
+    if (usedRecovery)
+      await AuditService.record(ctx, { action: 'auth.2fa_recovery_used', actorId: user.id })
+    return this.#complete(ctx, user)
   }
 
   async logout(ctx: HttpContext) {
@@ -85,19 +153,17 @@ export default class AuthController {
 
   async me({ auth }: HttpContext) {
     const user = auth.getUserOrFail()
-    if (!user.isActive)
-      throw new authErrors.E_UNAUTHORIZED_ACCESS('Sessão inválida', { guardDriverName: 'session' })
     await user.load('roles')
-    return this.#me(user)
+    return describeUser(user)
   }
 
-  #me(user: User) {
-    return {
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      roles: user.roleNames,
-      permissions: user.permissions,
-    }
+  async #complete(ctx: HttpContext, user: User) {
+    await ctx.auth.use('web').login(user)
+    ctx.session.put(EPOCH_KEY, user.sessionEpoch)
+    user.lastLoginAt = DateTime.now()
+    await user.save()
+    await user.load('roles')
+    await AuditService.record(ctx, { action: 'auth.login', actorId: user.id })
+    return describeUser(user)
   }
 }

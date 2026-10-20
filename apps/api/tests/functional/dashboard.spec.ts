@@ -3,7 +3,7 @@ import { test } from '@japa/runner'
 import testUtils from '@adonisjs/core/services/test_utils'
 import db from '@adonisjs/lucid/services/db'
 import { makeUser } from '#tests/helpers'
-import { resetTrackingLimiter } from '#services/tracking_service'
+import { resetIpRateLimits } from '#services/ip_rate_limit'
 
 const DESKTOP =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Safari/605.1.15'
@@ -24,7 +24,7 @@ async function insertPublishedProfessional(slug: string) {
 
 test.group('Dashboard · coleta e indicadores', (group) => {
   group.each.setup(async () => {
-    resetTrackingLimiter()
+    await resetIpRateLimits()
     return testUtils.db().withGlobalTransaction()
   })
 

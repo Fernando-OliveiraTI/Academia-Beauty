@@ -7,7 +7,7 @@ import db from '@adonisjs/lucid/services/db'
 import env from '#start/env'
 import { makeUser } from '#tests/helpers'
 import { resetWebhookLimiter } from '#controllers/themembers_webhook_controller'
-import { resetCheckoutSessionsLimiter } from '#controllers/public_checkout_sessions_controller'
+import { resetIpRateLimits } from '#services/ip_rate_limit'
 import { applyIpMode, clean, geoFromHeaders, truncateIp } from '#services/checkout_session_service'
 import { parseUserAgent } from '#services/user_agent'
 
@@ -154,7 +154,7 @@ test.group('Visitas ao checkout · leitura do navegador, IP e cidade (funções 
 test.group('Visitas ao checkout · registro pela página', (group) => {
   const saved: Record<string, string | boolean | undefined> = {}
   group.each.setup(async () => {
-    resetCheckoutSessionsLimiter()
+    await resetIpRateLimits()
     for (const key of ['CHECKOUT_SESSIONS_ENABLED', 'CHECKOUT_SESSIONS_IP_MODE'] as const)
       saved[key] = env.get(key) as never
     env.set('CHECKOUT_SESSIONS_ENABLED', true)
@@ -341,7 +341,7 @@ test.group('Visitas ao checkout · painel do administrador e ligação com o pag
   let token: string | undefined
   group.each.setup(async () => {
     resetWebhookLimiter()
-    resetCheckoutSessionsLimiter()
+    await resetIpRateLimits()
     secret = env.get('THEMEMBERS_WEBHOOK_SECRET')
     token = env.get('THEMEMBERS_WEBHOOK_TOKEN')
     env.set('THEMEMBERS_WEBHOOK_SECRET', SECRET)

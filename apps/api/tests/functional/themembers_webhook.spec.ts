@@ -6,7 +6,7 @@ import db from '@adonisjs/lucid/services/db'
 import env from '#start/env'
 import { makeUser } from '#tests/helpers'
 import { resetWebhookLimiter } from '#controllers/themembers_webhook_controller'
-import { resetCheckoutStatusLimiter } from '#controllers/public_checkout_status_controller'
+import { resetIpRateLimits } from '#services/ip_rate_limit'
 import ThemembersWebhookService, {
   findRef,
   maskEmail,
@@ -521,7 +521,7 @@ test.group('The Members · confirmação para o comprador (/public/checkout-stat
   let previousToken: string | undefined
   group.each.setup(async () => {
     resetWebhookLimiter()
-    resetCheckoutStatusLimiter()
+    await resetIpRateLimits()
     previous = env.get('THEMEMBERS_WEBHOOK_SECRET')
     env.set('THEMEMBERS_WEBHOOK_SECRET', SECRET)
     previousToken = env.get('THEMEMBERS_WEBHOOK_TOKEN')

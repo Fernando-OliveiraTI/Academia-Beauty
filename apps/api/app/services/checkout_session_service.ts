@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
+import app from '@adonisjs/core/services/app'
 import env from '#start/env'
 import CheckoutSession from '#models/checkout_session'
 import Course from '#models/course'
@@ -130,6 +131,10 @@ export type RegisterInput = {
 export function sessionsEnabled(): boolean {
   return env.get('CHECKOUT_SESSIONS_ENABLED') !== false
 }
+/** Como guardar o IP. Sem configuração: completo em desenvolvimento e truncado em produção (minimização de dados, LGPD). */
+export function ipMode(): 'full' | 'truncated' | 'none' {
+  return env.get('CHECKOUT_SESSIONS_IP_MODE') ?? (app.inProduction ? 'truncated' : 'full')
+}
 export function retentionDays(): number {
   const raw = Number(env.get('CHECKOUT_SESSIONS_RETENTION_DAYS') ?? 180)
   return Number.isFinite(raw) && raw >= 1 ? Math.min(raw, 730) : 180
@@ -174,7 +179,7 @@ export default class CheckoutSessionService {
         ref,
         courseSlug: course ? course.slug : null,
         courseId: course?.id ?? null,
-        ip: applyIpMode(input.ip, env.get('CHECKOUT_SESSIONS_IP_MODE') ?? 'full'),
+        ip: applyIpMode(input.ip, ipMode()),
         country: geo.country,
         region: geo.region,
         city: geo.city,
