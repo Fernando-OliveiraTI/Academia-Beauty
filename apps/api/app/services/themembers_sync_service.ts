@@ -34,6 +34,8 @@ export type SyncItem = {
   title: string
   coverSrc: string | null
   professional: SyncProfessional | null
+  /** Situação do curso na Academia (`draft`, `published`…): o modal decide o texto de "publicar agora". */
+  status: string | null
   externalCourseId: string
   /** `not_found`: o ID não existe na The Members. */
   state: 'changes' | 'up_to_date' | 'not_found'
@@ -78,6 +80,7 @@ type CourseRow = {
   title: string
   coverSrc?: string | null
   professional?: SyncProfessional | null
+  status?: string | null
   listCents: number | null
   externalId: string
 }
@@ -135,6 +138,7 @@ export function buildPreview(
       title: row.title,
       coverSrc: row.coverSrc ?? null,
       professional: row.professional ?? null,
+      status: row.status ?? null,
       externalCourseId: row.externalId,
     }
     const product = byId.get(row.externalId)
@@ -277,6 +281,7 @@ export default class ThemembersSyncService {
         title: c.data.title,
         coverSrc: c.data.coverSrc ?? null,
         professional: professionalOf(c.professionalId),
+        status: c.status,
         listCents: config ? config.listCents : null,
         externalId,
       })

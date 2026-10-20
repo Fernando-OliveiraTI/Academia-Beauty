@@ -15,6 +15,7 @@ type Item = {
   title: string
   coverSrc: string | null
   professional: Professional | null
+  status: string | null
   externalCourseId: string
   state: 'changes' | 'up_to_date' | 'not_found'
   membersStatus: string | null
@@ -93,11 +94,12 @@ function ProfessionalPhoto({ professional }: { professional: Professional }) {
 }
 
 /** Botão "Sincronizar" da lista de cursos: consulta a The Members e mostra o que mudaria (não grava nada). */
-export function ThemembersSync() {
+export function ThemembersSync({ canPublish = false }: { canPublish?: boolean }) {
   const router = useRouter()
   const { confirm, dialog: confirmDialog } = useConfirm()
   const dialog = useRef<HTMLDialogElement>(null)
   const [applying, setApplying] = useState(false)
+  const [publishingNow, setPublishingNow] = useState(false)
   const [done, setDone] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -130,14 +132,47 @@ export function ThemembersSync() {
     setApplying(true)
     setError(null)
     setDone(null)
-    const res = await apiSend<{ results?: { applied: string[]; skipped: string | null }[]; code?: string }>('POST', '/admin/courses/themembers/sync', { courseIds: [...selectedIds] })
+    const chosen = changed.filter((i) => selected.has(i.courseId))
+    const res = await apiSend<{ results?: { courseId: number; applied: string[]; skipped: string | null }[]; code?: string }>('POST', '/admin/courses/themembers/sync', { courseIds: chosen.map((i) => i.courseId) })
     setApplying(false)
     if (!res.ok || !res.data?.results) {
       return setError(res.status === 403 ? 'Sem permissão para sincronizar.' : ERRORS[res.data?.code ?? ''] ?? 'Não foi possível sincronizar. Nada foi perdido: tente de novo.')
     }
     const updated = res.data.results.filter((r) => r.applied.length).length
     const skipped = res.data.results.filter((r) => r.skipped).length
-    setDone(`${updated} curso(s) atualizado(s).${skipped ? ` ${skipped} com ressalva (valor ou nome fora do permitido, ou curso arquivado): confira o resumo.` : ''}`)
+    const summary = `${updated} curso(s) atualizado(s).${skipped ? ` ${skipped} com ressalva (valor ou nome fora do permitido, ou curso arquivado): confira o resumo.` : ''}`
+    setDone(summary)
+    router.refresh()
+    await run(true)
+
+    // Só oferece publicar quem realmente mudou e só para quem tem permissão de publicar.
+    const changedIds = new Set(res.data.results.filter((r) => r.applied.length).map((r) => r.courseId))
+    const publishable = chosen.filter((i) => changedIds.has(i.courseId))
+    if (!canPublish || publishable.length === 0) return
+    const live = publishable.filter((i) => i.status === 'published').length
+    const drafts = publishable.length - live
+    const ok = await confirm({
+      title: publishable.length === 1 ? 'Publicar o curso atualizado?' : `Publicar os ${publishable.length} cursos atualizados?`,
+      message: [
+        live ? `${live} já ${live === 1 ? 'está' : 'estão'} no site e ${live === 1 ? 'receberá' : 'receberão'} o novo nome e valor.` : '',
+        drafts ? `${drafts} ${drafts === 1 ? 'é rascunho e passará' : 'são rascunhos e passarão'} a aparecer no site.` : '',
+        'Cursos com pendências (conteúdo, oferta ou profissional) não serão publicados e serão listados.',
+      ].filter(Boolean).join(' '),
+      confirmLabel: 'Publicar agora',
+      cancelLabel: 'Agora não',
+    })
+    if (!ok) return
+    setPublishingNow(true)
+    const failed: string[] = []
+    let published = 0
+    for (const item of publishable) {
+      const r = await apiSend<{ errors?: { message: string }[]; message?: string }>('POST', `/admin/courses/${item.courseId}/publish`)
+      if (r.ok) published += 1
+      else failed.push(`${item.title}: ${r.status === 403 ? 'sem permissão' : r.data?.errors?.map((e) => e.message).join('; ') || r.data?.message || 'não foi possível publicar'}`)
+    }
+    setPublishingNow(false)
+    setDone(`${summary} ${published} publicado(s).`)
+    if (failed.length) setError(`Não publicado(s): ${failed.join(' · ')}`)
     router.refresh()
     await run(true)
   }
@@ -375,10 +410,10 @@ export function ThemembersSync() {
         ) : null}
 
         <footer className="tm-foot">
-          <button type="button" className="admin-button secondary" onClick={close} disabled={applying}><BackIcon /> Cancelar</button>
+          <button type="button" className="admin-button secondary" onClick={close} disabled={applying || publishingNow}><BackIcon /> Cancelar</button>
           {preview && changed.length ? <span className="tm-foot-count" role="status">{selectedIds.size} de {changed.length} curso(s) com alterações selecionado(s)</span> : null}
-          <button type="button" className="admin-button tm-confirm" onClick={apply} disabled={applying || loading || selectedIds.size === 0} title={changed.length === 0 ? 'Não há alterações a aplicar' : selectedIds.size === 0 ? 'Marque ao menos um curso' : undefined}>
-            <SyncIcon size={18} /> {applying ? 'Sincronizando…' : selectedIds.size && selectedIds.size < changed.length ? `Sincronizar ${selectedIds.size} selecionado(s)` : 'Confirmar sincronização'} <ArrowIcon />
+          <button type="button" className="admin-button tm-confirm" onClick={apply} disabled={applying || publishingNow || loading || selectedIds.size === 0} title={changed.length === 0 ? 'Não há alterações a aplicar' : selectedIds.size === 0 ? 'Marque ao menos um curso' : undefined}>
+            <SyncIcon size={18} /> {applying ? 'Sincronizando…' : publishingNow ? 'Publicando…' : selectedIds.size && selectedIds.size < changed.length ? `Sincronizar ${selectedIds.size} selecionado(s)` : 'Confirmar sincronização'} <ArrowIcon />
           </button>
         </footer>
       </dialog>

@@ -69,7 +69,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
           <p>Gerencie os cursos da academia. Crie páginas de venda, publique e acompanhe o status de cada curso.</p>
         </div>
         <div className="admin-hero-actions">
-          {canSync ? <ThemembersSync /> : null}
+          {canSync ? <ThemembersSync canPublish={canArchive} /> : null}
           {canWrite ? <Link className="admin-button" href="/admin/cursos/novo">+ Novo curso</Link> : null}
         </div>
       </section>
