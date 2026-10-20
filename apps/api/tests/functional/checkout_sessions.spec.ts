@@ -438,7 +438,7 @@ test.group('Visitas ao checkout · painel do administrador e ligação com o pag
     const list = await client.get('/admin/checkout-sessions').loginAs(admin)
     list.assertStatus(200)
     const body = list.body()
-    assert.deepEqual(body.counts, { all: 3, paid: 1, pending: 0, failed: 1, none: 1 })
+    assert.deepEqual(body.counts, { all: 3, paid: 1, pending: 0, refunded: 0, failed: 1, none: 1 })
     const paid = body.items.find((i: any) => i.ref === REF)
     assert.deepInclude(paid.payment, {
       state: 'paid',
@@ -471,6 +471,54 @@ test.group('Visitas ao checkout · painel do administrador e ligação com o pag
     ;(await client.get('/admin/checkout-sessions/999999').loginAs(admin)).assertStatus(404)
   })
 
+  test('o detalhe da visita guarda o histórico: compra, reembolso pendente e reembolso, sem apagar a compra', async ({
+    client,
+    assert,
+  }) => {
+    await visit(client, REF)
+    await pay(client, REF, 'transaction.failed', 'failed', '2026-10-19 09:00:00', '2')
+    await pay(client, REF, 'transaction.pix_generated', 'pending', '2026-10-19 10:00:00', '1')
+    await pay(client, REF, 'transaction.approved', 'approved', '2026-10-19 10:05:00', '1')
+    await pay(
+      client,
+      REF,
+      'transaction.pending_refund',
+      'pending_refund',
+      '2026-10-19 11:00:00',
+      '1'
+    )
+    // o reembolso concluído chega sem o código da visita: entra pelo ID da transação
+    await pay(client, null, 'transaction.refunded', 'refunded', '2026-10-19 11:10:00', '1')
+
+    const admin = await makeUser('admin')
+    const list = await client.get('/admin/checkout-sessions').loginAs(admin)
+    const session = list.body().items.find((i: any) => i.ref === REF)
+    assert.equal(
+      session.payment.status,
+      'refunded',
+      'a lista mostra só a situação mais recente (o reembolso sem código herda o da compra)'
+    )
+    assert.equal(session.payment.state, 'refunded', 'reembolso não é "não aprovado"')
+    assert.equal(list.body().counts.refunded, 1)
+    const onlyRefunded = await client.get('/admin/checkout-sessions?state=refunded').loginAs(admin)
+    assert.deepEqual(
+      onlyRefunded.body().items.map((i: any) => i.ref),
+      [REF]
+    )
+
+    const detail = await client.get(`/admin/checkout-sessions/${session.id}`).loginAs(admin)
+    detail.assertStatus(200)
+    const { history } = detail.body()
+    assert.lengthOf(history, 2, 'duas transações: a recusada e a paga')
+    assert.equal(history[0].transactionId, '2', 'ordenadas pela primeira etapa')
+    assert.deepEqual(
+      history[1].events.map((e: any) => e.status),
+      ['pending', 'approved', 'pending_refund', 'refunded']
+    )
+    assert.equal(history[1].events[1].amountCents, 29700)
+    assert.notInclude(JSON.stringify(history), 'maria.lima')
+  })
+
   test('as contagens das abas só consideram visitas que existem (pagamento com código desconhecido não conta)', async ({
     client,
     assert,
@@ -480,7 +528,14 @@ test.group('Visitas ao checkout · painel do administrador e ligação com o pag
     await pay(client, REF3, 'transaction.approved', 'approved', '2026-10-19 11:00:00', '2') // código que nunca abriu a página
     const admin = await makeUser('admin')
     const body = (await client.get('/admin/checkout-sessions').loginAs(admin)).body()
-    assert.deepEqual(body.counts, { all: 1, paid: 1, pending: 0, failed: 0, none: 0 })
+    assert.deepEqual(body.counts, {
+      all: 1,
+      paid: 1,
+      pending: 0,
+      refunded: 0,
+      failed: 0,
+      none: 0,
+    })
     assert.equal(body.total, 1)
   })
 

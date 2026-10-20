@@ -12,6 +12,7 @@ const WINDOW = 500
 
 const toItem = (e: PaymentEvent): PaymentEventItem => ({
   id: e.id,
+  transactionId: e.externalTransactionId,
   event: e.event,
   kind: e.kind,
   status: e.status,
@@ -39,10 +40,19 @@ export function summarizeTransactions(events: PaymentEvent[]): PaymentsSummary {
       (e.occurredAt.toMillis() === current.occurredAt.toMillis() && e.id > current.id)
     if (newer) latest.set(key, e)
   }
+  // Uma compra aprovada continua sendo compra depois do reembolso: guarda o valor da aprovação de cada transação.
+  const approvedAt = new Map<string, number>()
+  for (const e of events) {
+    if (e.kind !== 'transaction' || e.status !== 'approved') continue
+    approvedAt.set(e.externalTransactionId ?? `evt-${e.id}`, e.amountCents ?? 0)
+  }
   const summary: PaymentsSummary = {
     transactions: latest.size,
     approved: 0,
     approvedCents: 0,
+    purchased: approvedAt.size,
+    purchasedCents: [...approvedAt.values()].reduce((sum, cents) => sum + cents, 0),
+    refundedCents: 0,
     refunded: 0,
     failed: 0,
     pending: 0,
@@ -57,6 +67,7 @@ export function summarizeTransactions(events: PaymentEvent[]): PaymentsSummary {
       e.status === 'pending_refund'
     ) {
       summary.refunded += 1
+      summary.refundedCents += e.amountCents ?? 0
     } else if (e.status === 'failed') {
       summary.failed += 1
     } else {

@@ -227,12 +227,21 @@ export default class CheckoutSessionService {
 
 /* ------------------------- consulta (painel do administrador) ------------------------- */
 
-export type PaymentState = 'paid' | 'pending' | 'failed' | 'none'
+export type PaymentState = 'paid' | 'pending' | 'refunded' | 'failed' | 'none'
 const PAID = new Set(['approved', 'completed'])
 const PENDING = new Set(['pending', 'processing'])
+const REFUNDED = new Set(['refunded', 'pending_refund', 'charged_back'])
 
 export const stateOf = (status: string | null | undefined): PaymentState =>
-  !status ? 'none' : PAID.has(status) ? 'paid' : PENDING.has(status) ? 'pending' : 'failed'
+  !status
+    ? 'none'
+    : PAID.has(status)
+      ? 'paid'
+      : PENDING.has(status)
+        ? 'pending'
+        : REFUNDED.has(status)
+          ? 'refunded'
+          : 'failed'
 
 export type LatestByRef = Map<string, { event: PaymentEvent; count: number }>
 
@@ -245,11 +254,97 @@ export async function latestEventsByRef(refs?: string[]): Promise<LatestByRef> {
     .orderBy('id', 'asc')
   if (refs) query.whereIn('ref', refs.length ? refs : [''])
   const out: LatestByRef = new Map()
-  for (const event of await query) {
-    const key = event.ref!
+  const events = [...(await query)]
+  // Eventos seguintes da mesma transação (ex.: o reembolso) podem chegar sem o código da visita: herdam o código.
+  const refByTransaction = new Map<string, string>()
+  for (const event of events) {
+    if (event.externalTransactionId) refByTransaction.set(event.externalTransactionId, event.ref!)
+  }
+  if (refByTransaction.size) {
+    const orphans = await PaymentEvent.query()
+      .whereNull('ref')
+      .whereIn('kind', ['transaction', 'order'])
+      .whereIn('external_transaction_id', [...refByTransaction.keys()])
+    for (const orphan of orphans) {
+      events.push(orphan)
+      refByTransaction.set(
+        `orphan:${orphan.id}`,
+        refByTransaction.get(orphan.externalTransactionId!)!
+      )
+    }
+    events.sort((a, b) => a.occurredAt.toMillis() - b.occurredAt.toMillis() || a.id - b.id)
+  }
+  for (const event of events) {
+    const key = event.ref ?? refByTransaction.get(`orphan:${event.id}`)!
     out.set(key, { event, count: (out.get(key)?.count ?? 0) + 1 })
   }
   return out
+}
+
+/** Situações que contam a história de um pagamento (pedido, acesso e carrinho abandonado ficam de fora). */
+const HISTORY_STATUSES = new Set([
+  'pending',
+  'processing',
+  'approved',
+  'failed',
+  'pending_refund',
+  'refunded',
+  'charged_back',
+])
+
+export type PaymentHistoryEvent = {
+  id: number
+  status: string
+  event: string
+  occurredAt: string
+  amountCents: number | null
+  currency: string | null
+  method: string | null
+}
+export type PaymentHistoryTransaction = {
+  transactionId: string | null
+  events: PaymentHistoryEvent[]
+}
+
+/**
+ * Todas as etapas de cada transação ligada ao código da visita (pendente, aprovado, reembolso pendente, reembolsado…),
+ * da mais antiga para a mais nova. O último evento define a situação, mas não apaga os anteriores. Eventos seguintes da
+ * mesma transação (ex.: o reembolso) entram mesmo quando chegam sem o código da visita.
+ */
+export async function paymentHistoryFor(ref: string): Promise<PaymentHistoryTransaction[]> {
+  const direct = await PaymentEvent.query().where('ref', ref).where('kind', 'transaction')
+  const transactionIds = [
+    ...new Set(
+      direct.map((e) => e.externalTransactionId).filter((id): id is string => Boolean(id))
+    ),
+  ]
+  const related = transactionIds.length
+    ? await PaymentEvent.query()
+        .whereIn('external_transaction_id', transactionIds)
+        .where('kind', 'transaction')
+    : []
+  const events = new Map<number, PaymentEvent>()
+  for (const e of [...direct, ...related]) events.set(e.id, e)
+
+  const grouped = new Map<string, PaymentHistoryTransaction>()
+  const ordered = [...events.values()]
+    .filter((e) => e.status && HISTORY_STATUSES.has(e.status))
+    .sort((a, b) => a.occurredAt.toMillis() - b.occurredAt.toMillis() || a.id - b.id)
+  for (const e of ordered) {
+    const key = e.externalTransactionId ?? `evt-${e.id}`
+    const group = grouped.get(key) ?? { transactionId: e.externalTransactionId, events: [] }
+    group.events.push({
+      id: e.id,
+      status: e.status!,
+      event: e.event,
+      occurredAt: e.occurredAt.toUTC().toISO() ?? '',
+      amountCents: e.amountCents,
+      currency: e.currency,
+      method: e.paymentMethod,
+    })
+    grouped.set(key, group)
+  }
+  return [...grouped.values()]
 }
 
 export async function deliveryIdFor(paymentEventId: number): Promise<number | null> {

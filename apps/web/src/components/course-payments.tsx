@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   PAYMENT_EVENT_LABEL,
   PAYMENT_METHOD_LABEL,
@@ -12,7 +12,7 @@ import {
 import Link from 'next/link'
 import { apiGet } from '@/lib/api-client'
 import { money } from '@/lib/format'
-import { relativeTime } from '@/lib/relative-time'
+import { HISTORY_LABEL, HISTORY_TONE } from '@/lib/checkout-labels'
 
 const icon = (d: React.ReactNode) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>
@@ -49,6 +49,20 @@ export function CoursePaymentsPanel({ courseId, externalCourseId }: { courseId: 
     try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { setCopied(false) }
   }
   const linked = (data?.externalCourseId ?? externalCourseId).trim() !== ''
+  // Uma linha do tempo por transação: pendente → aprovado → reembolso, sem chamadas do webhook, pedido nem acesso.
+  const transactions = useMemo(() => {
+    const groups = new Map<string, { key: string; transactionId: string | null; events: PaymentEventItem[] }>()
+    const ordered = (data?.items ?? [])
+      .filter((e) => e.kind === 'transaction' && e.status && e.status in HISTORY_LABEL)
+      .sort((a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime() || a.id - b.id)
+    for (const e of ordered) {
+      const key = e.transactionId ?? `evt-${e.id}`
+      const group = groups.get(key) ?? { key, transactionId: e.transactionId, events: [] }
+      group.events.push(e)
+      groups.set(key, group)
+    }
+    return [...groups.values()].sort((a, b) => new Date(b.events[b.events.length - 1]!.occurredAt).getTime() - new Date(a.events[a.events.length - 1]!.occurredAt).getTime())
+  }, [data])
 
   return (
     <section className="pay-panel" aria-label="Pagamentos recebidos da The Members">
@@ -95,14 +109,14 @@ export function CoursePaymentsPanel({ courseId, externalCourseId }: { courseId: 
           ) : null}
 
           <dl className="pay-summary">
-            <div><dt>Aprovados</dt><dd data-tone="ok">{data.summary.approved}<small>{money(data.summary.approvedCents)}</small></dd></div>
+            <div><dt>Compras</dt><dd data-tone="ok">{data.summary.purchased}<small>{money(data.summary.purchasedCents)}</small></dd></div>
             <div><dt>Pendentes</dt><dd data-tone="warn">{data.summary.pending}</dd></div>
             <div><dt>Recusados</dt><dd data-tone="bad">{data.summary.failed}</dd></div>
-            <div><dt>Reembolsos</dt><dd data-tone="bad">{data.summary.refunded}</dd></div>
+            <div><dt>Reembolsos</dt><dd data-tone="bad">{data.summary.refunded}<small>{money(data.summary.refundedCents)}</small></dd></div>
             <div><dt>Transações</dt><dd>{data.summary.transactions}</dd></div>
           </dl>
 
-          {data.items.length === 0 ? (
+          {transactions.length === 0 ? (
             <div className="pay-empty">
               <span className="pay-empty-icon" aria-hidden="true">{ICON_WALLET}</span>
               <div>
@@ -111,33 +125,36 @@ export function CoursePaymentsPanel({ courseId, externalCourseId }: { courseId: 
               </div>
             </div>
           ) : (
-            <div className="pay-table-wrap">
-              <table className="admin-table pay-table">
-                <thead>
-                  <tr><th scope="col">Quando</th><th scope="col">Status</th><th scope="col">Pagamento</th><th scope="col" className="pay-num">Valor</th><th scope="col">Comprador</th></tr>
-                </thead>
-                <tbody>
-                  {data.items.map((item) => {
-                    const pay = method(item)
-                    return (
-                      <tr key={item.id}>
-                        <td title={new Date(item.occurredAt).toLocaleString('pt-BR')}>{relativeTime(item.occurredAt)}</td>
-                        <td>
-                          <span className="pay-pill" data-tone={paymentTone(item.status)}>{item.status ? (PAYMENT_STATUS_LABEL[item.status] ?? item.status) : '—'}</span>
-                          <small>{PAYMENT_EVENT_LABEL[item.event] ?? item.event}</small>
-                        </td>
-                        <td>{pay.main}{pay.extra ? <small>{pay.extra}</small> : null}</td>
-                        <td className="pay-num">{money(item.amountCents, item.currency)}</td>
-                        <td>{item.buyerName ?? '—'}{item.buyerEmail ? <small className="pay-mono">{item.buyerEmail}</small> : null}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+            <div className="pay-txs">
+              {transactions.map((tx) => {
+                const last = tx.events[tx.events.length - 1]!
+                const pay = method(last)
+                const buyer = [...tx.events].reverse().find((e) => e.buyerName || e.buyerEmail) ?? last
+                return (
+                  <article className="pay-tx" key={tx.key} aria-label={`Transação ${tx.transactionId ? `final ${tx.transactionId.slice(-6)}` : ''}`}>
+                    <header className="pay-tx-head">
+                      <div>
+                        <span className="pay-pill" data-tone={HISTORY_TONE[last.status ?? ''] ?? 'neutral'}>{HISTORY_LABEL[last.status ?? ''] ?? last.status}</span>
+                        <small>{money(last.amountCents, last.currency)} · {pay.main}{pay.extra ? ` · ${pay.extra}` : ''}</small>
+                      </div>
+                      <div className="pay-tx-buyer">{buyer.buyerName ?? '—'}{buyer.buyerEmail ? <small className="pay-mono">{buyer.buyerEmail}</small> : null}</div>
+                    </header>
+                    <ol className="cs-timeline">
+                      {[...tx.events].reverse().map((e) => (
+                        <li key={e.id} data-tone={HISTORY_TONE[e.status ?? ''] ?? 'neutral'}>
+                          <time dateTime={e.occurredAt} title={new Date(e.occurredAt).toLocaleString('pt-BR')}>{new Date(e.occurredAt).toLocaleTimeString('pt-BR')}<small>{new Date(e.occurredAt).toLocaleDateString('pt-BR')}</small></time>
+                          <i className="cs-dot" aria-hidden="true" />
+                          <div><span className="pay-pill" data-tone={HISTORY_TONE[e.status ?? ''] ?? 'neutral'}>{HISTORY_LABEL[e.status ?? ''] ?? e.status}</span></div>
+                        </li>
+                      ))}
+                    </ol>
+                  </article>
+                )
+              })}
             </div>
           )}
           <p className="pay-foot"><Link className="link-button" href="/admin/webhooks/themembers">Ver as chamadas recebidas (técnico, só administrador)</Link></p>
-          <p className="pay-foot">Mostra os 50 eventos mais recentes. Nome e e-mail dos compradores aparecem mascarados e nenhum dado de cartão é guardado.</p>
+          <p className="pay-foot">Mostra as transações dos 50 eventos mais recentes, com todas as etapas de cada uma (pendente, aprovado, reembolso). Nome e e-mail dos compradores aparecem mascarados e nenhum dado de cartão é guardado.</p>
         </>
       ) : state === 'loading' ? <p className="wizard-hint" role="status">Carregando pagamentos…</p> : null}
     </section>

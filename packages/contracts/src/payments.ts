@@ -55,6 +55,8 @@ export const paymentTone = (status: string | null): PaymentTone => {
 
 export type PaymentEventItem = {
   id: number;
+  /** ID da transação na The Members: junta as etapas (pendente, aprovado, reembolso…) de uma mesma compra. */
+  transactionId: string | null;
   event: string;
   kind: string;
   status: string | null;
@@ -74,6 +76,11 @@ export type PaymentsSummary = {
   transactions: number;
   approved: number;
   approvedCents: number;
+  /** Compras: transações que chegaram a ser aprovadas, mesmo as reembolsadas depois (a compra não some). */
+  purchased: number;
+  purchasedCents: number;
+  /** Valor das transações hoje reembolsadas (reembolso pendente, reembolsado ou chargeback). */
+  refundedCents: number;
   refunded: number;
   failed: number;
   pending: number;

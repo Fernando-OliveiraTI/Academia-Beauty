@@ -1,11 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { PAYMENT_EVENT_LABEL, PAYMENT_METHOD_LABEL } from '@academia/contracts'
 import { money } from '@/lib/format'
 import { relativeTime } from '@/lib/relative-time'
-import { DEVICE_LABEL, STATE_PILL, STATE_TONE, placeOf, type PaymentState } from '@/lib/checkout-labels'
+import { apiGet } from '@/lib/api-client'
+import { DEVICE_LABEL, HISTORY_LABEL, HISTORY_TONE, STATE_PILL, paymentPill, placeOf, type PaymentState } from '@/lib/checkout-labels'
 import { CLOSE_ICON, EYE_ICON, svg } from './icons'
 import { useDialogSync } from './use-dialog'
 import { useNotice } from './use-notice'
@@ -26,6 +27,8 @@ export type SessionPayment = {
   paymentEventId: number
   deliveryId: number | null
 }
+type HistoryEvent = { id: number; status: string; event: string; occurredAt: string; amountCents: number | null; currency: string | null; method: string | null }
+type HistoryTransaction = { transactionId: string | null; events: HistoryEvent[] }
 export type SessionItem = {
   id: number
   ref: string
@@ -74,6 +77,19 @@ export function CheckoutSessions({ items }: { items: SessionItem[] }) {
   const [openId, setOpenId] = useState<number | null>(null)
   const { notice, copyText } = useNotice()
   const current = items.find((i) => i.id === openId) ?? null
+  const [history, setHistory] = useState<{ id: number; state: 'loading' | 'error' | 'ready'; transactions: HistoryTransaction[] } | null>(null)
+
+  // A lista traz só o último evento; o histórico completo (compra → reembolso) vem do detalhe, ao abrir.
+  useEffect(() => {
+    if (openId === null || !items.find((i) => i.id === openId)?.payment) { setHistory(null); return }
+    let alive = true
+    setHistory({ id: openId, state: 'loading', transactions: [] })
+    void apiGet<{ history?: HistoryTransaction[] }>(`/admin/checkout-sessions/${openId}`).then((res) => {
+      if (!alive) return
+      setHistory(res.ok && res.data?.history ? { id: openId, state: 'ready', transactions: res.data.history } : { id: openId, state: 'error', transactions: [] })
+    })
+    return () => { alive = false }
+  }, [openId, items])
 
   useDialogSync(dialog, openId !== null)
 
@@ -106,8 +122,8 @@ export function CheckoutSessions({ items }: { items: SessionItem[] }) {
                   <td>
                     {s.payment ? (
                       <>
-                        <span className="pay-pill" data-tone={STATE_TONE[s.payment.state]}>{STATE_PILL[s.payment.state]}</span>
-                        <small>{PAYMENT_EVENT_LABEL[s.payment.event] ?? s.payment.event}</small>
+                        <span className="pay-pill" data-tone={paymentPill(s.payment).tone}>{paymentPill(s.payment).text}</span>
+                        {s.payment.state === 'refunded' ? null : <small>{PAYMENT_EVENT_LABEL[s.payment.event] ?? s.payment.event}</small>}
                         <small>{money(s.payment.amountCents, s.payment.currency)}{s.payment.method ? ` · ${PAYMENT_METHOD_LABEL[s.payment.method] ?? s.payment.method}` : ''}</small>
                       </>
                     ) : <><span className="pay-pill" data-tone="neutral">{STATE_PILL.none}</span><small>Nenhum pagamento recebido</small></>}
@@ -160,12 +176,37 @@ export function CheckoutSessions({ items }: { items: SessionItem[] }) {
               <h3>Pagamento</h3>
               {current.payment ? (
                 <dl className="wh-meta">
-                  <div><dt>Situação</dt><dd><span className="pay-pill" data-tone={STATE_TONE[current.payment.state]}>{STATE_PILL[current.payment.state]}</span> {PAYMENT_EVENT_LABEL[current.payment.event] ?? current.payment.event}</dd></div>
+                  <div><dt>Situação</dt><dd><span className="pay-pill" data-tone={paymentPill(current.payment).tone}>{paymentPill(current.payment).text}</span> {current.payment.state === 'refunded' ? '' : PAYMENT_EVENT_LABEL[current.payment.event] ?? current.payment.event}</dd></div>
                   <div><dt>Valor e forma</dt><dd>{money(current.payment.amountCents, current.payment.currency)}{current.payment.method ? ` · ${PAYMENT_METHOD_LABEL[current.payment.method] ?? current.payment.method}` : ''}{current.payment.instalments && current.payment.instalments > 1 ? ` em ${current.payment.instalments}x` : ''}{current.payment.cardBrand ? ` · ${current.payment.cardBrand}` : ''}</dd></div>
                   <div><dt>Comprador (mascarado)</dt><dd>{current.payment.buyerName ?? '—'}{current.payment.buyerEmail ? ` · ${current.payment.buyerEmail}` : ''}</dd></div>
                   <div><dt>Último evento</dt><dd>{new Date(current.payment.occurredAt).toLocaleString('pt-BR')} · {current.payment.events} {current.payment.events === 1 ? 'evento' : 'eventos'}</dd></div>
                 </dl>
               ) : <p className="wizard-hint">Nenhum pagamento chegou com este código. A pessoa só visitou o checkout, ou a The Members não devolveu o código no webhook.</p>}
+              {current.payment ? (
+                <>
+                  <h3>Histórico do pagamento</h3>
+                  {history?.id === current.id && history.state === 'loading' ? <p className="wizard-hint" role="status">Carregando histórico…</p> : null}
+                  {history?.id === current.id && history.state === 'error' ? <p className="form-error" role="alert">Não foi possível carregar o histórico.</p> : null}
+                  {history?.id === current.id && history.state === 'ready' && history.transactions.length === 0 ? <p className="wizard-hint">Nenhuma etapa de pagamento registrada.</p> : null}
+                  {history?.id === current.id ? history.transactions.map((tx, index) => (
+                    <section className="cs-tx" key={tx.transactionId ?? `evt-${index}`} aria-label={`Transação ${index + 1}`}>
+                      <p className="cs-tx-head">Transação {history.transactions.length > 1 ? index + 1 : ''}{tx.transactionId ? <code className="wh-code">…{tx.transactionId.slice(-6)}</code> : null}</p>
+                      <ol className="cs-timeline">
+                        {[...tx.events].reverse().map((e) => (
+                          <li key={e.id} data-tone={HISTORY_TONE[e.status] ?? 'neutral'}>
+                            <time dateTime={e.occurredAt}>{new Date(e.occurredAt).toLocaleTimeString('pt-BR')}<small>{new Date(e.occurredAt).toLocaleDateString('pt-BR')}</small></time>
+                            <i className="cs-dot" aria-hidden="true" />
+                            <div>
+                              <span className="pay-pill" data-tone={HISTORY_TONE[e.status] ?? 'neutral'}>{HISTORY_LABEL[e.status] ?? e.status}</span>
+                              {e.amountCents !== null ? <small>{money(e.amountCents, e.currency)}{e.method ? ` · ${PAYMENT_METHOD_LABEL[e.method] ?? e.method}` : ''}</small> : null}
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    </section>
+                  )) : null}
+                </>
+              ) : null}
               {current.payment ? (
                 <p className="wh-warn">
                   O e-mail e o nome completos estão no corpo bruto da chamada do webhook (só administrador).{' '}

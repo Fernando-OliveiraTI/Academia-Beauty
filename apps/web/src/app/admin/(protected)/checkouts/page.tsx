@@ -17,15 +17,15 @@ type List = {
   total: number
   page: number
   perPage: number
-  counts: { all: number; paid: number; pending: number; failed: number; none: number }
+  counts: { all: number; paid: number; pending: number; refunded: number; failed: number; none: number }
   enabled: boolean
   ipMode: 'full' | 'truncated' | 'none'
   retentionDays: number
 }
-const STATES = ['paid', 'pending', 'failed', 'none'] as const
+const STATES = ['paid', 'pending', 'refunded', 'failed', 'none'] as const
 const SORTS = [{ value: '', label: 'Mais recentes' }, { value: 'oldest', label: 'Mais antigas' }]
 const dot = (tone: 'ok' | 'bad' | 'neutral' | 'all' | 'warn') => <span className="wh-dot" data-tone={tone} aria-hidden="true" />
-const TONE = { paid: 'ok', pending: 'warn', failed: 'bad', none: 'neutral' } as const
+const TONE = { paid: 'ok', pending: 'warn', refunded: 'bad', failed: 'bad', none: 'neutral' } as const
 const IP_NOTE = { full: 'IP completo', truncated: 'IP truncado (rede)', none: 'IP não guardado' } as const
 
 const CheckoutArt = ({ sessions, conversion, days }: { sessions: number; conversion: number; days: number }) => (
