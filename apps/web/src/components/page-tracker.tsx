@@ -18,6 +18,7 @@ function send(payload: Record<string, string | undefined>) {
 /**
  * Medição das páginas públicas (alimenta o dashboard): uma visualização por abertura e os cliques de compra.
  * Cliques em `[data-cta]` contam como interesse; se o clique sai para outro domínio (checkout do provedor) conta como checkout.
+ * Com o checkout embutido na página, ele conta como checkout quando aparece na tela (uma vez por visita).
  * Não grava cookie nem identificador no navegador; o servidor guarda só um resumo diário anônimo.
  */
 export function PageTracker({ type, slug }: Props) {
@@ -34,7 +35,23 @@ export function PageTracker({ type, slug }: Props) {
       send({ kind: external && !ev.defaultPrevented ? 'checkout' : 'cta', type, slug })
     }
     document.addEventListener('click', onClick)
-    return () => document.removeEventListener('click', onClick)
+
+    // Checkout embutido (The Members): não há saída para outro domínio, o checkout abre na própria página.
+    // Conta como chegada ao checkout, uma vez por visita, quando ele aparece na tela.
+    let io: IntersectionObserver | undefined
+    const embedded = type === 'course' ? document.querySelector('#checkout [data-embed]') : null
+    if (embedded && typeof IntersectionObserver !== 'undefined') {
+      io = new IntersectionObserver((entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return
+        send({ kind: 'checkout', type, slug })
+        io?.disconnect()
+      }, { threshold: 0.05 })
+      io.observe(embedded)
+    }
+    return () => {
+      document.removeEventListener('click', onClick)
+      io?.disconnect()
+    }
   }, [type, slug])
 
   return null
