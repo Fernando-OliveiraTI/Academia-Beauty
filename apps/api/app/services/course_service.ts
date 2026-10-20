@@ -257,9 +257,12 @@ export default class CourseService {
         )
       }
       if (input.environment === 'sandbox' && env.get('NODE_ENV') === 'production') {
-        throw new DomainError(422, 'sandbox_not_allowed', 'Ambiente de teste (sandbox) não está disponível em produção', [
-          { field: 'environment', message: 'Use o ambiente de produção' },
-        ])
+        throw new DomainError(
+          422,
+          'sandbox_not_allowed',
+          'Ambiente de teste (sandbox) não está disponível em produção',
+          [{ field: 'environment', message: 'Use o ambiente de produção' }]
+        )
       }
       let checkoutUrl = ''
       if (input.checkoutUrl) {

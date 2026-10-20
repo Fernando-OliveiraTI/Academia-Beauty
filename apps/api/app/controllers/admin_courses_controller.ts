@@ -74,7 +74,10 @@ function readinessOf(
     ...commercialReadiness(commercial ? commercialInput(commercial) : null, allowedCheckoutHosts()),
   ]
   if (commercial?.environment === 'sandbox' && env.get('NODE_ENV') === 'production') {
-    issues.push({ field: 'environment', message: 'Mude o ambiente da oferta para Produção (hoje está em teste/sandbox)' })
+    issues.push({
+      field: 'environment',
+      message: 'Mude o ambiente da oferta para Produção (hoje está em teste/sandbox)',
+    })
   }
   if (professional.status !== 'published') {
     issues.push({
