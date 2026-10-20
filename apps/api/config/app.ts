@@ -1,4 +1,5 @@
 import env from '#start/env'
+import { parseTrustedProxies } from '#services/trusted_proxies'
 import app from '@adonisjs/core/services/app'
 import { Secret } from '@adonisjs/core/helpers'
 import { defineConfig } from '@adonisjs/core/http'
@@ -12,6 +13,8 @@ import { defineConfig } from '@adonisjs/core/http'
  */
 export const appKey = new Secret(env.get('APP_KEY'))
 
+const trustProxy = parseTrustedProxies(env.get('TRUSTED_PROXIES'))
+
 /**
  * The configuration settings used by the HTTP server
  */
@@ -23,7 +26,7 @@ export const http = defineConfig({
    * IP real do cliente atrás do proxy do Next/ingress (limite de login e auditoria). Padrão do
    * Adonis: só loopback. Em produção defina TRUSTED_PROXIES com os IPs/CIDR do proxy.
    */
-  ...(env.get('TRUSTED_PROXIES') ? { trustProxy: env.get('TRUSTED_PROXIES') } : {}),
+  ...(trustProxy ? { trustProxy } : {}),
 
   /**
    * Enabling async local storage will let you access HTTP context
