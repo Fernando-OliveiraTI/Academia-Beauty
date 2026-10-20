@@ -133,7 +133,7 @@ test.group('Login · limites e 2FA', (group) => {
       .withCsrfToken()
       .json({ email: user.email, password: TEST_PASSWORD })
     res.assertStatus(200)
-    assert.deepEqual(res.body(), { twoFactorRequired: true })
+    assert.deepEqual(res.body(), { secondFactorRequired: true })
     const actions = await audits()
     assert.notInclude(actions, 'auth.login')
   })

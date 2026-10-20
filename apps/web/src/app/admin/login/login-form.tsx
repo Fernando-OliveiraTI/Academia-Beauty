@@ -73,8 +73,8 @@ export function LoginForm() {
   async function onSubmit(values: LoginInput) {
     setFormError(null)
     try {
-      const res = await apiPost<{ twoFactorRequired?: boolean }>('/auth/login', values)
-      if (res.ok && res.data?.twoFactorRequired) {
+      const res = await apiPost<{ secondFactorRequired?: boolean }>('/auth/login', values)
+      if (res.ok && res.data?.secondFactorRequired) {
         setSecondFactor(true)
         return
       }

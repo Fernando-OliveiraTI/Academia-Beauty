@@ -81,7 +81,8 @@ export default class AuthController {
     if (user.twoFactorEnabled) {
       // Senha correta, falta o segundo fator: nada de login ainda; a sessão guarda só um "pendente" de 5 minutos.
       ctx.session.put(PENDING_KEY, { userId: user.id, until: Date.now() + PENDING_TTL_MS })
-      return { twoFactorRequired: true }
+      // Nome próprio: `twoFactorRequired` dos dados do usuário significa "precisa ATIVAR o 2FA", outra coisa.
+      return { secondFactorRequired: true }
     }
     return this.#complete(ctx, user)
   }

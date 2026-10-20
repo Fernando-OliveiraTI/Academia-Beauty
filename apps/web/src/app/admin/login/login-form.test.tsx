@@ -38,7 +38,7 @@ describe('LoginForm', () => {
 describe('LoginForm · segundo fator', () => {
   it('pede o código quando a API exige o segundo fator e envia ao endpoint certo', async () => {
     vi.mocked(apiPost)
-      .mockResolvedValueOnce({ ok: true, status: 200, data: { twoFactorRequired: true } })
+      .mockResolvedValueOnce({ ok: true, status: 200, data: { secondFactorRequired: true } })
       .mockResolvedValueOnce({ ok: false, status: 401, data: { code: 'invalid_code' } })
     render(<LoginForm />)
     await userEvent.type(screen.getByLabelText('E-mail'), 'a@b.com')
@@ -53,13 +53,27 @@ describe('LoginForm · segundo fator', () => {
   })
 
   it('alterna para o código de recuperação', async () => {
-    vi.mocked(apiPost).mockResolvedValueOnce({ ok: true, status: 200, data: { twoFactorRequired: true } })
+    vi.mocked(apiPost).mockResolvedValueOnce({ ok: true, status: 200, data: { secondFactorRequired: true } })
     render(<LoginForm />)
     await userEvent.type(screen.getByLabelText('E-mail'), 'a@b.com')
     await userEvent.type(screen.getByLabelText('Senha'), 'qualquer')
     await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
     await userEvent.click(await screen.findByRole('button', { name: 'Usar um código de recuperação' }))
     expect(screen.getByLabelText('Código de recuperação')).toBeInTheDocument()
+  })
+})
+
+describe('LoginForm · administrador que ainda precisa ativar o 2FA', () => {
+  it('login concluído com twoFactorRequired nos dados do usuário NÃO abre o campo de código', async () => {
+    const assign = vi.fn()
+    Object.defineProperty(window, 'location', { value: { assign }, writable: true })
+    vi.mocked(apiPost).mockResolvedValueOnce({ ok: true, status: 200, data: { id: 1, email: 'a@b.com', twoFactorRequired: true } })
+    render(<LoginForm />)
+    await userEvent.type(screen.getByLabelText('E-mail'), 'a@b.com')
+    await userEvent.type(screen.getByLabelText('Senha'), 'qualquer')
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/admin'))
+    expect(screen.queryByLabelText('Código de 6 dígitos')).toBeNull()
   })
 })
 
