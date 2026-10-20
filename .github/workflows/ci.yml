@@ -1,9 +1,8 @@
 name: CI
 on:
+  # PRs e chamadas do workflow de deploy (main_academia-beauty.yml). Sem gatilho de push: evitaria a execução dupla
+  # (push + pull_request) em cada branch, e na main o CI já roda como primeiro passo do deploy.
   pull_request:
-  # Na main o CI roda como parte do deploy (workflow_call em main_academia-beauty.yml): sem execução duplicada.
-  push:
-    branches-ignore: [main]
   workflow_call:
 
 permissions:
