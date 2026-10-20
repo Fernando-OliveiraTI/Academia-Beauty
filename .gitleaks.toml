@@ -1,0 +1,14 @@
+# Configuração do gitleaks (CI: job "secrets"). Estende as regras padrão e libera só falsos positivos conhecidos.
+title = "Academia Beauty"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Falsos positivos conhecidos (nenhum é segredo)"
+paths = [
+  # Cópia de referência do site Shopify original: o accessToken da vitrine (Storefront API) é público por desenho.
+  '''^references/site/Home\.html$''',
+  # Lista de senhas comuns que a política de senha RECUSA (não é credencial).
+  '''^apps/api/app/services/password_policy\.ts$''',
+]
