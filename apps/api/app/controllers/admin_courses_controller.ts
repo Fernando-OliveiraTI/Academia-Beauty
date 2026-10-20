@@ -110,7 +110,12 @@ export default class AdminCoursesController {
   async themembersApply(ctx: HttpContext) {
     const actor = ctx.auth.getUserOrFail()
     try {
-      const results = await new ThemembersSyncService().apply(actor.id)
+      const raw = ctx.request.input('courseIds')
+      const courseIds = Array.isArray(raw) ? raw : undefined
+      if (courseIds && !courseIds.every((id) => Number.isInteger(id) && id > 0)) {
+        throw new DomainError(422, 'validation_error', 'Lista de cursos inválida')
+      }
+      const results = await new ThemembersSyncService().apply(actor.id, undefined, courseIds)
       for (const r of results.filter((x) => x.applied.length)) {
         await AuditService.record(ctx, {
           action: 'course.themembers.sync',

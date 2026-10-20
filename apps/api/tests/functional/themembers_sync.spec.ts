@@ -360,6 +360,78 @@ test.group('Sincronização The Members · aplicar', (group) => {
     }
   })
 
+  test('courseIds aplica só os cursos escolhidos; lista vazia não grava nada', async ({
+    assert,
+  }) => {
+    const admin = await makeUser('admin')
+    const [proId] = await db.table('professionals').insert({
+      slug: 'pb',
+      status: 'draft',
+      revision: 1,
+      data: '{}',
+      name: 'P',
+      template_key: 'original',
+      created_at: new Date(),
+    })
+    const course = async (slug: string, ext: string) => {
+      const [id] = await db.table('courses').insert({
+        professional_id: proId,
+        slug,
+        status: 'draft',
+        revision: 1,
+        title: 'Antigo',
+        data: JSON.stringify({ title: 'Antigo', lead: 'x' }),
+        created_at: new Date(),
+      })
+      await db.table('commercial_configs').insert({
+        course_id: id,
+        revision: 1,
+        list_cents: 25000,
+        discount_pct: 0,
+        external_course_id: ext,
+        created_at: new Date(),
+      })
+      return id as number
+    }
+    const picked = await course('s1', 'n1')
+    const left = await course('s2', 'n2')
+    const page = {
+      data: [
+        { id: 'n1', title: 'Novo 1', value: '500.00', status: 'active' },
+        { id: 'n2', title: 'Novo 2', value: '500.00', status: 'active' },
+      ],
+      meta: { next_cursor: null },
+    }
+    const fake = (async () =>
+      new Response(JSON.stringify(page), { status: 200 })) as unknown as typeof fetch
+    const { default: env } = await import('#start/env')
+    const previous = env.get('TOKEN_THE_MEMBERS')
+    env.set('TOKEN_THE_MEMBERS', 'tok')
+    try {
+      assert.deepEqual(await new ThemembersSyncService().apply(admin.id, fake, []), [])
+      assert.equal((await db.from('courses').where('id', picked).first()).title, 'Antigo')
+      const results = await new ThemembersSyncService().apply(admin.id, fake, [picked])
+      assert.deepEqual(
+        results.map((r) => r.courseId),
+        [picked]
+      )
+      assert.equal((await db.from('courses').where('id', picked).first()).title, 'Novo 1')
+      assert.equal((await db.from('courses').where('id', left).first()).title, 'Antigo')
+    } finally {
+      env.set('TOKEN_THE_MEMBERS', previous)
+    }
+  })
+
+  test('courseIds inválido é recusado (422)', async ({ client }) => {
+    const admin = await makeUser('admin')
+    const res = await client
+      .post('/admin/courses/themembers/sync')
+      .json({ courseIds: ['x'] })
+      .withCsrfToken()
+      .loginAs(admin)
+    res.assertStatus(422)
+  })
+
   test('a rota exige commerce.manage', async ({ client }) => {
     ;(await client.post('/admin/courses/themembers/sync').withCsrfToken()).assertStatus(401)
     const viewer = await makeUser('viewer')

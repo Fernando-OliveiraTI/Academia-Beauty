@@ -8,18 +8,20 @@ import { useConfirm } from '@/components/confirm-dialog'
 import { ProductPicker } from '@/components/themembers-product-picker'
 
 type Change = { field: 'title' | 'price'; label: string; current: string | null; incoming: string }
+type Professional = { id: number; name: string; photoSrc: string | null }
 type Item = {
   courseId: number
   slug: string
   title: string
   coverSrc: string | null
+  professional: Professional | null
   externalCourseId: string
   state: 'changes' | 'up_to_date' | 'not_found'
   membersStatus: string | null
   membersTitle: string | null
   changes: Change[]
 }
-type UnlinkedCourse = { courseId: number; slug: string; title: string; coverSrc: string | null; hasOffer: boolean }
+type UnlinkedCourse = { courseId: number; slug: string; title: string; coverSrc: string | null; professional: Professional | null; hasOffer: boolean }
 type Preview = { items: Item[]; withoutLink: number; unlinkedCourses: UnlinkedCourse[]; unlinkedProducts: { id: string; title: string; coverSrc: string | null }[] }
 
 const ERRORS: Record<string, string> = {
@@ -32,6 +34,8 @@ const ERRORS: Record<string, string> = {
 const VISIBLE_ROWS = 5
 type Filter = 'all' | 'changes' | 'up_to_date' | 'not_found' | 'unlinked'
 type Row = { kind: 'linked'; item: Item } | { kind: 'unlinked'; course: UnlinkedCourse }
+const normalizeText = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+const initialOf = (name: string) => name.trim().charAt(0).toUpperCase()
 const EMPTY: Record<Filter, { title: string; text: string }> = {
   all: { title: 'Nenhum curso cadastrado', text: 'Cadastre um curso para poder vinculá-lo a um produto da The Members.' },
   changes: { title: 'Tudo em dia', text: 'Nenhum curso vinculado tem nome ou valor diferente do que está na The Members.' },
@@ -75,6 +79,18 @@ const EmptyIcon = ({ kind }: { kind: Filter }) => (
 )
 const SaveIcon = () => <Svg size={18}><path d="M5 12.5l4.5 4.5L19 7.5" /></Svg>
 const CheckCircleIcon = () => <Svg size={24}><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.7 2.7L16 9.5" /></Svg>
+const SearchIcon = () => <Svg size={16}><circle cx="11" cy="11" r="6.5" /><path d="M20 20l-4-4" /></Svg>
+const UsersIcon = () => <Svg size={18}><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c.5-3.5 3-5.5 6.5-5.5s6 2 6.500 5.500" /><path d="M16 4.500a3.500 3.500 0 0 1 0 7M18 14.800c2 .6 3.200 2.300 3.500 5.200" /></Svg>
+
+/** Foto do profissional; sem foto (ou imagem quebrada), mostra a inicial. */
+function ProfessionalPhoto({ professional }: { professional: Professional }) {
+  const [broken, setBroken] = useState(false)
+  const ref = useRef<HTMLImageElement>(null)
+  useEffect(() => { if (ref.current?.complete && ref.current.naturalWidth === 0) setBroken(true) }, [])
+  return professional.photoSrc && !broken
+    ? <img ref={ref} className="tm-pro-photo" src={mediaSrc(professional.photoSrc, 96)} alt="" width={40} height={40} loading="lazy" onError={() => setBroken(true)} />
+    : <span className="tm-pro-photo" aria-hidden="true">{initialOf(professional.name)}</span>
+}
 
 /** Botão "Sincronizar" da lista de cursos: consulta a The Members e mostra o que mudaria (não grava nada). */
 export function ThemembersSync() {
@@ -88,6 +104,10 @@ export function ThemembersSync() {
   const [preview, setPreview] = useState<Preview | null>(null)
   const [showAll, setShowAll] = useState(false)
   const [filter, setFilter] = useState<Filter>('all')
+  const [query, setQuery] = useState('')
+  const [professionalId, setProfessionalId] = useState<number | null>(null)
+  // Cursos marcados para sincronizar (padrão: nenhum; o usuário escolhe).
+  const [selected, setSelected] = useState<Set<number>>(new Set())
   const [ids, setIds] = useState<Record<number, string>>({})
   const [saving, setSaving] = useState<number | null>(null)
   const [unlinking, setUnlinking] = useState<number | null>(null)
@@ -98,7 +118,7 @@ export function ThemembersSync() {
   async function run(refresh = false) {
     setLoading(true)
     setError(null)
-    if (!refresh) { setPreview(null); setDone(null); setShowAll(false); setFilter('all') }
+    if (!refresh) { setPreview(null); setDone(null); setShowAll(false); setFilter('all'); setQuery(''); setProfessionalId(null); setSelected(new Set()) }
     if (!dialog.current?.open) dialog.current?.showModal()
     const res = await apiGet<Preview & { code?: string }>('/admin/courses/themembers/preview')
     setLoading(false)
@@ -110,7 +130,7 @@ export function ThemembersSync() {
     setApplying(true)
     setError(null)
     setDone(null)
-    const res = await apiSend<{ results?: { applied: string[]; skipped: string | null }[]; code?: string }>('POST', '/admin/courses/themembers/sync')
+    const res = await apiSend<{ results?: { applied: string[]; skipped: string | null }[]; code?: string }>('POST', '/admin/courses/themembers/sync', { courseIds: [...selectedIds] })
     setApplying(false)
     if (!res.ok || !res.data?.results) {
       return setError(res.status === 403 ? 'Sem permissão para sincronizar.' : ERRORS[res.data?.code ?? ''] ?? 'Não foi possível sincronizar. Nada foi perdido: tente de novo.')
@@ -153,22 +173,41 @@ export function ThemembersSync() {
   }
 
   const changed = preview?.items.filter((i) => i.state === 'changes') ?? []
-  const upToDate = preview?.items.filter((i) => i.state === 'up_to_date').length ?? 0
-  const notFound = preview?.items.filter((i) => i.state === 'not_found').length ?? 0
+  const selectedIds = new Set(changed.filter((i) => selected.has(i.courseId)).map((i) => i.courseId))
   const rows: Row[] = preview
     ? [...preview.items.map((item): Row => ({ kind: 'linked', item })), ...preview.unlinkedCourses.map((course): Row => ({ kind: 'unlinked', course }))]
     : []
   const kindOf = (row: Row): Exclude<Filter, 'all'> => (row.kind === 'unlinked' ? 'unlinked' : row.item.state)
-  const filtered = filter === 'all' ? rows : rows.filter((row) => kindOf(row) === filter)
+  const professionalOf = (row: Row) => (row.kind === 'linked' ? row.item.professional : row.course.professional)
+  const titleOf = (row: Row) => (row.kind === 'linked' ? row.item : row.course)
+  const professionals = [...new Map(rows.flatMap((row) => { const p = professionalOf(row); return p ? [[p.id, p] as const] : [] })).values()].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+  const needle = normalizeText(query.trim())
+  // Busca e profissional recortam a lista; os contadores das abas de situação seguem esse recorte.
+  const scoped = rows.filter((row) => {
+    if (professionalId !== null && professionalOf(row)?.id !== professionalId) return false
+    if (!needle) return true
+    const c = titleOf(row)
+    const members = row.kind === 'linked' ? row.item.membersTitle ?? '' : ''
+    return normalizeText(`${c.title} ${c.slug} ${members}`).includes(needle)
+  })
+  const count = (kind: Exclude<Filter, 'all'>) => scoped.filter((row) => kindOf(row) === kind).length
+  const filtered = filter === 'all' ? scoped : scoped.filter((row) => kindOf(row) === filter)
   const visible = showAll ? filtered : filtered.slice(0, VISIBLE_ROWS)
   const hidden = filtered.length - visible.length
+  const filtersActive = Boolean(needle) || professionalId !== null
   const filters: { value: Filter; label: string; count: number; dot: string }[] = [
-    { value: 'all', label: 'Todos', count: rows.length, dot: '' },
-    { value: 'changes', label: 'Com alterações', count: changed.length, dot: 'on' },
-    { value: 'up_to_date', label: 'Sem alterações', count: upToDate, dot: '' },
-    ...(notFound ? [{ value: 'not_found' as const, label: 'ID não encontrado', count: notFound, dot: 'warn' }] : []),
-    { value: 'unlinked', label: 'Sem ID da The Members', count: preview?.unlinkedCourses.length ?? 0, dot: 'warn' },
+    { value: 'all', label: 'Todos', count: scoped.length, dot: '' },
+    { value: 'changes', label: 'Com alterações', count: count('changes'), dot: 'on' },
+    { value: 'up_to_date', label: 'Sem alterações', count: count('up_to_date'), dot: '' },
+    ...(count('not_found') || filter === 'not_found' ? [{ value: 'not_found' as const, label: 'ID não encontrado', count: count('not_found'), dot: 'warn' }] : []),
+    { value: 'unlinked', label: 'Sem ID da The Members', count: count('unlinked'), dot: 'warn' },
   ]
+  // "Selecionar todos" atua sobre o que a lista mostra agora (cursos com alterações dentro dos filtros).
+  const selectable = filtered.flatMap((row) => (row.kind === 'linked' && row.item.state === 'changes' ? [row.item.courseId] : []))
+  const allSelectableOn = selectable.length > 0 && selectable.every((id) => selected.has(id))
+  const toggleCourse = (courseId: number) => setSelected((cur) => { const next = new Set(cur); if (next.has(courseId)) next.delete(courseId); else next.add(courseId); return next })
+  const toggleVisible = () => setSelected((cur) => { const next = new Set(cur); for (const id of selectable) { if (allSelectableOn) next.delete(id); else next.add(id) } return next })
+  const clearFilters = () => { setQuery(''); setProfessionalId(null); setFilter('all'); setShowAll(false) }
 
   return (
     <>
@@ -197,10 +236,33 @@ export function ThemembersSync() {
                 <h3>
                   <span className="tm-icon-box"><BoxIcon /></span>
                   <span>
-                    Cursos cadastrados ({filter === 'all' ? rows.length : `${filtered.length} de ${rows.length}`})
+                    Cursos cadastrados ({filtered.length === rows.length ? rows.length : `${filtered.length} de ${rows.length}`})
                     <small>Vincule cada curso a um produto da The Members. Os cursos sem vínculo não serão atualizados.</small>
                   </span>
                 </h3>
+                <div className="tm-search-wrap">
+                  <label className="tm-search">
+                    <SearchIcon />
+                    <input type="search" value={query} onChange={(e) => { setQuery(e.target.value); setShowAll(false) }} placeholder="Buscar por nome do curso ou endereço" aria-label="Buscar cursos" />
+                  </label>
+                </div>
+                {professionals.length > 1 ? (
+                  <div className="tm-pros" role="group" aria-label="Filtrar por profissional">
+                    <button type="button" className="tm-pro" aria-pressed={professionalId === null} onClick={() => { setProfessionalId(null); setShowAll(false) }}>
+                      <span className="tm-pro-photo all" aria-hidden="true"><UsersIcon /></span>
+                      <span className="tm-pro-text"><b>Todos</b><small>{rows.length} curso(s)</small></span>
+                    </button>
+                    {professionals.map((p) => {
+                      const total = rows.filter((row) => professionalOf(row)?.id === p.id).length
+                      return (
+                        <button key={p.id} type="button" className="tm-pro" aria-pressed={professionalId === p.id} onClick={() => { setProfessionalId(professionalId === p.id ? null : p.id); setShowAll(false) }}>
+                          <ProfessionalPhoto professional={p} />
+                          <span className="tm-pro-text"><b>{p.name}</b><small>{total} curso(s)</small></span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : null}
                 <div className="tm-filters" role="group" aria-label="Filtrar cursos">
                   {filters.map((f) => (
                     <button key={f.value} type="button" className="tm-filter" aria-pressed={filter === f.value} onClick={() => { setFilter(f.value); setShowAll(false) }}>
@@ -211,13 +273,19 @@ export function ThemembersSync() {
               </div>
               {rows.length ? (
                 <div className="tm-rows">
+                  {selectable.length ? (
+                    <label className="tm-selectbar">
+                      <input type="checkbox" checked={allSelectableOn} onChange={toggleVisible} />
+                      <span>{allSelectableOn ? 'Desmarcar' : 'Selecionar'} todos os cursos com alterações{filtersActive || filter !== 'all' ? ' desta lista' : ''} ({selectable.length})</span>
+                    </label>
+                  ) : null}
                   {filtered.length ? <div className="tm-row tm-row-head" aria-hidden="true"><span>Curso</span><span>Situação</span><span>O que mudaria</span><span>Vincular a um produto</span></div> : null}
                   {filtered.length === 0 ? (
                     <div className="tm-empty" role="status">
                       <span className="tm-empty-icon"><EmptyIcon kind={filter} /></span>
-                      <b>{EMPTY[filter].title}</b>
-                      <p>{EMPTY[filter].text}</p>
-                      <button type="button" className="admin-button secondary" onClick={() => { setFilter('all'); setShowAll(false) }}>Ver todos os cursos</button>
+                      <b>{filtersActive && filter === 'all' ? 'Nenhum curso encontrado' : EMPTY[filter].title}</b>
+                      <p>{filtersActive && filter === 'all' ? 'Nenhum curso combina com a busca ou o profissional escolhido.' : EMPTY[filter].text}</p>
+                      <button type="button" className="admin-button secondary" onClick={clearFilters}>{filtersActive ? 'Limpar filtros' : 'Ver todos os cursos'}</button>
                     </div>
                   ) : null}
                   {visible.map((row) => {
@@ -225,8 +293,11 @@ export function ThemembersSync() {
                     const id = course.courseId
                     const canLink = row.kind === 'unlinked' && row.course.hasOffer
                     return (
-                      <form className="tm-row" key={id} onSubmit={(e) => { e.preventDefault(); void saveId(id) }}>
+                      <form className={`tm-row${row.kind === 'linked' && row.item.state === 'changes' && selected.has(id) ? ' is-selected' : ''}`} key={id} onSubmit={(e) => { e.preventDefault(); void saveId(id) }}>
                         <div className="tm-course">
+                          {row.kind === 'linked' ? (
+                            <input type="checkbox" className="tm-check" checked={row.item.state === 'changes' && selected.has(id)} disabled={row.item.state !== 'changes'} onChange={() => toggleCourse(id)} aria-label={row.item.state === 'changes' ? `Sincronizar ${course.title}` : `${course.title}: nada a sincronizar`} title={row.item.state === 'changes' ? 'Incluir na sincronização' : 'Nada a sincronizar'} />
+                          ) : <span className="tm-check" aria-hidden="true" />}
                           {course.coverSrc ? <img src={mediaSrc(course.coverSrc, 240)} alt="" width={80} height={60} loading="lazy" /> : <span className="tm-cover-empty" aria-hidden="true" />}
                           <div><b>{course.title}</b><small>/{course.slug}</small></div>
                           {row.kind === 'linked' ? <MembersLink id={row.item.externalCourseId} /> : null}
@@ -305,8 +376,9 @@ export function ThemembersSync() {
 
         <footer className="tm-foot">
           <button type="button" className="admin-button secondary" onClick={close} disabled={applying}><BackIcon /> Cancelar</button>
-          <button type="button" className="admin-button tm-confirm" onClick={apply} disabled={applying || loading || changed.length === 0} title={changed.length === 0 ? 'Não há alterações a aplicar' : undefined}>
-            <SyncIcon size={18} /> {applying ? 'Sincronizando…' : 'Confirmar sincronização'} <ArrowIcon />
+          {preview && changed.length ? <span className="tm-foot-count" role="status">{selectedIds.size} de {changed.length} curso(s) com alterações selecionado(s)</span> : null}
+          <button type="button" className="admin-button tm-confirm" onClick={apply} disabled={applying || loading || selectedIds.size === 0} title={changed.length === 0 ? 'Não há alterações a aplicar' : selectedIds.size === 0 ? 'Marque ao menos um curso' : undefined}>
+            <SyncIcon size={18} /> {applying ? 'Sincronizando…' : selectedIds.size && selectedIds.size < changed.length ? `Sincronizar ${selectedIds.size} selecionado(s)` : 'Confirmar sincronização'} <ArrowIcon />
           </button>
         </footer>
       </dialog>
