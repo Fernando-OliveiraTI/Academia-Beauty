@@ -1,15 +1,18 @@
 version: 2
 updates:
-  - package-ecosystem: npm
-    directory: /
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-    groups:
-      adonisjs:
-        patterns: ['@adonisjs/*']
-      testing:
-        patterns: ['vitest', '@testing-library/*', '@japa/*']
+  # npm DESATIVADO por enquanto: o atualizador do Dependabot falha neste monorepo pnpm ("The updater encountered one or more
+  # errors") e o motivo ainda não foi levantado (log em Insights → Dependency graph → Dependabot). Reativar depois do diagnóstico:
+  #
+  # - package-ecosystem: npm
+  #   directory: /
+  #   schedule:
+  #     interval: weekly
+  #   open-pull-requests-limit: 5
+  #   groups:
+  #     adonisjs:
+  #       patterns: ['@adonisjs/*']
+  #     testing:
+  #       patterns: ['vitest', '@testing-library/*', '@japa/*']
   - package-ecosystem: github-actions
     directory: /
     schedule:
