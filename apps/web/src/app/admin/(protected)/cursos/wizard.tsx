@@ -144,14 +144,14 @@ export function CourseWizard({ initial, professionals, permissions, initialStep 
     }
   }
 
-  async function saveOffer() {
-    if (!saved) return
+  async function saveOffer(next?: number): Promise<boolean> {
+    if (!saved) return false
     setMessage(null)
     const listCents = parseBRLToCents(offer.price)
     if (listCents === null) {
       setErrors({ price: 'Informe um preço válido, como 250,00' })
       setMessage({ kind: 'error', text: 'Corrija os campos destacados.' })
-      return
+      return false
     }
     setBusy(true)
     try {
@@ -168,13 +168,16 @@ export function CourseWizard({ initial, professionals, permissions, initialStep 
       })
       if (!res.ok || !res.data) {
         fail(res.status, res.data as ApiError | null)
-        return
+        return false
       }
       setSaved({ ...saved, ...res.data })
       setErrors({})
       setMessage({ kind: 'ok', text: 'Oferta salva. Ela só chega à página pública quando o curso for publicado.' })
+      if (next !== undefined) setStep(next)
+      return true
     } catch {
       setMessage({ kind: 'error', text: describe(0, null) })
+      return false
     } finally {
       setBusy(false)
     }
@@ -212,6 +215,12 @@ export function CourseWizard({ initial, professionals, permissions, initialStep 
 
   const issues = saved?.readiness ?? []
   const goToStep = (i: number) => { setStep(i); document.getElementById('wizard-title')?.scrollIntoView({ block: 'center', behavior: 'smooth' }) }
+  const c = saved?.commercial
+  const offerDirty = canCommerce && Boolean(saved) && (c
+    ? offer.price !== centsToInput(c.listCents) || Number(offer.discountPct) !== c.discountPct || Number(offer.maxInstallments) !== c.maxInstallments
+      || offer.checkoutUrl.trim() !== c.checkoutUrl || offer.provider !== c.provider || offer.externalCourseId.trim() !== c.externalCourseId
+      || offer.environment !== c.environment || offer.active !== c.active
+    : offer.price.trim() !== '')
   const dirty = saved ? canonical(courseDataSchema.safeParse(data).data ?? data) !== canonical(saved.data) : false
   const previewOffer = (() => {
     const cents = parseBRLToCents(offer.price)
@@ -405,7 +414,7 @@ export function CourseWizard({ initial, professionals, permissions, initialStep 
               </p>
             ) : null}
             {saved?.commercial ? <p className="wizard-hint">Revisão da oferta: {saved.commercial.revision}.</p> : null}
-            {canCommerce ? <Button disabled={busy || !saved} onClick={saveOffer}>Salvar oferta</Button> : null}
+            {canCommerce ? <Button disabled={busy || !saved} onClick={() => saveOffer()}>Salvar oferta</Button> : null}
             {canCommerce && saved ? <CoursePaymentsPanel courseId={saved.id} externalCourseId={saved.commercial?.externalCourseId ?? ''} /> : null}
           </div>
         ) : null}
@@ -490,8 +499,8 @@ export function CourseWizard({ initial, professionals, permissions, initialStep 
           ) : null}
           {step === 3 ? (
             <div className="wizard-actions">
-              {canWrite ? <Button variant="secondary" disabled={busy} onClick={() => save()}>{Ico.save}Salvar rascunho</Button> : null}
-              <Button disabled={busy} onClick={() => setStep(4)}>Continuar{Ico.arrowRight}</Button>
+              {canWrite ? <Button variant="secondary" disabled={busy} onClick={() => (offerDirty ? saveOffer() : save())}>{Ico.save}Salvar rascunho</Button> : null}
+              <Button disabled={busy} onClick={() => (offerDirty ? saveOffer(4) : setStep(4))}>{offerDirty ? 'Salvar e continuar' : 'Continuar'}{Ico.arrowRight}</Button>
             </div>
           ) : null}
           {step === 4 && saved ? (

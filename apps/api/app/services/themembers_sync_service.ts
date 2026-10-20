@@ -25,11 +25,15 @@ export type SyncChange = {
   incoming: string
 }
 
+/** Profissional do curso, para o filtro do modal (foto + nome). */
+export type SyncProfessional = { id: number; name: string; photoSrc: string | null }
+
 export type SyncItem = {
   courseId: number
   slug: string
   title: string
   coverSrc: string | null
+  professional: SyncProfessional | null
   externalCourseId: string
   /** `not_found`: o ID não existe na The Members. */
   state: 'changes' | 'up_to_date' | 'not_found'
@@ -44,6 +48,7 @@ export type UnlinkedCourse = {
   slug: string
   title: string
   coverSrc: string | null
+  professional?: SyncProfessional | null
   /** Só quem já tem oferta cadastrada pode receber o ID (a oferta guarda o vínculo). */
   hasOffer: boolean
 }
@@ -72,6 +77,7 @@ type CourseRow = {
   slug: string
   title: string
   coverSrc?: string | null
+  professional?: SyncProfessional | null
   listCents: number | null
   externalId: string
 }
@@ -128,6 +134,7 @@ export function buildPreview(
       slug: row.slug,
       title: row.title,
       coverSrc: row.coverSrc ?? null,
+      professional: row.professional ?? null,
       externalCourseId: row.externalId,
     }
     const product = byId.get(row.externalId)
@@ -235,6 +242,19 @@ export default class ThemembersSyncService {
       courses.map((c) => c.id)
     )
     const byCourse = new Map(configs.map((c) => [c.courseId, c] as const))
+    const proRows = await Professional.query().whereIn('id', [
+      ...new Set(courses.map((c) => c.professionalId)),
+    ])
+    const professionals = new Map(proRows.map((p) => [p.id, p] as const))
+    const professionalOf = (id: number): SyncProfessional | null => {
+      const pro = professionals.get(id)
+      if (!pro) return null
+      return {
+        id: pro.id,
+        name: pro.name,
+        photoSrc: pro.data.portraitSrc || pro.data.cardPhotoSrc || null,
+      }
+    }
     const rows: CourseRow[] = []
     const unlinkedCourses: UnlinkedCourse[] = []
     for (const c of courses) {
@@ -246,6 +266,7 @@ export default class ThemembersSyncService {
           slug: c.slug,
           title: c.data.title,
           coverSrc: c.data.coverSrc ?? null,
+          professional: professionalOf(c.professionalId),
           hasOffer: Boolean(config),
         })
         continue
@@ -255,6 +276,7 @@ export default class ThemembersSyncService {
         slug: c.slug,
         title: c.data.title,
         coverSrc: c.data.coverSrc ?? null,
+        professional: professionalOf(c.professionalId),
         listCents: config ? config.listCents : null,
         externalId,
       })
@@ -262,10 +284,6 @@ export default class ThemembersSyncService {
     if (!rows.length && !unlinkedCourses.length) {
       return { items: [], withoutLink: 0, unlinkedCourses, unlinkedProducts: [] }
     }
-    const proRows = await Professional.query().whereIn('id', [
-      ...new Set(courses.map((c) => c.professionalId)),
-    ])
-    const professionals = new Map(proRows.map((p) => [p.id, p] as const))
     const catalog = courses.map<CoverCandidate>((c) => {
       const pro = professionals.get(c.professionalId)
       return {
@@ -281,9 +299,17 @@ export default class ThemembersSyncService {
   /**
    * Grava nome e valor da The Members nos cursos vinculados (os mesmos do resumo). Cada curso é uma transação:
    * um que falhe não desfaz os outros. Curso publicado fica com "alterações não publicadas" até republicar.
+   * `courseIds` restringe aos cursos escolhidos no modal; sem ele, todos os vinculados (comportamento anterior).
    */
-  async apply(actorId: number, fetcher?: typeof fetch): Promise<ApplyResult[]> {
-    const configs = await CommercialConfig.query().whereNot('external_course_id', '')
+  async apply(
+    actorId: number,
+    fetcher?: typeof fetch,
+    courseIds?: number[]
+  ): Promise<ApplyResult[]> {
+    if (courseIds && !courseIds.length) return []
+    const query = CommercialConfig.query().whereNot('external_course_id', '')
+    if (courseIds) query.whereIn('course_id', courseIds)
+    const configs = await query
     if (!configs.length) return []
     const fetched = await fetchProducts(fetcher)
     const products = new Map(fetched.map((p) => [p.id, p] as const))
