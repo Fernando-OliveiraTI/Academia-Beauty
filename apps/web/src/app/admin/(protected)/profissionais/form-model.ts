@@ -17,11 +17,11 @@ export const emptyProfessionalData: ProfessionalData = {
 }
 
 export const STEPS = [
-  { key: 'identidade', label: 'Identidade', desc: 'Nome, especialidade, endereço da página e modelo.' },
-  { key: 'apresentacao', label: 'Apresentação', desc: 'Frase de apresentação, trajetória e Instagram.' },
-  { key: 'midia', label: 'Imagens e vídeo', desc: 'Retrato, foto do cartão da Home e vídeo.' },
-  { key: 'conteudo', label: 'Trajetória e trabalhos', desc: 'Trabalhos em destaque e informações para buscadores.' },
-  { key: 'publicacao', label: 'Revisão e publicação', desc: 'Confira as pendências e publique quando estiver tudo certo.' },
+  { key: 'identidade', label: 'Identidade', hint: 'Nome e página', desc: 'Nome, especialidade, endereço da página e modelo.' },
+  { key: 'apresentacao', label: 'Apresentação', hint: 'Frase e trajetória', desc: 'Frase de apresentação, trajetória e Instagram.' },
+  { key: 'midia', label: 'Imagens e vídeo', hint: 'Retrato e foto', desc: 'Retrato, foto do cartão da Home e vídeo.' },
+  { key: 'conteudo', label: 'Trajetória e trabalhos', hint: 'Destaques e busca', desc: 'Trabalhos em destaque e informações para buscadores.' },
+  { key: 'publicacao', label: 'Revisão e publicação', hint: 'Verifique e publique', desc: 'Confira as pendências e publique quando estiver tudo certo.' },
 ] as const
 
 export function parseTags(value: string): string[] {

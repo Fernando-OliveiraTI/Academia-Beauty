@@ -21,11 +21,11 @@ export const emptyCourseData: CourseData = {
 }
 
 export const STEPS = [
-  { key: 'basico', label: 'Dados básicos', desc: 'Defina as informações principais do seu curso.' },
-  { key: 'conteudo', label: 'Conteúdo', desc: 'Descrição, capa, benefícios, módulos e o que o aluno recebe.' },
-  { key: 'confianca', label: 'Dúvidas e garantia', desc: 'Garantia, perguntas frequentes e depoimentos reais.' },
-  { key: 'oferta', label: 'Oferta e checkout', desc: 'Preço, desconto, parcelas e o link de pagamento.' },
-  { key: 'publicacao', label: 'Revisão e publicação', desc: 'Confira as pendências e publique quando estiver tudo certo.' },
+  { key: 'basico', label: 'Dados básicos', hint: 'Informações principais', desc: 'Defina as informações principais do seu curso.' },
+  { key: 'conteudo', label: 'Conteúdo', hint: 'Aulas, módulos e materiais', desc: 'Descrição, capa, benefícios, módulos e o que o aluno recebe.' },
+  { key: 'confianca', label: 'Dúvidas e garantia', hint: 'Suporte e políticas', desc: 'Garantia, perguntas frequentes e depoimentos reais.' },
+  { key: 'oferta', label: 'Oferta e checkout', hint: 'Preço, pagamento e acesso', desc: 'Preço, desconto, parcelas e o link de pagamento.' },
+  { key: 'publicacao', label: 'Revisão e publicação', hint: 'Verifique e publique', desc: 'Confira as pendências e publique quando estiver tudo certo.' },
 ] as const
 
 /** A etapa em que cada pendência é resolvida. */

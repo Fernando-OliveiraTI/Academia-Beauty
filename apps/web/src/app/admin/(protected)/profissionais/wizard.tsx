@@ -13,7 +13,7 @@ import {
 import { Button, Field, TextArea } from '@academia/design-system'
 import { apiSend } from '@/lib/api-client'
 import { describeApiError, type ApiErrorBody } from '@/lib/api-errors'
-import { PanelHead, PendingBanner, WizardIcon, WizardSteps } from '@/components/wizard-ui'
+import { Ico, Notice, PanelHead, PublishingOverlay, PendingBanner, WizardIcon, WizardSteps } from '@/components/wizard-ui'
 import { PROFESSIONAL_TEMPLATES } from '@academia/section-schemas'
 import { ImageField } from '@/components/image-field'
 import { canonical, emptyProfessionalData, fieldErrors, groupIssuesByStep, parseTags, STEPS, suggestSlug } from './form-model'
@@ -44,6 +44,9 @@ export function ProfessionalWizard({ initial, permissions, initialStep = 0, show
   const [slugTouched, setSlugTouched] = useState(Boolean(initial))
   const [step, setStep] = useState(initial ? Math.min(Math.max(initialStep, 0), STEPS.length - 1) : 0)
   const [busy, setBusy] = useState(false)
+  const [publishing, setPublishing] = useState(false)
+  const [justPublished, setJustPublished] = useState(false)
+  const [hidePending, setHidePending] = useState(false)
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [showcase, setShowcase] = useState({ homeVisible: initial?.homeVisible ?? false, homeOrder: initial?.homeOrder ?? 0 })
@@ -94,10 +97,15 @@ export function ProfessionalWizard({ initial, permissions, initialStep = 0, show
 
   async function action(path: string, method: 'POST' | 'PUT' = 'POST', body?: unknown, okText = 'Concluído.') {
     if (!saved) return
+    const isPublish = path === '/publish'
     setBusy(true)
     setMessage(null)
+    setJustPublished(false)
+    if (isPublish) { setHidePending(true); setPublishing(true) }
+    const minWait = isPublish ? new Promise((r) => setTimeout(r, 900)) : null
     try {
       const res = await apiSend<Loaded & ApiError>(method, `/admin/professionals/${saved.id}${path}`, body)
+      await minWait
       if (!res.ok || !res.data) {
         fail(res.status, res.data as ApiError | null)
         const issues = (res.data as ApiError | null)?.errors
@@ -107,11 +115,13 @@ export function ProfessionalWizard({ initial, permissions, initialStep = 0, show
         return
       }
       setSaved({ ...saved, ...res.data, readiness: saved.readiness })
-      setMessage({ kind: 'ok', text: okText })
+      if (isPublish) setJustPublished(true)
+      else setMessage({ kind: 'ok', text: okText })
     } catch {
       setMessage({ kind: 'error', text: describe(0, null) })
     } finally {
       setBusy(false)
+      setPublishing(false)
     }
   }
 
@@ -124,16 +134,17 @@ export function ProfessionalWizard({ initial, permissions, initialStep = 0, show
     <div className="wizard">
       {confirmDialog}
       {saved && saved.documentRevision > 0 ? (
-        <p role="note" className="ed-banner ed-banner-info">
-          Esta página foi personalizada no editor visual: alterações feitas aqui no cadastro <strong>não alteram</strong> as seções já editadas
-          (cursos publicados e vitrine continuam automáticos). Para voltar à página gerada pelo cadastro, use{' '}
-          <a href={`/admin/editor/profissionais/${saved.id}`}>«Restaurar do cadastro» no editor</a>.
-        </p>
+        <Notice tone="info" title="Esta página foi personalizada no editor visual">
+          As alterações feitas aqui no cadastro não alteram as seções já editadas (cursos publicados e vitrine continuam automáticos).
+          Para voltar à página gerada pelo cadastro, use <a href={`/admin/editor/profissionais/${saved.id}`}>Restaurar do cadastro</a> no editor.
+        </Notice>
       ) : null}
-      {showPending && saved ? <PendingBanner issues={groupIssuesByStep(liveIssues)} stepLabels={STEPS.map((x) => x.label)} onGo={goToStep} /> : null}
+      {showPending && !hidePending && saved ? <PendingBanner issues={groupIssuesByStep(liveIssues)} stepLabels={STEPS.map((x) => x.label)} onGo={goToStep} /> : null}
       <WizardSteps steps={STEPS} step={step} onSelect={setStep} isDisabled={(i) => !saved && i > 0} />
 
-      {message ? <p role={message.kind === 'error' ? 'alert' : 'status'} className={message.kind === 'error' ? 'form-error' : 'form-ok'}>{message.text}</p> : null}
+      {publishing ? <PublishingOverlay title="Publicando…" hint="Estamos atualizando a página pública. Isso leva só um instante." /> : null}
+      {justPublished ? <Notice tone="success" title="Publicado com sucesso">A página pública já foi atualizada.</Notice> : null}
+      {message ? <p role={message.kind === 'error' ? 'alert' : 'status'} className={`wz-msg ${message.kind === 'error' ? 'form-error' : 'form-ok'}`}>{message.kind === 'error' ? (message.text.startsWith('Sem conexão') ? Ico.wifiOff : Ico.alert) : WizardIcon.check}{message.text}</p> : null}
 
       <section className="admin-card wizard-panel" aria-labelledby="wizard-title">
         <PanelHead icon={STEP_ICONS[step]} title={STEPS[step]!.label} desc={STEPS[step]!.desc} />

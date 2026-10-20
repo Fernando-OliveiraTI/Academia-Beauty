@@ -2,8 +2,9 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import type { AdminProfessional, ReadinessIssue } from '@academia/contracts'
 import { adminGet, getCurrentUser } from '@/lib/api-server'
-import { WizardHeader } from '@/components/wizard-ui'
+import { progressOf, WizardHeader } from '@/components/wizard-ui'
 import { ProfessionalWizard } from '../wizard'
+import { groupIssuesByStep, STEPS } from '../form-model'
 
 export const metadata = { title: 'Editar profissional' }
 export const dynamic = 'force-dynamic'
@@ -22,6 +23,7 @@ export default async function EditProfessionalPage({ params, searchParams }: { p
       <WizardHeader
         backHref="/admin/profissionais" backLabel="Profissionais" title={data.data.name}
         subtitle="Configurações do profissional. O conteúdo da página é editado no editor visual."
+        progress={progressOf(STEPS, groupIssuesByStep(data.readiness))}
         action={<Link className="admin-button" href={`/admin/editor/profissionais/${id}`}>Abrir no editor visual</Link>}
       />
       <ProfessionalWizard initial={data} permissions={user.permissions} initialStep={pendencias ? 4 : 0} showPending={pendencias} />
