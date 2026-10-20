@@ -32,7 +32,7 @@ export const STEPS = [
 export function stepForField(field: string): number {
   if (['title', 'slug', 'professionalId', 'audience', 'modality', 'level', 'workloadHours'].includes(field)) return 0
   if (['lead', 'coverSrc', 'coverAlt', 'benefits', 'modules', 'deliverables'].includes(field)) return 1
-  if (['commercial', 'active', 'checkoutUrl'].includes(field)) return 3
+  if (['commercial', 'active', 'checkoutUrl', 'environment'].includes(field)) return 3
   return 2
 }
 

@@ -24,8 +24,7 @@ export default async function EditProfessionalPage({ params, searchParams }: { p
         subtitle="Configurações do profissional. O conteúdo da página é editado no editor visual."
         action={<Link className="admin-button" href={`/admin/editor/profissionais/${id}`}>Abrir no editor visual</Link>}
       />
-      {pendencias ? <p role="alert" className="wz-alert">Faltam informações para publicar. Complete os itens abaixo e volte ao editor para publicar.</p> : null}
-      <ProfessionalWizard initial={data} permissions={user.permissions} initialStep={pendencias ? 4 : 0} />
+      <ProfessionalWizard initial={data} permissions={user.permissions} initialStep={pendencias ? 4 : 0} showPending={pendencias} />
     </main>
   )
 }

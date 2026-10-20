@@ -19,7 +19,7 @@ import { apiSend } from '@/lib/api-client'
 import { describeApiError, type ApiErrorBody } from '@/lib/api-errors'
 import { brl } from '@/lib/format'
 import { mediaSrc } from '@academia/page-renderer'
-import { ActionCard, AddButton, Ico, InfoCard, IssueRow, NumberedSection, PanelHead, RemoveButton, SelectField, SummaryRow, WizardIcon, WizardSteps } from '@/components/wizard-ui'
+import { ActionCard, AddButton, Ico, InfoCard, IssueRow, NumberedSection, PanelHead, PendingBanner, RemoveButton, SelectField, SummaryRow, WizardIcon, WizardSteps } from '@/components/wizard-ui'
 import { ImageField } from '@/components/image-field'
 import { CoursePaymentsPanel } from '@/components/course-payments'
 import { canonical, centsToInput, emptyCourseData, emptyLines, fieldErrors, groupIssuesByStep, maskBRL, maskPercent, parseBRLToCents, STEPS, suggestSlug } from './form-model'
@@ -64,7 +64,7 @@ const ISSUE_META: Record<string, { title: string; icon: React.ReactNode }> = {
 
 const STEP_ICONS = [WizardIcon.book, WizardIcon.list, WizardIcon.shield, WizardIcon.tag, WizardIcon.check]
 
-export function CourseWizard({ initial, professionals, permissions, initialStep = 0 }: { initial?: Loaded; professionals: ProfessionalOption[]; permissions: readonly Permission[]; initialStep?: number }) {
+export function CourseWizard({ initial, professionals, permissions, initialStep = 0, showPending = false }: { initial?: Loaded; professionals: ProfessionalOption[]; permissions: readonly Permission[]; initialStep?: number; showPending?: boolean }) {
   const { confirm, dialog: confirmDialog } = useConfirm()
   const [saved, setSaved] = useState<Loaded | undefined>(initial)
   const [data, setData] = useState<CourseData>(initial?.data ?? emptyCourseData)
@@ -198,6 +198,7 @@ export function CourseWizard({ initial, professionals, permissions, initialStep 
   }
 
   const issues = saved?.readiness ?? []
+  const goToStep = (i: number) => { setStep(i); document.getElementById('wizard-title')?.scrollIntoView({ block: 'center', behavior: 'smooth' }) }
   const dirty = saved ? canonical(courseDataSchema.safeParse(data).data ?? data) !== canonical(saved.data) : false
   const previewOffer = (() => {
     const cents = parseBRLToCents(offer.price)
@@ -215,6 +216,7 @@ export function CourseWizard({ initial, professionals, permissions, initialStep 
           <a href={`/admin/editor/cursos/${saved.id}`}>«Restaurar do cadastro» no editor</a>.
         </p>
       ) : null}
+      {showPending && saved ? <PendingBanner issues={groupIssuesByStep(issues)} stepLabels={STEPS.map((x) => x.label)} onGo={goToStep} /> : null}
       <WizardSteps steps={STEPS} step={step} onSelect={setStep} isDisabled={(i) => !saved && i > 0} />
 
       {message ? <p role={message.kind === 'error' ? 'alert' : 'status'} className={message.kind === 'error' ? 'form-error' : 'form-ok'}>{message.text}</p> : null}

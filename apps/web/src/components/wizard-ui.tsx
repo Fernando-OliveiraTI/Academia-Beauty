@@ -163,6 +163,34 @@ export function IssueRow({ icon, title, desc, onGo }: { icon: ReactNode; title: 
   )
 }
 
+/** Faixa de pendências para publicar: resume o que falta por etapa e abre a etapa com o formulário. */
+export function PendingBanner({ issues, stepLabels, onGo }: { issues: readonly { message: string; step: number }[]; stepLabels: readonly string[]; onGo: (step: number) => void }) {
+  if (issues.length === 0) return <p role="status" className="form-ok">Cadastro completo: volte ao editor para publicar.</p>
+  const steps = [...new Set(issues.map((i) => i.step))].sort((a, b) => a - b)
+  return (
+    <section role="alert" className="wz-pending" aria-labelledby="wz-pending-title">
+      <div className="wz-pending-head">
+        <div>
+          <strong id="wz-pending-title">{issues.length === 1 ? 'Falta 1 informação para publicar' : `Faltam ${issues.length} informações para publicar`}</strong>
+          <small>Preencha os itens abaixo e volte ao editor para publicar.</small>
+        </div>
+        <button type="button" className="admin-button" onClick={() => onGo(steps[0]!)}>Preencher agora {Ico.arrowRight}</button>
+      </div>
+      <ul>
+        {steps.map((step) => (
+          <li key={step}>
+            <div>
+              <small>{stepLabels[step]}</small>
+              <ul>{issues.filter((i) => i.step === step).map((i) => <li key={i.message}>{i.message}</li>)}</ul>
+            </div>
+            <button type="button" onClick={() => onGo(step)}>Abrir etapa {Ico.arrowRight}</button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 /** Cartão de ação (pré-visualizar, abrir editor). */
 export function ActionCard({ href, icon, title, desc, external }: { href: string; icon: ReactNode; title: string; desc: string; external?: boolean }) {
   return (

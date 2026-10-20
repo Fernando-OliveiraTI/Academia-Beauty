@@ -13,7 +13,7 @@ import {
 import { Button, Field, TextArea } from '@academia/design-system'
 import { apiSend } from '@/lib/api-client'
 import { describeApiError, type ApiErrorBody } from '@/lib/api-errors'
-import { PanelHead, WizardIcon, WizardSteps } from '@/components/wizard-ui'
+import { PanelHead, PendingBanner, WizardIcon, WizardSteps } from '@/components/wizard-ui'
 import { PROFESSIONAL_TEMPLATES } from '@academia/section-schemas'
 import { ImageField } from '@/components/image-field'
 import { canonical, emptyProfessionalData, fieldErrors, groupIssuesByStep, parseTags, STEPS, suggestSlug } from './form-model'
@@ -35,7 +35,7 @@ function describe(status: number, body: ApiError | null): string {
 
 const STEP_ICONS = [WizardIcon.user, WizardIcon.sparkle, WizardIcon.image, WizardIcon.list, WizardIcon.check]
 
-export function ProfessionalWizard({ initial, permissions, initialStep = 0 }: { initial?: Loaded; permissions: readonly Permission[]; initialStep?: number }) {
+export function ProfessionalWizard({ initial, permissions, initialStep = 0, showPending = false }: { initial?: Loaded; permissions: readonly Permission[]; initialStep?: number; showPending?: boolean }) {
   const { confirm, dialog: confirmDialog } = useConfirm()
   const [saved, setSaved] = useState<Loaded | undefined>(initial)
   const [data, setData] = useState<ProfessionalData>(initial?.data ?? emptyProfessionalData)
@@ -117,6 +117,7 @@ export function ProfessionalWizard({ initial, permissions, initialStep = 0 }: { 
 
   // A publicação usa o que está salvo no servidor; as pendências refletem esse estado, não o formulário.
   const liveIssues = saved ? publishReadiness(saved.data) : []
+  const goToStep = (i: number) => { setStep(i); document.getElementById('wizard-title')?.scrollIntoView({ block: 'center', behavior: 'smooth' }) }
   const dirty = saved ? canonical(professionalDataSchema.safeParse(data).data ?? data) !== canonical(saved.data) : false
 
   return (
@@ -129,6 +130,7 @@ export function ProfessionalWizard({ initial, permissions, initialStep = 0 }: { 
           <a href={`/admin/editor/profissionais/${saved.id}`}>«Restaurar do cadastro» no editor</a>.
         </p>
       ) : null}
+      {showPending && saved ? <PendingBanner issues={groupIssuesByStep(liveIssues)} stepLabels={STEPS.map((x) => x.label)} onGo={goToStep} /> : null}
       <WizardSteps steps={STEPS} step={step} onSelect={setStep} isDisabled={(i) => !saved && i > 0} />
 
       {message ? <p role={message.kind === 'error' ? 'alert' : 'status'} className={message.kind === 'error' ? 'form-error' : 'form-ok'}>{message.text}</p> : null}

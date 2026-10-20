@@ -24,8 +24,7 @@ export default async function EditCoursePage({ params, searchParams }: { params:
         subtitle={`Configurações do curso · ${data.professionalName}. O conteúdo da página é editado no editor visual.`}
         action={<Link className="admin-button" href={`/admin/editor/cursos/${id}`}>Abrir no editor visual</Link>}
       />
-      {pendencias ? <p role="alert" className="wz-alert">Faltam informações para publicar. Complete os itens abaixo e volte ao editor para publicar.</p> : null}
-      <CourseWizard initial={data} professionals={[{ id: data.professionalId, name: data.professionalName }]} permissions={user.permissions} initialStep={pendencias ? 4 : 0} />
+      <CourseWizard initial={data} professionals={[{ id: data.professionalId, name: data.professionalName }]} permissions={user.permissions} initialStep={pendencias ? 4 : 0} showPending={pendencias} />
     </main>
   )
 }
