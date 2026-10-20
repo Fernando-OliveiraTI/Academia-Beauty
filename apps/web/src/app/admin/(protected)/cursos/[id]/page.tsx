@@ -2,8 +2,9 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import type { AdminCourse, ReadinessIssue } from '@academia/contracts'
 import { adminGet, getCurrentUser } from '@/lib/api-server'
-import { WizardHeader } from '@/components/wizard-ui'
+import { progressOf, WizardHeader } from '@/components/wizard-ui'
 import { CourseWizard } from '../wizard'
+import { groupIssuesByStep, STEPS } from '../form-model'
 
 export const metadata = { title: 'Editar curso' }
 export const dynamic = 'force-dynamic'
@@ -22,10 +23,10 @@ export default async function EditCoursePage({ params, searchParams }: { params:
       <WizardHeader
         backHref="/admin/cursos" backLabel="Cursos" title={data.data.title}
         subtitle={`Configurações do curso · ${data.professionalName}. O conteúdo da página é editado no editor visual.`}
+        progress={progressOf(STEPS, groupIssuesByStep(data.readiness))}
         action={<Link className="admin-button" href={`/admin/editor/cursos/${id}`}>Abrir no editor visual</Link>}
       />
-      {pendencias ? <p role="alert" className="wz-alert">Faltam informações para publicar. Complete os itens abaixo e volte ao editor para publicar.</p> : null}
-      <CourseWizard initial={data} professionals={[{ id: data.professionalId, name: data.professionalName }]} permissions={user.permissions} initialStep={pendencias ? 4 : 0} />
+      <CourseWizard initial={data} professionals={[{ id: data.professionalId, name: data.professionalName }]} permissions={user.permissions} initialStep={pendencias ? 4 : 0} showPending={pendencias} />
     </main>
   )
 }

@@ -256,6 +256,11 @@ export default class CourseService {
           'Outra pessoa alterou a oferta. Recarregue para continuar.'
         )
       }
+      if (input.environment === 'sandbox' && env.get('NODE_ENV') === 'production') {
+        throw new DomainError(422, 'sandbox_not_allowed', 'Ambiente de teste (sandbox) não está disponível em produção', [
+          { field: 'environment', message: 'Use o ambiente de produção' },
+        ])
+      }
       let checkoutUrl = ''
       if (input.checkoutUrl) {
         const check = validateCheckoutUrl(input.checkoutUrl, allowedCheckoutHosts())

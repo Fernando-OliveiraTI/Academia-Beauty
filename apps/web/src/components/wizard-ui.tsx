@@ -41,6 +41,8 @@ export const Ico = {
   cap: svg(<><path d="M2 9l10-5 10 5-10 5z" /><path d="M6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5" /></>),
   cart: svg(<><circle cx="9" cy="20" r="1.4" /><circle cx="18" cy="20" r="1.4" /><path d="M2 3h3l2.4 12h11l2-8H6" /></>),
   info: svg(<><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></>),
+  alert: svg(<><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.5h.01" /></>),
+  wifiOff: svg(<><path d="M2 9a15 15 0 0120 0M5 12.5a10 10 0 0114 0M8.5 16a5 5 0 017 0" /><path d="M12 19.5h.01" /></>),
   shield: svg(<path d="M12 3l7 3v5c0 5-3.2 8.4-7 10-3.8-1.6-7-5-7-10V6z" />),
   image: svg(<><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="1.6" /><path d="M21 16l-5-5-8 8" /></>),
   link: svg(<><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1" /></>),
@@ -54,22 +56,62 @@ export const Ico = {
 }
 
 /** Cabeçalho da tela: voltar, título com a última palavra em destaque, subtítulo e ação à direita. */
-export function WizardHeader({ backHref, backLabel = 'Voltar', title, subtitle, action }: { backHref: string; backLabel?: string; title: string; subtitle?: string; action?: ReactNode }) {
+export function WizardHeader({ backHref, backLabel = 'Voltar', title, subtitle, action, progress }: { backHref: string; backLabel?: string; title: string; subtitle?: string; action?: ReactNode; progress?: readonly { label: string; done: boolean }[] }) {
   const words = title.trim().split(/\s+/)
   const last = words.length > 1 ? words.pop() : null
+  const current = progress ? progress.findIndex((p) => !p.done) : -1
   return (
     <header className="wz-header">
-      <div>
+      <div className="wz-header-main">
         <Link className="wz-back" href={backHref}>{WizardIcon.arrowLeft}{backLabel}</Link>
         <h1>{last ? <>{words.join(' ')} <span>{last}</span></> : title}</h1>
         {subtitle ? <p>{subtitle}</p> : null}
       </div>
+      {progress ? (
+        <ol className="wz-progress" aria-label="Situação do cadastro">
+          {progress.map((p, i) => (
+            <li key={p.label} data-state={p.done ? 'done' : i === current ? 'current' : 'todo'}>
+              <span aria-hidden="true">{p.done ? WizardIcon.check : <i>{i + 1}</i>}</span>
+              {p.label}
+              {p.done ? <span className="sr-only"> (completo)</span> : null}
+            </li>
+          ))}
+        </ol>
+      ) : null}
       {action ? <div className="wz-header-action">{action}</div> : null}
     </header>
   )
 }
 
-export type WizardStep = { key: string; label: string }
+/** Tela de espera da publicação: anel dourado girando sobre o painel, com texto de apoio. */
+export function PublishingOverlay({ title, hint }: { title: string; hint?: string }) {
+  return (
+    <div className="wz-publishing" role="status" aria-live="polite">
+      <div className="wz-publishing-card">
+        <span className="wz-spinner" aria-hidden="true" />
+        <strong>{title}</strong>
+        {hint ? <small>{hint}</small> : null}
+      </div>
+    </div>
+  )
+}
+
+/** Situação por etapa para o cabeçalho: completa quando nenhuma pendência cai nela; a última (publicação) fica sempre por fazer. */
+export function progressOf(steps: readonly { label: string }[], issues: readonly { step: number }[]) {
+  return steps.map((s, i) => ({ label: s.label, done: i < steps.length - 1 && !issues.some((x) => x.step === i) }))
+}
+
+/** Aviso de página: ícone em círculo, título em destaque e texto de apoio. */
+export function Notice({ tone, title, children }: { tone: 'error' | 'info' | 'success'; title: string; children?: ReactNode }) {
+  return (
+    <div role={tone === 'error' ? 'alert' : tone === 'success' ? 'status' : 'note'} className="wz-notice" data-tone={tone}>
+      <span aria-hidden="true">{tone === 'error' ? Ico.alert : tone === 'success' ? WizardIcon.check : Ico.info}</span>
+      <div><strong>{title}</strong>{children ? <p>{children}</p> : null}</div>
+    </div>
+  )
+}
+
+export type WizardStep = { key: string; label: string; hint?: string }
 
 /** Etapas em círculos numerados ligados por uma linha; a ativa leva o sublinhado dourado. */
 export function WizardSteps({ steps, step, onSelect, isDisabled }: { steps: readonly WizardStep[]; step: number; onSelect: (i: number) => void; isDisabled?: (i: number) => boolean }) {
@@ -79,7 +121,7 @@ export function WizardSteps({ steps, step, onSelect, isDisabled }: { steps: read
         <li key={s.key} data-state={i === step ? 'current' : i < step ? 'done' : 'todo'}>
           <button type="button" aria-current={i === step ? 'step' : undefined} disabled={isDisabled?.(i)} onClick={() => onSelect(i)}>
             <span className="wz-dot" aria-hidden="true">{i + 1}</span>
-            <span className="wz-step-label">{s.label}</span>
+            <span className="wz-step-label">{s.label}{s.hint ? <small>{s.hint}</small> : null}</span>
           </button>
         </li>
       ))}
@@ -160,6 +202,35 @@ export function IssueRow({ icon, title, desc, onGo }: { icon: ReactNode; title: 
       <div><strong>{title}</strong><small>{desc}</small></div>
       {onGo ? <button type="button" onClick={onGo}>Ir para a etapa {Ico.arrowRight}</button> : null}
     </li>
+  )
+}
+
+/** Faixa de pendências para publicar: resume o que falta por etapa e abre a etapa com o formulário. */
+export function PendingBanner({ issues, stepLabels, onGo }: { issues: readonly { message: string; step: number }[]; stepLabels: readonly string[]; onGo: (step: number) => void }) {
+  if (issues.length === 0) return <p role="status" className="form-ok">Cadastro completo: volte ao editor para publicar.</p>
+  const steps = [...new Set(issues.map((i) => i.step))].sort((a, b) => a - b)
+  return (
+    <section role="alert" className="wz-pending" aria-labelledby="wz-pending-title">
+      <div className="wz-pending-head">
+        <span className="wz-notice-icon" aria-hidden="true">{Ico.alert}</span>
+        <div>
+          <strong id="wz-pending-title">{issues.length === 1 ? 'Falta 1 informação para publicar' : `Faltam ${issues.length} informações para publicar`}</strong>
+          <small>Preencha os itens abaixo e volte ao editor para publicar.</small>
+        </div>
+        <button type="button" className="admin-button" onClick={() => onGo(steps[0]!)}>Preencher agora {Ico.arrowRight}</button>
+      </div>
+      <ul>
+        {steps.map((step) => (
+          <li key={step}>
+            <div>
+              <small>{stepLabels[step]}</small>
+              <ul>{issues.filter((i) => i.step === step).map((i) => <li key={i.message}>{i.message}</li>)}</ul>
+            </div>
+            <button type="button" onClick={() => onGo(step)}>Abrir etapa {Ico.arrowRight}</button>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 

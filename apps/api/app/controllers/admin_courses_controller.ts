@@ -11,6 +11,7 @@ import {
   type CommercialInput,
   type ReadinessIssue,
 } from '@academia/contracts'
+import env from '#start/env'
 import Course from '#models/course'
 import CommercialConfig from '#models/commercial_config'
 import Professional from '#models/professional'
@@ -72,6 +73,9 @@ function readinessOf(
     ...courseReadiness(course.data),
     ...commercialReadiness(commercial ? commercialInput(commercial) : null, allowedCheckoutHosts()),
   ]
+  if (commercial?.environment === 'sandbox' && env.get('NODE_ENV') === 'production') {
+    issues.push({ field: 'environment', message: 'Mude o ambiente da oferta para Produção (hoje está em teste/sandbox)' })
+  }
   if (professional.status !== 'published') {
     issues.push({
       field: 'professionalId',
