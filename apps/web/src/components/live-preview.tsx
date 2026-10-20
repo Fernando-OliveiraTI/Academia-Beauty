@@ -71,6 +71,9 @@ export function LivePreview(props: Props) {
   useEffect(() => {
     if (window.parent === window) return
     const style = window.document.createElement('style')
+    // O painel roda com CSP por nonce: o <style> criado aqui precisa carregar o mesmo nonce dos scripts da página.
+    const nonce = window.document.querySelector<HTMLElement>('script[nonce]')?.nonce
+    if (nonce) style.nonce = nonce
     style.textContent = BRIDGE_CSS
     window.document.head.appendChild(style)
     window.document.documentElement.setAttribute('data-ed-on', '')
@@ -235,7 +238,6 @@ export function LivePreview(props: Props) {
   }, [])
   useEffect(() => { if (window.parent !== window) window.dispatchEvent(new Event('academia-editor-retag')) }, [document])
 
-  let rendered: ReactNode
   let ctx: Parameters<typeof PageRenderer>[0]['ctx']
   let doc: PageDocument
   if (props.kind === 'professional') {
@@ -249,6 +251,6 @@ export function LivePreview(props: Props) {
     ctx = { offer: props.offer, year: new Date().getFullYear(), checkout: props.checkout ?? { mode: 'redirect', url: null } }
   }
   resolved.current = doc
-  rendered = <PageRenderer document={doc} ctx={ctx} />
+  const rendered: ReactNode = <PageRenderer document={doc} ctx={ctx} />
   return <Boundary resetKey={document}>{rendered}</Boundary>
 }
