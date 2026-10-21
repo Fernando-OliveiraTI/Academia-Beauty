@@ -7,7 +7,6 @@ import {
   COURSE_LEVEL_LABEL,
   COURSE_MODALITIES,
   COURSE_MODALITY_LABEL,
-  computeOffer,
   courseDataSchema,
   type AdminCourse,
   type CourseData,
@@ -18,11 +17,13 @@ import { Button, Field, TextArea } from '@academia/design-system'
 import { apiSend } from '@/lib/api-client'
 import { describeApiError, type ApiErrorBody } from '@/lib/api-errors'
 import { brl } from '@/lib/format'
+import { PriceFields } from '@/components/price-fields'
+import { initialPriceForm, priceDirty, priceResult } from '@/lib/price-form'
 import { mediaSrc } from '@academia/page-renderer'
 import { ActionCard, AddButton, Ico, InfoCard, IssueRow, NumberedSection, Notice, PanelHead, PublishingOverlay, PendingBanner, RemoveButton, SelectField, SummaryRow, WizardIcon, WizardSteps } from '@/components/wizard-ui'
 import { ImageField } from '@/components/image-field'
 import { CoursePaymentsPanel } from '@/components/course-payments'
-import { canonical, centsToInput, emptyCourseData, emptyLines, fieldErrors, groupIssuesByStep, maskBRL, maskPercent, parseBRLToCents, STEPS, suggestSlug } from './form-model'
+import { canonical, emptyCourseData, emptyLines, fieldErrors, groupIssuesByStep, STEPS, suggestSlug } from './form-model'
 
 /** Oferta de teste (sandbox) só existe fora de produção; a API também recusa em produção. */
 const SANDBOX_ALLOWED = process.env.NODE_ENV !== 'production'
@@ -83,9 +84,8 @@ export function CourseWizard({ initial, professionals, permissions, initialStep 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [showcase, setShowcase] = useState({ showcaseVisible: initial?.showcaseVisible ?? true, showcaseOrder: initial?.showcaseOrder ?? 0 })
   const c0 = initial?.commercial
+  const [priceForm, setPriceForm] = useState(initialPriceForm(c0))
   const [offer, setOffer] = useState({
-    price: c0 ? centsToInput(c0.listCents) : '',
-    discountPct: String(c0?.discountPct ?? 0),
     maxInstallments: String(c0?.maxInstallments ?? 1),
     checkoutUrl: c0?.checkoutUrl ?? '',
     provider: (c0?.provider ?? 'academia') as 'academia' | 'themembers',
@@ -147,17 +147,16 @@ export function CourseWizard({ initial, professionals, permissions, initialStep 
   async function saveOffer(next?: number): Promise<boolean> {
     if (!saved) return false
     setMessage(null)
-    const listCents = parseBRLToCents(offer.price)
-    if (listCents === null) {
-      setErrors({ price: 'Informe um preço válido, como 250,00' })
-      setMessage({ kind: 'error', text: 'Corrija os campos destacados.' })
+    const price = priceResult(priceForm, Number(offer.maxInstallments) || 1)
+    if (!price.ok) {
+      setErrors({})
+      setMessage({ kind: 'error', text: 'Corrija os campos de preço destacados.' })
       return false
     }
     setBusy(true)
     try {
       const res = await apiSend<Loaded>('PUT', `/admin/courses/${saved.id}/commercial`, {
-        listCents,
-        discountPct: Number(offer.discountPct) || 0,
+        ...price.value,
         maxInstallments: Number(offer.maxInstallments) || 1,
         checkoutUrl: offer.checkoutUrl.trim(),
         provider: offer.provider,
@@ -217,16 +216,13 @@ export function CourseWizard({ initial, professionals, permissions, initialStep 
   const goToStep = (i: number) => { setStep(i); document.getElementById('wizard-title')?.scrollIntoView({ block: 'center', behavior: 'smooth' }) }
   const c = saved?.commercial
   const offerDirty = canCommerce && Boolean(saved) && (c
-    ? offer.price !== centsToInput(c.listCents) || Number(offer.discountPct) !== c.discountPct || Number(offer.maxInstallments) !== c.maxInstallments
+    ? priceDirty(priceForm, c, Number(offer.maxInstallments) || 1) || Number(offer.maxInstallments) !== c.maxInstallments
       || offer.checkoutUrl.trim() !== c.checkoutUrl || offer.provider !== c.provider || offer.externalCourseId.trim() !== c.externalCourseId
       || offer.environment !== c.environment || offer.active !== c.active
-    : offer.price.trim() !== '')
+    : priceDirty(priceForm, null))
   const dirty = saved ? canonical(courseDataSchema.safeParse(data).data ?? data) !== canonical(saved.data) : false
-  const previewOffer = (() => {
-    const cents = parseBRLToCents(offer.price)
-    if (cents === null || cents < 100) return null
-    return computeOffer({ listCents: cents, discountPct: Math.min(90, Math.max(0, Number(offer.discountPct) || 0)), maxInstallments: Math.min(12, Math.max(1, Number(offer.maxInstallments) || 1)) })
-  })()
+  const priceCalc = priceResult(priceForm, Math.min(12, Math.max(1, Number(offer.maxInstallments) || 1)))
+  const previewOffer = priceCalc.ok ? priceCalc.offer : null
 
   return (
     <div className="wizard">
@@ -387,8 +383,7 @@ export function CourseWizard({ initial, professionals, permissions, initialStep 
                 <option value="themembers">The Members (embutido na página)</option>
               </select>
             </div>
-            <Field label="Preço de tabela" prefix="R$" inputMode="numeric" value={offer.price} placeholder="0,00" disabled={!canCommerce} error={errors.price ?? errors.listCents} onChange={(e) => setOffer((o) => ({ ...o, price: maskBRL(e.target.value) }))} />
-            <Field label="Desconto" suffix="%" inputMode="numeric" value={offer.discountPct} placeholder="0" disabled={!canCommerce} error={errors.discountPct} onChange={(e) => setOffer((o) => ({ ...o, discountPct: maskPercent(e.target.value) }))} />
+            <PriceFields name="price" form={priceForm} onChange={setPriceForm} disabled={!canCommerce} errors={{ list: errors.listCents ?? errors.price, final: errors.finalCents, pct: errors.discountPct }} maxInstallments={Number(offer.maxInstallments) || 1} />
             <div>
               <label className="ds-label" htmlFor="installments">Parcelas máximas (sem juros, exibição)</label>
               <select id="installments" className="ds-input" value={offer.maxInstallments} disabled={!canCommerce} onChange={(e) => setOffer((o) => ({ ...o, maxInstallments: e.target.value }))}>
@@ -408,8 +403,8 @@ export function CourseWizard({ initial, professionals, permissions, initialStep 
             <label className="wizard-check"><input type="checkbox" checked={offer.active} disabled={!canCommerce} onChange={(e) => setOffer((o) => ({ ...o, active: e.target.checked }))} /> Oferta ativa (permite publicar o curso)</label>
             {previewOffer ? (
               <p className="wizard-hint" role="status">
-                Prévia: de {brl(previewOffer.listCents)} por <strong>{brl(previewOffer.totalCents)}</strong>
-                {previewOffer.discountPct > 0 ? ` (${previewOffer.discountPct}% de desconto)` : ''}
+                Valor final: <strong>{brl(previewOffer.totalCents)}</strong>
+                {previewOffer.discountPct > 0 ? ` (de ${brl(previewOffer.listCents)}, ${previewOffer.discountPct}% de desconto)` : ''}
                 {previewOffer.installments.length > 1 ? `, até ${previewOffer.installments.at(-1)!.count}x de ${brl(previewOffer.installments.at(-1)!.amountCents)}` : ', à vista'}. O servidor recalcula este valor.
               </p>
             ) : null}

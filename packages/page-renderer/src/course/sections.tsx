@@ -77,8 +77,8 @@ export function Hero({ content: c, ctx }: Props<HeroContent>) {
           </div>
 
           <div className="price-inline load-in">
-            {t.hasDiscount && <span className="badge badge--gold">{t.discountLabel}</span>}
-            {t.hasDiscount && <span className="price-old num">de <s>{t.list}</s></span>}
+            {t.showBadge && <span className="badge badge--gold">{t.discountLabel}</span>}
+            {t.showOld && <span className="price-old num">de <s>{t.list}</s></span>}
             <strong className="price-now num">{t.total}</strong>
             <span className="price-installments num">{t.installments}</span>
           </div>
@@ -288,10 +288,10 @@ export function Offer({ content: c, ctx }: Props<OfferContent>) {
         <div className="card pricing-card reveal">
           <div className="pricing-top">
             <h3>{c.cardTitle}</h3>
-            {t.hasDiscount && <span className="badge badge--gold">{t.discountLabel}</span>}
+            {t.showBadge && <span className="badge badge--gold">{t.discountLabel}</span>}
           </div>
           <div className="pricing-price">
-            {t.hasDiscount && <span className="price-old num">de <s>{t.list}</s> por</span>}
+            {t.showOld && <span className="price-old num">de <s>{t.list}</s> por</span>}
             <strong className="price-now num">{t.total}</strong>
             <span className="price-installments num">{t.installments}</span>
           </div>

@@ -89,7 +89,11 @@ export function Courses({ content: c }: Props<CoursesContent>) {
                 <div className="cb-course-meta">
                   {it.tags.map((t, ix) => <span key={`${ix}-${t.label}`} className={t.gold ? 'cb-tag gold' : 'cb-tag'}>{t.label}</span>)}
                 </div>
-                <div className="cb-course-copy"><div className="cb-course-person">{it.person}</div><div className="cb-course-title">{it.title}</div></div>
+                <div className="cb-course-copy">
+                  <div className="cb-course-person">{it.person}</div>
+                  <div className="cb-course-title">{it.title}</div>
+                  {it.price && <div className="cb-course-price">{it.priceOld && <s>{it.priceOld}</s>}<strong>{it.price}</strong></div>}
+                </div>
               </div>
               <a className="cb-plus" href={it.href} aria-label={it.plusLabel}>+</a>
             </article>

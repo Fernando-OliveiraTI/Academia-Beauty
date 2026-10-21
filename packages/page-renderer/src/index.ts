@@ -4,7 +4,7 @@ export { professionalOriginalTemplate, PROFESSIONAL_TEMPLATE_KEY } from './profe
 export { PROFESSIONAL_TEMPLATES, isProfessionalTemplate } from '@academia/section-schemas';
 export { homeOriginalTemplate, HOME_TEMPLATE_KEY } from './home/template';
 export { registerSections } from './registry';
-export { formatBRL, offerTexts, type CheckoutMode, type OfferView, type RenderContext } from './offer';
+export { cardPriceTexts, displayFlags, formatBRL, offerTexts, type CheckoutMode, type OfferView, type RenderContext } from './offer';
 export { buildCourseDocument, professionalCourseCards, splitTitle } from './course/build';
 export { buildProfessionalDocument, splitName } from './professional/build';
 export { buildHomeDocument, homeCourseItems, homeProfessionalItems, HOME_COURSES_MAX, HOME_SHOWCASE_MAX } from './home/build';

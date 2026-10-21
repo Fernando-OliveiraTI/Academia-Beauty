@@ -48,6 +48,8 @@ export const coursesSchema = z.object({
     title: text(120),
     plusLabel: text(120),
     href: safeUrlSchema,
+    price: text(20).optional(),
+    priceOld: text(20).optional(),
   })).max(12),
 });
 

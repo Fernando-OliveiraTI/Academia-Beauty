@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isSafeMediaPath } from '@academia/page-schema';
+import { PRICE_DISPLAYS } from './price.js';
 
 /** Texto simples: sem marcação (mesma regra do documento de página). */
 const plain = (max: number) =>
@@ -153,6 +154,10 @@ export const courseCardSchema = z.object({
   coverSrc: z.string(),
   coverAlt: z.string(),
   discountPct: z.number().int().min(0).max(100),
+  /** Valores para o card mostrar o preço no formato escolhido (0 = sem oferta cadastrada: o card não mostra preço). */
+  listCents: z.number().int().nonnegative().optional(),
+  totalCents: z.number().int().nonnegative().optional(),
+  priceDisplay: z.enum(PRICE_DISPLAYS).optional(),
 });
 export type CourseCard = z.infer<typeof courseCardSchema>;
 

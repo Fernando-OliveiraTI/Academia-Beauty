@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { COURSE_MODALITIES } from './course.js';
+import { PRICE_DISPLAYS } from './price.js';
 
 /** Cartão de curso da Home (montado pelo servidor a partir dos snapshots publicados). */
 export const homeCourseCardSchema = z.object({
@@ -11,6 +12,10 @@ export const homeCourseCardSchema = z.object({
   coverAlt: z.string(),
   featured: z.boolean(),
   modality: z.enum(COURSE_MODALITIES),
+  discountPct: z.number().int().min(0).max(100).optional(),
+  listCents: z.number().int().nonnegative().optional(),
+  totalCents: z.number().int().nonnegative().optional(),
+  priceDisplay: z.enum(PRICE_DISPLAYS).optional(),
 });
 export type HomeCourseCard = z.infer<typeof homeCourseCardSchema>;
 

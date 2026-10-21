@@ -174,7 +174,15 @@ export function Courses({ content: c }: Props<CoursesContent>) {
                 <span className="tag dark">{card.person}</span>
               </div>
               <div className="course-bottom">
-                <h3>{card.titleLead} <span>{card.titleAccent}</span></h3>
+                <div className="course-copy">
+                  <h3>{card.titleLead} <span>{card.titleAccent}</span></h3>
+                  {card.price && (
+                    <p className="course-price num">
+                      {card.priceOld && <s>{card.priceOld}</s>}
+                      <strong>{card.price}</strong>
+                    </p>
+                  )}
+                </div>
                 <span className="course-plus">+</span>
               </div>
             </div>

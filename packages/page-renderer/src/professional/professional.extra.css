@@ -80,3 +80,9 @@
 .pg-bg[data-bg="white"] > * { background: #ffffff !important; }
 .pg-bg[data-bg="paper"] > * { background: #f3f0e7 !important; }
 .pg-bg[data-bg="gold"] > * { background: #e3c98a !important; }
+
+/* Preço no card do curso (formato escolhido na oferta: de/por, % OFF ou preço padrão) */
+.pg-pro .course-section .course-grid .course-copy { display: grid; gap: 6px; min-width: 0; }
+.pg-pro .course-section .course-grid .course-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; font-size: .85rem; }
+.pg-pro .course-section .course-grid .course-price s { color: var(--color-text-muted); font-size: .78rem; }
+.pg-pro .course-section .course-grid .course-price strong { color: var(--color-primary); font-size: 1rem; font-weight: 600; }

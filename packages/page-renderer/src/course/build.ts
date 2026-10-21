@@ -7,6 +7,7 @@ import {
   type ProfessionalData,
 } from '@academia/contracts';
 import { clip } from '../clip';
+import { cardPriceTexts } from '../offer';
 import { PLACEHOLDER_IMAGE } from '../media';
 import { courseOriginalTemplate } from './template';
 import type * as S from './schemas';
@@ -217,7 +218,7 @@ export function professionalCourseCards(cards: readonly CourseCard[], personName
       image: { src: card.coverSrc, alt: card.coverAlt || card.title },
       titleLead: clip(lead, 60),
       titleAccent: clip(accent, 60),
-      ...(card.discountPct > 0 ? { badge: `${card.discountPct}% OFF` } : {}),
+      ...cardPriceTexts(card),
       person: clip(personName, 60),
     };
   });
