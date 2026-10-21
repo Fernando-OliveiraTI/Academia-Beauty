@@ -226,8 +226,8 @@ export function Checkout({ content, offer }: { content: CheckoutContent; offer: 
                   <div><strong>{content.productName}</strong><span className="caption">{content.productCaption}</span></div>
                 </div>
                 <dl className="summary-lines">
-                  <div><dt>{content.summaryProduct}</dt><dd>{t.list}</dd></div>
-                  {t.hasDiscount && <div className="discount"><dt>{content.summaryDiscount} ({t.discountPct})</dt><dd>{t.discount}</dd></div>}
+                  <div><dt>{content.summaryProduct}</dt><dd>{t.showSummaryDiscount ? t.list : t.total}</dd></div>
+                  {t.showSummaryDiscount && <div className="discount"><dt>{content.summaryDiscount} ({t.discountPct})</dt><dd>{t.discount}</dd></div>}
                 </dl>
                 <div className="summary-total">
                   <span className="caption" style={{ color: 'var(--color-text)' }}>{content.summaryTotal}</span>

@@ -137,8 +137,8 @@ describe('buildCourseDocument', () => {
 
 describe('vitrine de cursos na página do profissional', () => {
   const cards = [
-    { slug: 'navalha-moderna', title: 'Navalha Moderna', coverSrc: '/site/capa.png', coverAlt: 'Capa', discountPct: 30 },
-    { slug: 'fade-classico', title: 'Fade', coverSrc: '/site/capa2.png', coverAlt: '', discountPct: 0 },
+    { slug: 'navalha-moderna', title: 'Navalha Moderna', coverSrc: '/site/capa.png', coverAlt: 'Capa', discountPct: 30, listCents: 0, totalCents: 0, priceDisplay: 'full' as const },
+    { slug: 'fade-classico', title: 'Fade', coverSrc: '/site/capa2.png', coverAlt: '', discountPct: 0, listCents: 0, totalCents: 0, priceDisplay: 'full' as const },
   ];
 
   it('mapeia cartões: link, desconto e título', () => {

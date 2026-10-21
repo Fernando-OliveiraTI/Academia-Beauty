@@ -4,6 +4,7 @@ import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import {
   commercialReadiness,
   computeOffer,
+  priceDisplayOf,
   courseReadiness,
   parseAllowedHosts,
   validateCheckoutUrl,
@@ -47,6 +48,8 @@ export function toCommercialView(c: CommercialConfig | null): CommercialView | n
     listCents: c.listCents,
     discountPct: c.discountPct,
     maxInstallments: c.maxInstallments,
+    priceDisplay: priceDisplayOf(c.priceDisplay),
+    finalCents: c.finalCents ?? null,
     checkoutUrl: c.checkoutUrl,
     provider: providerOf(c.provider),
     externalCourseId: c.externalCourseId ?? '',
@@ -59,6 +62,45 @@ export function toCommercialView(c: CommercialConfig | null): CommercialView | n
 export const providerOf = (value: string | undefined | null): CheckoutProvider =>
   value === 'themembers' ? 'themembers' : 'academia'
 
+/** Valores que um card de curso mostra: do snapshot publicado ou, em rascunho, da oferta de trabalho (0 = sem oferta). */
+function cardPrice(
+  published: boolean,
+  snapshot: unknown,
+  live: {
+    list_cents?: number | null
+    discount_pct?: number | null
+    max_installments?: number | null
+    price_display?: string | null
+    final_cents?: number | null
+  }
+) {
+  const source = published
+    ? parse<Partial<CommercialInput>>(snapshot)
+    : {
+        listCents: Number(live.list_cents ?? 0),
+        discountPct: Number(live.discount_pct ?? 0),
+        maxInstallments: Number(live.max_installments ?? 1),
+        priceDisplay: live.price_display,
+        finalCents: live.final_cents,
+      }
+  const listCents = Number(source.listCents ?? 0)
+  if (listCents <= 0)
+    return { discountPct: 0, listCents: 0, totalCents: 0, priceDisplay: 'full' as const }
+  const offer = computeOffer({
+    listCents,
+    discountPct: Number(source.discountPct ?? 0),
+    maxInstallments: Number(source.maxInstallments ?? 1),
+    priceDisplay: source.priceDisplay,
+    finalCents: source.finalCents,
+  })
+  return {
+    discountPct: offer.discountPct,
+    listCents: offer.listCents,
+    totalCents: offer.totalCents,
+    priceDisplay: offer.display,
+  }
+}
+
 /** Como a página pública compra: `embed` mostra o iframe da The Members no lugar do formulário. */
 export const checkoutModeOf = (provider: string | undefined | null): 'redirect' | 'embed' =>
   providerOf(provider) === 'themembers' ? 'embed' : 'redirect'
@@ -68,6 +110,8 @@ export function commercialInput(view: CommercialView | CommercialConfig): Commer
     listCents: view.listCents,
     discountPct: view.discountPct,
     maxInstallments: view.maxInstallments,
+    priceDisplay: priceDisplayOf(view.priceDisplay),
+    finalCents: view.finalCents ?? null,
     checkoutUrl: view.checkoutUrl,
     provider: providerOf(view.provider),
     externalCourseId: view.externalCourseId ?? '',
@@ -284,6 +328,32 @@ export default class CourseService {
       }
       const provider = input.provider ?? providerOf(current?.provider)
       const externalCourseId = input.externalCourseId ?? current?.externalCourseId ?? ''
+      const priceDisplay = input.priceDisplay ?? priceDisplayOf(current?.priceDisplay)
+      // Preço final digitado ("por"): precisa ser menor que o de tabela e dar no máximo 90% de desconto. Igual ao de
+      // tabela = sem desconto. O percentual guardado é só o arredondado, para o selo e as listas.
+      let finalCents: number | null = input.finalCents ?? null
+      let discountPct = input.discountPct
+      if (finalCents !== null) {
+        if (finalCents > input.listCents) {
+          throw new DomainError(
+            422,
+            'validation_error',
+            'O preço final não pode ser maior que o de tabela',
+            [{ field: 'finalCents', message: 'O "por" não pode ser maior que o "de"' }]
+          )
+        }
+        if (finalCents === input.listCents) {
+          finalCents = null
+          discountPct = 0
+        } else {
+          discountPct = Math.round(((input.listCents - finalCents) * 100) / input.listCents)
+          if (discountPct > 90) {
+            throw new DomainError(422, 'validation_error', 'O desconto máximo é 90%', [
+              { field: 'finalCents', message: 'O desconto máximo é 90% do preço de tabela' },
+            ])
+          }
+        }
+      }
       if (externalCourseId && externalCourseId !== (current?.externalCourseId ?? '')) {
         const taken = await CommercialConfig.query({ client: trx })
           .where('external_course_id', externalCourseId)
@@ -297,8 +367,10 @@ export default class CourseService {
       }
       const values = {
         listCents: input.listCents,
-        discountPct: input.discountPct,
+        discountPct,
+        finalCents,
         maxInstallments: input.maxInstallments,
+        priceDisplay,
         checkoutUrl,
         environment: input.environment,
         active: input.active,
@@ -494,23 +566,24 @@ export default class CourseService {
         'c.data as live',
         'v.data',
         'v.commercial',
-        'cc.discount_pct as live_discount'
+        'cc.list_cents',
+        'cc.discount_pct',
+        'cc.max_installments',
+        'cc.price_display',
+        'cc.final_cents'
       )
     return rows.flatMap((row) => {
       const published = row.status === 'published'
       const raw = published ? row.data : row.live
       if (!raw) return []
       const data = parse<CourseData>(raw)
-      const discountPct = published
-        ? parse<CommercialInput>(row.commercial).discountPct
-        : Number(row.live_discount ?? 0)
       return [
         {
           slug: row.slug as string,
           title: data.title,
           coverSrc: data.coverSrc,
           coverAlt: data.coverAlt,
-          discountPct,
+          ...cardPrice(published, row.commercial, row),
         },
       ]
     })
@@ -526,6 +599,7 @@ export default class CourseService {
       .leftJoin('course_versions as v', (join) =>
         join.on('v.course_id', 'c.id').andOn('v.version', 'c.published_version')
       )
+      .leftJoin('commercial_configs as cc', 'cc.course_id', 'c.id')
       .join('professionals as p', 'p.id', 'c.professional_id')
       .leftJoin('professional_versions as pv', (join) =>
         join.on('pv.professional_id', 'p.id').andOn('pv.version', 'p.published_version')
@@ -543,6 +617,12 @@ export default class CourseService {
         'c.data as live_course',
         'p.data as live_professional',
         'v.data as course_data',
+        'v.commercial as course_commercial',
+        'cc.list_cents',
+        'cc.discount_pct',
+        'cc.max_installments',
+        'cc.price_display',
+        'cc.final_cents',
         'pv.data as professional_data'
       )
     return rows.flatMap((row) => {
@@ -561,6 +641,7 @@ export default class CourseService {
           coverAlt: data.coverAlt,
           featured: Boolean(row.featured),
           modality: data.modality,
+          ...cardPrice(row.status === 'published', row.course_commercial, row),
         },
       ]
     })

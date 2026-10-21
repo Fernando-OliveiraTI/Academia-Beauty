@@ -27,6 +27,12 @@ export default class CommercialConfig extends BaseModel {
   declare maxInstallments: number
 
   @column()
+  declare priceDisplay: string
+
+  @column()
+  declare finalCents: number | null
+
+  @column()
   declare provider: string
 
   @column()

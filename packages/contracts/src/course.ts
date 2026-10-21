@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { isSafeMediaPath } from '@academia/page-schema';
 import { professionalDataSchema, slugSchema, type ReadinessIssue } from './professional.js';
+import { PRICE_DISPLAYS, priceDisplayOf, type PriceDisplay } from './price.js';
 
 const plain = (max: number) =>
   z.string().trim().max(max).refine((v) => !/[<>]/.test(v), 'Marcação não é permitida');
@@ -114,6 +115,13 @@ export const commercialInputSchema = z.object({
   listCents: z.number().int().min(PRICE_MIN_CENTS).max(PRICE_MAX_CENTS),
   discountPct: z.number().int().min(0).max(90),
   maxInstallments: z.number().int().min(1).max(12),
+  /** Ausente em ofertas antigas = `full`. */
+  priceDisplay: z.enum(PRICE_DISPLAYS).default('full'),
+  /**
+   * Preço final digitado ("por"), em centavos. Nulo/ausente = o final vem do desconto em %. Com valor, ele manda e
+   * `discountPct` guarda só o percentual arredondado para exibição.
+   */
+  finalCents: z.number().int().min(PRICE_MIN_CENTS).max(PRICE_MAX_CENTS).nullable().default(null),
   /** Vazio enquanto não houver link; para ativar precisa ser https e de domínio autorizado. */
   checkoutUrl: z.union([z.literal(''), z.string().trim().max(2048)]),
   /** Ausente em ofertas antigas = `academia`. */
@@ -128,6 +136,9 @@ export type CommercialInput = z.infer<typeof commercialInputSchema>;
 export const updateCommercialSchema = commercialInputSchema.extend({
   /** No PUT, ausente = mantém o valor atual (um cliente antigo não zera o vínculo nem o provedor). */
   provider: z.enum(CHECKOUT_PROVIDERS).optional(),
+  priceDisplay: z.enum(PRICE_DISPLAYS).optional(),
+  /** No PUT, ausente = sem preço final digitado (vale o desconto em %). */
+  finalCents: z.number().int().min(PRICE_MIN_CENTS).max(PRICE_MAX_CENTS).nullable().optional(),
   externalCourseId: externalCourseIdField.optional(),
   /** Revisão da configuração comercial que o cliente leu (0 = ainda não existe). */
   revision: z.number().int().min(0),
@@ -147,6 +158,7 @@ export type ComputedOffer = {
   discountPct: number;
   discountCents: number;
   totalCents: number;
+  display: PriceDisplay;
   /** Primeira opção é sempre à vista (count = 1). O valor da parcela nunca ultrapassa o total. */
   installments: Array<{ count: number; amountCents: number }>;
 };
@@ -156,16 +168,19 @@ export type ComputedOffer = {
  * A parcela é arredondada para baixo: `count × amount ≤ total`, então a página nunca anuncia um
  * valor maior que o devido. O provedor de pagamento define as parcelas finais (Modo A).
  */
-export function computeOffer(input: Pick<CommercialInput, 'listCents' | 'discountPct' | 'maxInstallments'>): ComputedOffer {
-  const discountCents = Math.round((input.listCents * input.discountPct) / 100);
+export function computeOffer(input: Pick<CommercialInput, 'listCents' | 'discountPct' | 'maxInstallments'> & { priceDisplay?: string | null; finalCents?: number | null }): ComputedOffer {
+  // Preço final digitado manda; se não for menor que o de tabela, não há desconto (vale o percentual informado).
+  const typed = input.finalCents != null && input.finalCents > 0 && input.finalCents < input.listCents ? input.finalCents : null;
+  const discountCents = typed !== null ? input.listCents - typed : Math.round((input.listCents * input.discountPct) / 100);
   const totalCents = input.listCents - discountCents;
+  const discountPct = typed !== null ? Math.round((discountCents * 100) / input.listCents) : input.discountPct;
   const installments = [{ count: 1, amountCents: totalCents }];
   for (let count = 2; count <= input.maxInstallments; count += 1) {
     const amountCents = Math.floor(totalCents / count);
     if (amountCents < MIN_INSTALLMENT_CENTS) break;
     installments.push({ count, amountCents });
   }
-  return { listCents: input.listCents, discountPct: input.discountPct, discountCents, totalCents, installments };
+  return { listCents: input.listCents, discountPct, discountCents, totalCents, display: priceDisplayOf(input.priceDisplay), installments };
 }
 
 export const computedOfferSchema = z.object({
@@ -173,6 +188,7 @@ export const computedOfferSchema = z.object({
   discountPct: z.number().int().min(0).max(100),
   discountCents: z.number().int().nonnegative(),
   totalCents: z.number().int().nonnegative(),
+  display: z.enum(PRICE_DISPLAYS).default('full'),
   installments: z.array(z.object({ count: z.number().int().positive(), amountCents: z.number().int().nonnegative() })),
 });
 

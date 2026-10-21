@@ -600,7 +600,7 @@ a { color: var(--color-primary); }
 .wizard-panel { padding: var(--space-6); border-radius: var(--radius-lg); gap: var(--space-6); }
 .wizard-panel h2 { font-size: var(--fs-h3, 1.4rem); letter-spacing: -.01em; padding-bottom: var(--space-4); border-bottom: 1px solid var(--color-border); }
 .wizard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5) var(--space-6); max-width: none; align-items: start; }
-.wizard-grid > p, .wizard-grid > fieldset, .wizard-grid > .wizard-check, .wizard-grid > :has(textarea), .wizard-grid > :has(.image-field), .wizard-grid > :has(.template-picker) { grid-column: 1 / -1; }
+.wizard-grid > p, .wizard-grid > fieldset, .wizard-grid > .wizard-check, .wizard-grid > .pdp, .wizard-grid > :has(textarea), .wizard-grid > :has(.image-field), .wizard-grid > :has(.template-picker) { grid-column: 1 / -1; }
 .wizard .ds-field, .wizard-grid > div { display: grid; gap: var(--space-2); min-width: 0; }
 .wizard .ds-label { display: block; }
 .wizard .ds-input, .wizard select.ds-input { width: 100%; min-height: 48px; box-sizing: border-box; border-radius: var(--radius-sm); background: var(--color-bg, #0b0a09); }
@@ -609,6 +609,27 @@ a { color: var(--color-primary); }
 .wizard-hint { padding: var(--space-3) var(--space-4); border-left: 2px solid var(--color-primary); background: rgba(227, 201, 138, .05); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 .wizard-hint code { color: var(--color-primary); }
 .wizard-fieldset { padding: var(--space-5); border-radius: var(--radius-md); background: rgba(255, 255, 255, .015); }
+
+/* Formato de exibição do preço (etapa Oferta e aba Avançado do editor) */
+.pdp { display: grid; gap: var(--space-3); min-width: 0; margin: 0; padding: 0; border: 0; }
+.pdp-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.pdp-option { display: grid; gap: 4px; align-content: start; min-width: 0; padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); cursor: pointer; }
+.pdp-option:hover { border-color: var(--color-border-strong); }
+.pdp-option.is-selected { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 8%, transparent); }
+.pdp-option:has(input:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.pdp-option b { font-size: .85rem; }
+.pdp-option small { font-size: .72rem; color: var(--color-text-muted); line-height: 1.35; overflow-wrap: anywhere; }
+.pdp-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.pdp-fields[data-display='standard'] { grid-template-columns: minmax(0, 1fr); max-width: 50%; }
+.pdp-field { display: grid; gap: var(--space-2); align-content: start; position: relative; min-width: 0; }
+.pdp-suffix { position: absolute; right: var(--space-4); top: 38px; color: var(--color-text-muted); pointer-events: none; }
+.pdp-field:has(.pdp-suffix) .ds-input { padding-right: 40px; }
+.pdp-sample { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: var(--space-2); font-size: .85rem; }
+.pdp-sample em { font-style: normal; padding: 1px 8px; border-radius: 999px; font-size: .66rem; letter-spacing: .04em; color: var(--color-primary); border: 1px solid color-mix(in srgb, var(--color-primary) 50%, transparent); background: color-mix(in srgb, var(--color-primary) 10%, transparent); }
+.pdp-sample s { color: var(--color-text-muted); font-size: .78rem; }
+.pdp-sample strong { color: var(--color-primary); font-weight: 600; }
+fieldset.pdp:disabled .pdp-option { cursor: not-allowed; opacity: .6; }
+@media (max-width: 560px) { .pdp-options, .pdp-fields { grid-template-columns: 1fr; } .pdp-fields[data-display='standard'] { max-width: none; } }
 .wizard-fieldset legend { padding: 0 var(--space-3); font: 600 .75rem var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--color-primary); }
 .wizard-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); padding-bottom: var(--space-5); }
 .wizard-row > :has(textarea), .wizard-row > button, .wizard-row > .ds-button { grid-column: 1 / -1; }

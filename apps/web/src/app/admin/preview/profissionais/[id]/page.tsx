@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import type { PageDocument } from '@academia/page-schema'
-import { courseDataSchema, professionalDataSchema, type AdminCourse, type AdminProfessional, type CourseCard, type DocumentState } from '@academia/contracts'
+import { computeOffer, courseDataSchema, professionalDataSchema, type AdminCourse, type AdminProfessional, type CourseCard, type DocumentState } from '@academia/contracts'
 import { NO_OFFER, PageRenderer, resolveProfessionalDocument } from '@academia/page-renderer'
 import { adminGet, getCurrentUser } from '@/lib/api-server'
 import '@academia/page-renderer/professional.css'
@@ -29,7 +29,8 @@ export default async function ProfessionalDraftPreview({ params }: { params: Pro
     .slice(0, 12)
     .map((c) => {
       const course = courseDataSchema.parse(c.data)
-      return { slug: c.slug, title: course.title, coverSrc: course.coverSrc, coverAlt: course.coverAlt, discountPct: c.commercial?.discountPct ?? 0 }
+      const offer = c.commercial ? computeOffer(c.commercial) : null
+      return { slug: c.slug, title: course.title, coverSrc: course.coverSrc, coverAlt: course.coverAlt, discountPct: offer?.discountPct ?? 0, listCents: offer?.listCents ?? 0, totalCents: offer?.totalCents ?? 0, priceDisplay: offer?.display ?? 'full' }
     })
   const document = resolveProfessionalDocument({ data: parsed, document: draftDocument, courseCards, templateKey: data.templateKey })
   return <PageRenderer document={document} ctx={{ offer: NO_OFFER, year: new Date().getFullYear() }} />

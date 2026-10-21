@@ -6,6 +6,7 @@ import {
   courseDataSchema,
   courseReadiness,
   parseAllowedHosts,
+  priceDisplayOf,
   validateCheckoutUrl,
   type CommercialInput,
 } from './index';
@@ -13,6 +14,23 @@ import {
 const hosts = parseAllowedHosts('Pay.Example.com, *.members.test');
 
 describe('computeOffer', () => {
+  it('preço final digitado manda no total; o % exibido é o arredondado; inválido é ignorado', () => {
+    const o = computeOffer({ listCents: 29700, discountPct: 0, maxInstallments: 1, finalCents: 19700 });
+    expect(o).toMatchObject({ totalCents: 19700, discountCents: 10000, discountPct: 34 });
+    expect(computeOffer({ listCents: 10000, discountPct: 20, maxInstallments: 1, finalCents: 10000 }).totalCents).toBe(8000);
+    expect(computeOffer({ listCents: 10000, discountPct: 20, maxInstallments: 1, finalCents: null }).totalCents).toBe(8000);
+  });
+
+  it('formato do preço: ausente ou desconhecido vale "completo" (ofertas antigas não mudam)', () => {
+    expect(computeOffer({ listCents: 25000, discountPct: 30, maxInstallments: 1 }).display).toBe('full');
+    expect(computeOffer({ listCents: 25000, discountPct: 30, maxInstallments: 1, priceDisplay: 'standard' }).display).toBe('standard');
+    expect(priceDisplayOf('lixo')).toBe('full');
+    expect(priceDisplayOf(null)).toBe('full');
+    const base = { listCents: 25000, discountPct: 0, maxInstallments: 1, checkoutUrl: '', environment: 'production', active: false };
+    expect(commercialInputSchema.parse(base).priceDisplay).toBe('full');
+    expect(commercialInputSchema.safeParse({ ...base, priceDisplay: 'tudo' }).success).toBe(false);
+  });
+
   it('calcula desconto e total em centavos', () => {
     const o = computeOffer({ listCents: 25000, discountPct: 30, maxInstallments: 6 });
     expect(o).toMatchObject({ discountCents: 7500, totalCents: 17500 });

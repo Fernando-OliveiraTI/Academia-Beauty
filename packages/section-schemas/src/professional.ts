@@ -74,6 +74,9 @@ export const coursesSchema = z.object({
     titleLead: text(60),
     titleAccent: text(60),
     badge: text(20).optional(),
+    /** Valor final e (no formato de/por) o preço de tabela; vêm do servidor, nunca do documento editado. */
+    price: text(20).optional(),
+    priceOld: text(20).optional(),
     person: text(60),
   })).max(12),
 });

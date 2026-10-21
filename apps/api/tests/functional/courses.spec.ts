@@ -503,8 +503,11 @@ test.group('Cursos · vitrine no profissional e cascata', (group) => {
       'coverAlt',
       'coverSrc',
       'discountPct',
+      'listCents',
+      'priceDisplay',
       'slug',
       'title',
+      'totalCents',
     ])
     assert.notInclude(JSON.stringify(res.body().courses), draft.slug)
   })
@@ -614,6 +617,98 @@ test.group('Cursos · pausar vendas e hosts do checkout', (group) => {
       (await client.get(`/public/courses/${s}`)).body().checkout.url,
       'https://pay.example.com/c/abc'
     )
+  })
+
+  test('formato do preço: padrão é "completo", vale no snapshot publicado e nos cards; sem o campo mantém o atual', async ({
+    client,
+    assert,
+  }) => {
+    const a = api(client, await makeUser('admin'))
+    const professional = await publishedProfessional(a)
+    const { id, slug: s } = await readyCourse(a, professional.id)
+    const created = await a.get(`/admin/courses/${id}`)
+    assert.equal(
+      created.body().commercial.priceDisplay,
+      'full',
+      'oferta sem o campo = comportamento de sempre'
+    )
+    ;(await a.post(`/admin/courses/${id}/publish`)).assertStatus(200)
+    assert.equal((await client.get(`/public/courses/${s}`)).body().offer.display, 'full')
+
+    // formato inválido é recusado
+    ;(
+      await a.put(
+        `/admin/courses/${id}/commercial`,
+        commercial({ priceDisplay: 'tudo', revision: 1 })
+      )
+    ).assertStatus(422)
+
+    const saved = await a.put(
+      `/admin/courses/${id}/commercial`,
+      commercial({ priceDisplay: 'percent_off', revision: 1 })
+    )
+    saved.assertStatus(200)
+    assert.equal(saved.body().commercial.priceDisplay, 'percent_off')
+    // snapshot imutável: o formato novo só chega ao site depois de republicar
+    assert.equal((await client.get(`/public/courses/${s}`)).body().offer.display, 'full')
+    ;(await a.post(`/admin/courses/${id}/publish`)).assertStatus(200)
+    assert.equal((await client.get(`/public/courses/${s}`)).body().offer.display, 'percent_off')
+
+    const card = (await client.get(`/public/professionals/${professional.slug}`)).body().courses[0]
+    assert.deepInclude(card, {
+      listCents: 25000,
+      totalCents: 17500,
+      discountPct: 30,
+      priceDisplay: 'percent_off',
+    })
+
+    // um cliente antigo (sem priceDisplay) não zera o formato
+    const keep = await a.put(`/admin/courses/${id}/commercial`, commercial({ revision: 2 }))
+    keep.assertStatus(200)
+    assert.equal(keep.body().commercial.priceDisplay, 'percent_off')
+  })
+
+  test('preço final digitado ("por"): manda no total, o % guardado é o arredondado e limites são validados', async ({
+    client,
+    assert,
+  }) => {
+    const a = api(client, await makeUser('admin'))
+    const professional = await publishedProfessional(a)
+    const { id, slug: s } = await readyCourse(a, professional.id)
+    const put = (over: Record<string, unknown>, revision: number) =>
+      a.put(`/admin/courses/${id}/commercial`, commercial({ revision, ...over }))
+
+    // de R$ 297 por R$ 197: 33,67% não é inteiro; o total é exatamente o digitado
+    const ok = await put(
+      { listCents: 29700, finalCents: 19700, discountPct: 0, priceDisplay: 'from_to' },
+      1
+    )
+    ok.assertStatus(200)
+    assert.deepInclude(ok.body().commercial, {
+      listCents: 29700,
+      finalCents: 19700,
+      discountPct: 34,
+    })
+    ;(await a.post(`/admin/courses/${id}/publish`)).assertStatus(200)
+    const pub = (await client.get(`/public/courses/${s}`)).body().offer
+    assert.deepInclude(pub, {
+      listCents: 29700,
+      totalCents: 19700,
+      discountCents: 10000,
+      discountPct: 34,
+    })
+    const card = (await client.get(`/public/professionals/${professional.slug}`)).body().courses[0]
+    assert.deepInclude(card, { listCents: 29700, totalCents: 19700 })
+
+    // "por" maior que o "de" e desconto acima de 90% são recusados
+    ;(await put({ listCents: 10000, finalCents: 15000 }, 2)).assertStatus(422)
+    ;(await put({ listCents: 10000, finalCents: 500 }, 2)).assertStatus(422)
+    // igual ao "de" = sem desconto; sem o campo volta a valer o desconto em %
+    const same = await put({ listCents: 10000, finalCents: 10000, discountPct: 30 }, 2)
+    same.assertStatus(200)
+    assert.deepInclude(same.body().commercial, { finalCents: null, discountPct: 0 })
+    const pct = await put({ listCents: 10000, discountPct: 20 }, 3)
+    assert.deepInclude(pct.body().commercial, { finalCents: null, discountPct: 20 })
   })
 
   test('provedor The Members: a página pública vira embed; voltar para a Academia vale na hora; padrão é Academia', async ({

@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { computeOffer, PRICE_MAX_CENTS, PRICE_MIN_CENTS, type AdminCourse, type CheckoutProvider } from '@academia/contracts'
+import type { AdminCourse, CheckoutProvider } from '@academia/contracts'
+import { PriceFields } from '@/components/price-fields'
+import { initialPriceForm, priceDirty, priceResult } from '@/lib/price-form'
 import { apiSend } from '@/lib/api-client'
-import { brl } from '@/lib/format'
-import { centsToInput, maskBRL, maskPercent, parseBRLToCents } from '../cursos/form-model'
 
 
 type Commercial = NonNullable<AdminCourse['commercial']>
@@ -16,8 +16,7 @@ type Commercial = NonNullable<AdminCourse['commercial']>
 export function CheckoutSettings({ courseId, commercial, canCommerce }: { courseId: number; commercial: Commercial | null; canCommerce: boolean }) {
   const [saved, setSaved] = useState(commercial)
   const [provider, setProvider] = useState<CheckoutProvider>(commercial?.provider ?? 'academia')
-  const [price, setPrice] = useState(commercial ? centsToInput(commercial.listCents) : '')
-  const [discount, setDiscount] = useState(String(commercial?.discountPct ?? 0))
+  const [priceForm, setPriceForm] = useState(initialPriceForm(commercial))
   const [url, setUrl] = useState(commercial?.checkoutUrl ?? '')
   const [active, setActive] = useState(commercial?.active ?? false)
   const [courseRef, setCourseRef] = useState(commercial?.externalCourseId ?? '')
@@ -28,19 +27,15 @@ export function CheckoutSettings({ courseId, commercial, canCommerce }: { course
     if (!canCommerce) return <p className="wizard-hint">Somente quem gerencia o comércio vê e altera preço e checkout.</p>
     return <p className="wizard-hint">Cadastre a oferta em “Dados do cadastro” antes de configurar preço e checkout.</p>
   }
-  const cents = parseBRLToCents(price)
-  const priceValid = cents !== null && cents >= PRICE_MIN_CENTS && cents <= PRICE_MAX_CENTS
-  const discountPct = Math.min(90, Math.max(0, Number(discount) || 0))
-  const preview = priceValid ? computeOffer({ listCents: cents, discountPct, maxInstallments: saved.maxInstallments }) : null
-  const dirty = (priceValid && cents !== saved.listCents) || discountPct !== saved.discountPct || provider !== saved.provider || url.trim() !== saved.checkoutUrl || courseRef.trim() !== (saved.externalCourseId ?? '') || active !== saved.active
+  const price = priceResult(priceForm, saved.maxInstallments)
+  const dirty = priceDirty(priceForm, saved, saved.maxInstallments) || provider !== saved.provider || url.trim() !== saved.checkoutUrl || courseRef.trim() !== (saved.externalCourseId ?? '') || active !== saved.active
 
   const save = async () => {
-    if (!priceValid) return setMsg({ kind: 'error', text: 'Informe um preço entre R$ 1,00 e R$ 100.000,00.' })
+    if (!price.ok) return setMsg({ kind: 'error', text: 'Corrija os campos de preço destacados.' })
     setBusy(true)
     setMsg(null)
     const res = await apiSend<{ commercial?: Commercial; message?: string }>('PUT', `/admin/courses/${courseId}/commercial`, {
-      listCents: cents,
-      discountPct,
+      ...price.value,
       maxInstallments: saved.maxInstallments,
       checkoutUrl: url.trim(),
       provider,
@@ -52,8 +47,7 @@ export function CheckoutSettings({ courseId, commercial, canCommerce }: { course
     setBusy(false)
     if (res.ok && res.data?.commercial) {
       setSaved(res.data.commercial)
-      setPrice(centsToInput(res.data.commercial.listCents))
-      setDiscount(String(res.data.commercial.discountPct))
+      setPriceForm(initialPriceForm(res.data.commercial))
       setMsg({ kind: 'ok', text: 'Oferta salva. Republique o curso para valer na página pública.' })
     } else if (res.status === 409) {
       setMsg({ kind: 'error', text: 'Outra pessoa alterou a oferta. Recarregue a página para continuar.' })
@@ -64,16 +58,7 @@ export function CheckoutSettings({ courseId, commercial, canCommerce }: { course
 
   return (
     <div className="sf-field" data-testid="checkout-settings">
-      <label className="ds-label" htmlFor="ed-offer-price">Preço (R$)</label>
-      <input id="ed-offer-price" className="ds-input" inputMode="numeric" value={price} placeholder="0,00" disabled={!canCommerce || busy} aria-invalid={!priceValid} onChange={(e) => setPrice(maskBRL(e.target.value))} />
-      <label className="ds-label" htmlFor="ed-offer-discount">Desconto (%)</label>
-      <input id="ed-offer-discount" className="ds-input" inputMode="numeric" value={discount} placeholder="0" disabled={!canCommerce || busy} onChange={(e) => setDiscount(maskPercent(e.target.value))} />
-      {preview ? (
-        <p className="wizard-hint" role="status">
-          Prévia: de {brl(preview.listCents)} por <strong>{brl(preview.totalCents)}</strong>
-          {preview.discountPct > 0 ? ` (${preview.discountPct}% de desconto)` : ''}. O servidor recalcula este valor.
-        </p>
-      ) : <p className="wizard-hint">Informe um preço entre R$ 1,00 e R$ 100.000,00.</p>}
+      <PriceFields name="ed-price" form={priceForm} onChange={setPriceForm} disabled={!canCommerce || busy} maxInstallments={saved.maxInstallments} />
       <span className="ds-label">Checkout</span>
       <select className="ds-input" aria-label="Checkout" value={provider} disabled={!canCommerce || busy} onChange={(e) => setProvider(e.target.value as CheckoutProvider)}>
         <option value="academia">Academia (formulário da página + redirecionamento)</option>
