@@ -5,6 +5,7 @@ import Course from '#models/course'
 import {
   deliveryIdFor,
   latestEventsByRef,
+  paymentHistoryFor,
   ipMode,
   retentionDays,
   sessionsEnabled,
@@ -15,7 +16,7 @@ import {
 
 const PER_PAGES = [10, 20, 50]
 const DEFAULT_PER_PAGE = 20
-const STATES: PaymentState[] = ['paid', 'pending', 'failed', 'none']
+const STATES: PaymentState[] = ['paid', 'pending', 'refunded', 'failed', 'none']
 
 const likeEscape = (text: string) => text.replace(/[\\%_]/g, (c) => `\\${c}`)
 
@@ -108,6 +109,7 @@ export default class AdminCheckoutSessionsController {
     const refsByState: Record<PaymentState, string[]> = {
       paid: [],
       pending: [],
+      refunded: [],
       failed: [],
       none: [],
     }
@@ -167,9 +169,10 @@ export default class AdminCheckoutSessionsController {
       refs.length
         ? total(await CheckoutSession.query().whereIn('ref', refs).count('* as n').first())
         : 0
-    const [paid, pending, failed, linkedSessions] = await Promise.all([
+    const [paid, pending, refunded, failed, linkedSessions] = await Promise.all([
       countState(refsByState.paid),
       countState(refsByState.pending),
+      countState(refsByState.refunded),
       countState(refsByState.failed),
       countState(linkedRefs),
     ])
@@ -178,7 +181,7 @@ export default class AdminCheckoutSessionsController {
       total: total(totalRow),
       page,
       perPage,
-      counts: { all, paid, pending, failed, none: Math.max(0, all - linkedSessions) },
+      counts: { all, paid, pending, refunded, failed, none: Math.max(0, all - linkedSessions) },
       enabled: sessionsEnabled(),
       ipMode: ipMode(),
       retentionDays: retentionDays(),
@@ -195,6 +198,7 @@ export default class AdminCheckoutSessionsController {
     return {
       ...sessionView(session, titles),
       payment: paymentView(latest, session.ref, deliveryId),
+      history: await paymentHistoryFor(session.ref),
     }
   }
 
