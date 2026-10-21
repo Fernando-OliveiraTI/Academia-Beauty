@@ -93,7 +93,7 @@ describe('validateCheckoutUrl', () => {
 });
 
 describe('readiness', () => {
-  const base: CommercialInput = { listCents: 25000, discountPct: 0, maxInstallments: 1, checkoutUrl: 'https://pay.example.com/c', provider: 'academia', externalCourseId: '', environment: 'production', active: true };
+  const base: CommercialInput = { listCents: 25000, discountPct: 0, maxInstallments: 1, priceDisplay: 'full', finalCents: null, checkoutUrl: 'https://pay.example.com/c', provider: 'academia', externalCourseId: '', environment: 'production', active: true };
 
   it('curso vazio lista pendências; curso completo não', () => {
     const empty = courseDataSchema.parse({ title: 'Curso X' });
