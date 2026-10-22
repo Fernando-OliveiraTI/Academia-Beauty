@@ -27,6 +27,7 @@ const PublicHomeController = () => import('#controllers/public_home_controller')
 const AdminMediaController = () => import('#controllers/admin_media_controller')
 const PublicMediaController = () => import('#controllers/public_media_controller')
 const PublicTrackController = () => import('#controllers/public_track_controller')
+const PublicSitemapController = () => import('#controllers/public_sitemap_controller')
 const AdminDashboardController = () => import('#controllers/admin_dashboard_controller')
 
 router.get('/health', async ({ response }) => {
@@ -59,6 +60,7 @@ router
     router.get('/professionals', [PublicProfessionalsController, 'showcase'])
     router.get('/professionals/:slug', [PublicProfessionalsController, 'show'])
     router.get('/courses/:slug', [PublicCoursesController, 'show'])
+    router.get('/sitemap', [PublicSitemapController, 'index'])
     router.post('/track', [PublicTrackController, 'store'])
     router.get('/checkout-status', [PublicCheckoutStatusController, 'show'])
     router.post('/checkout-sessions', [PublicCheckoutSessionsController, 'store'])
