@@ -20,6 +20,15 @@ export default await Env.create(new URL('../', import.meta.url), {
 
   /*
   |----------------------------------------------------------
+  | Telemetria (Azure Application Insights). Opcional: sem a connection string fica desligada.
+  |----------------------------------------------------------
+  */
+  APPLICATIONINSIGHTS_CONNECTION_STRING: Env.schema.string.optional(),
+  /** Fração das requisições enviadas (0–1). Erros e eventos nunca são amostrados. Padrão 1. */
+  TELEMETRY_REQUEST_SAMPLING: Env.schema.number.optional(),
+
+  /*
+  |----------------------------------------------------------
   | Variables for configuring database connection
   |----------------------------------------------------------
   */

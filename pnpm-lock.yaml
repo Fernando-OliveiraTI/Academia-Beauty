@@ -22,6 +22,9 @@ importers:
       '@academia/section-schemas':
         specifier: workspace:*
         version: link:../../packages/section-schemas
+      '@academia/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
       '@adonisjs/auth':
         specifier: ^9.4.0
         version: 9.6.0(25a78237bae372cde4390477afadbdc2)
@@ -137,6 +140,9 @@ importers:
       '@academia/section-schemas':
         specifier: workspace:*
         version: link:../../packages/section-schemas
+      '@academia/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
       '@hookform/resolvers':
         specifier: ^5.2.0
         version: 5.9.2(@sinclair/typebox@0.34.52)(@vinejs/vine@3.0.1)(react-hook-form@7.90.0(@types/react@19.3.0)(react@19.3.1))(zod@4.6.7)
@@ -338,6 +344,18 @@ importers:
       vitest:
         specifier: ^3.2.0
         version: 3.2.7(@types/node@22.20.5)(jsdom@26.1.0)(tsx@4.23.15)
+
+  packages/telemetry:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.19.0
+        version: 20.19.43
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/node@20.19.43)(jsdom@26.1.0)(tsx@4.23.15)
 
   packages/visual-baseline:
     dependencies:

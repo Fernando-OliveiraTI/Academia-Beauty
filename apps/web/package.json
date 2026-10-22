@@ -30,6 +30,7 @@
     "@academia/page-renderer": "workspace:*",
     "@academia/page-schema": "workspace:*",
     "@academia/section-schemas": "workspace:*",
+    "@academia/telemetry": "workspace:*",
     "@hookform/resolvers": "^5.2.0",
     "@types/qrcode": "^1.5.6",
     "next": "16.4.2",
