@@ -2,12 +2,17 @@ import type { Metadata } from 'next'
 import { NO_OFFER, PageRenderer, resolveHomeDocument } from '@academia/page-renderer'
 import { loadHome } from '@/lib/home-data'
 import { PageTracker } from '@/components/page-tracker'
+import { JsonLd } from '@/components/json-ld'
+import { pageMetadata, siteJsonLd } from '@/lib/seo'
 import '@academia/page-renderer/home.css'
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: '/',
   title: 'Academia Beauty',
+  absolute: true,
   description: 'Aprenda e cresça com os melhores: cursos online com grandes profissionais da beleza.',
-}
+  image: '/site/home/elenco-hero.png',
+})
 
 // Renderizada por requisição (não no build, que não tem API); os dados vêm do cache de fetch por tag.
 export const dynamic = 'force-dynamic'
@@ -19,6 +24,7 @@ export default async function HomePage() {
   return (
     <>
       <PageRenderer document={document} ctx={{ offer: NO_OFFER, year: new Date().getFullYear() }} />
+      <JsonLd data={siteJsonLd()} />
       <PageTracker type="home" />
     </>
   )

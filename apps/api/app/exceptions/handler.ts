@@ -1,6 +1,8 @@
 import app from '@adonisjs/core/services/app'
 import { HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import { errors as shieldErrors } from '@adonisjs/shield'
+import type { HttpError } from '@adonisjs/core/types/http'
+import telemetry from '#services/telemetry_service'
 
 export default class HttpExceptionHandler extends ExceptionHandler {
   /**
@@ -29,6 +31,20 @@ export default class HttpExceptionHandler extends ExceptionHandler {
    * @note You should not attempt to send a response from this method.
    */
   async report(error: unknown, ctx: HttpContext) {
+    // Só falhas do servidor: 5xx ou erro inesperado (sem status). Validação, login, permissão e 404 são erro do
+    // cliente e já aparecem como requisição; reportá-los como exceção encheria o painel de ruído.
+    const status = (error as { status?: number }).status
+    if (this.shouldReport(error as HttpError) && (status === undefined || status >= 500)) {
+      telemetry.trackException({
+        error,
+        operationId: ctx.request.id(),
+        properties: {
+          route: `${ctx.request.method()} ${ctx.route?.pattern ?? 'sem rota'}`,
+          status: status ?? 500,
+          code: (error as { code?: string }).code,
+        },
+      })
+    }
     return super.report(error, ctx)
   }
 }

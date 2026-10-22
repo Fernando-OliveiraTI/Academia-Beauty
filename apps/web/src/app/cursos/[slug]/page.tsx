@@ -5,6 +5,8 @@ import { PageRenderer, resolveCourseDocument } from '@academia/page-renderer'
 import type { PageDocument } from '@academia/page-schema'
 import { publicGet } from '@/lib/api-server'
 import { PageTracker } from '@/components/page-tracker'
+import { JsonLd } from '@/components/json-ld'
+import { courseJsonLd, pageMetadata } from '@/lib/seo'
 import '@academia/page-renderer/course.css'
 
 type Params = { params: Promise<{ slug: string }> }
@@ -31,8 +33,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params
   const course = await load(slug)
   if (!course) return { title: 'Curso não encontrado' }
-  const { title, lead, metaDescription } = course.data
-  return { title: `${title} · ${course.professional.data.name}`, description: metaDescription || lead || undefined }
+  const { title, lead, metaDescription, coverSrc } = course.data
+  return pageMetadata({ path: `/cursos/${slug}`, title: `${title} · ${course.professional.data.name}`, description: metaDescription || lead || undefined, image: coverSrc || undefined })
 }
 
 // Página servida do snapshot publicado (conteúdo + oferta); atualizada por tag quando o admin publica.
@@ -45,6 +47,7 @@ export default async function CoursePage({ params }: Params) {
   return (
     <>
       <PageRenderer document={document} ctx={{ offer: course.offer, year: new Date().getFullYear(), checkout: course.checkout.mode === 'embed' ? { ...course.checkout, statusUrl: '/api/public/checkout-status', sessionUrl: '/api/public/checkout-sessions', courseSlug: course.slug } : course.checkout, professional: { slug: course.professional.slug, name: course.professional.data.name } }} />
+      <JsonLd data={courseJsonLd({ slug, title: course.data.title, description: course.data.metaDescription || course.data.lead, coverSrc: course.data.coverSrc, professional: { slug: course.professional.slug, name: course.professional.data.name }, offer: course.checkout.url ? { totalCents: course.offer.totalCents } : null })} />
       <PageTracker type="course" slug={slug} />
     </>
   )

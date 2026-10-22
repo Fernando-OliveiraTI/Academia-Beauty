@@ -45,6 +45,9 @@ const nextConfig: NextConfig = {
       { source: '/admin/:path((?!preview/[^/]+/[^/]+/live$|preview/home/live$).*)', headers: securityHeaders('DENY', false) },
       { source: '/admin/preview/:kind/:id/live', headers: securityHeaders('SAMEORIGIN', false) },
       { source: '/admin/preview/home/live', headers: securityHeaders('SAMEORIGIN', false) },
+      // Painel, pré-visualizações e rotas internas nunca entram em buscadores, mesmo com a indexação do site ligada
+      // (a API é um proxy externo: fica de fora por robots.txt).
+      { source: '/:area(admin|preview|internal|healthz)/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] },
     ]
   },
 }

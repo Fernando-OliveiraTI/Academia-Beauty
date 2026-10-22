@@ -66,6 +66,7 @@ export default defineConfig({
   */
   preloads: [
     () => import('#start/production_checks'),
+    { file: () => import('#start/telemetry'), environment: ['web'] },
     () => import('#start/media'),
     () => import('#start/routes'),
     () => import('#start/kernel'),
