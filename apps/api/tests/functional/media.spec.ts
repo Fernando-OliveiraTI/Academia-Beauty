@@ -6,6 +6,7 @@ import { test } from '@japa/runner'
 import app from '@adonisjs/core/services/app'
 import testUtils from '@adonisjs/core/services/test_utils'
 import db from '@adonisjs/lucid/services/db'
+import { mediaStorage } from '#services/media_service'
 import sharp from 'sharp'
 import env from '#start/env'
 import { makeUser } from '#tests/helpers'
@@ -227,6 +228,22 @@ test.group('Mídia · biblioteca', (group) => {
     assert.equal((await raw(`/media/${id}`, { range: 'bytes=-5' })).body.length, 5)
     assert.equal((await raw(`/media/${id}`, { range: 'bytes=99999-' })).status, 416)
     assert.equal((await raw(`/media/${id}`, { range: 'lixo' })).status, 416)
+  })
+
+  test('arquivo ausente no armazenamento: 404 e a API continua de pé (antes derrubava o processo)', async ({
+    client,
+    assert,
+  }) => {
+    const editor = await makeUser('editor')
+    const res = await send(client, editor, 'sumiu.mp4', mp4())
+    res.assertStatus(201)
+    const { id } = res.body()
+    const asset = await db.from('media_assets').where('id', id).first()
+    await mediaStorage().delete(asset.storage_key)
+    assert.equal((await raw(`/media/${id}`)).status, 404)
+    assert.equal((await raw(`/media/${id}`, { range: 'bytes=0-9' })).status, 404)
+    // O processo segue respondendo depois da falha.
+    assert.equal((await raw('/health')).status, 200)
   })
 
   test('vídeo QuickTime (.mov de celular) entra como MP4', async ({ client, assert }) => {
