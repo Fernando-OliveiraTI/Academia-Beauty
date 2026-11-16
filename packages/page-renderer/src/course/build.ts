@@ -2,6 +2,7 @@ import type { PageDocument } from '@academia/page-schema';
 import {
   COURSE_LEVEL_LABEL,
   COURSE_MODALITY_LABEL,
+  PLACEHOLDER_ITEM,
   type CourseCard,
   type CourseData,
   type ProfessionalData,
@@ -94,6 +95,7 @@ export function buildCourseDocument(input: { data: CourseData; professional: Pro
   if (data.benefits.length) {
     benefits.cards = data.benefits.map((b, i) => ({ icon: BENEFIT_ICONS[i % BENEFIT_ICONS.length]!, title: b.title, text: b.text }));
   } else {
+    benefits.cards = [{ icon: 'check', ...PLACEHOLDER_ITEM }];
     benefitsSection.visibility = { enabled: false };
   }
 
@@ -104,24 +106,30 @@ export function buildCourseDocument(input: { data: CourseData; professional: Pro
     curriculum.lead = `${data.modules.length} ${plural(data.modules.length, 'módulo', 'módulos')}${data.workloadHours ? ` · ${data.workloadHours} ${plural(data.workloadHours, 'hora', 'horas')} de conteúdo` : ''}.`;
     curriculum.modules = data.modules.map((m) => ({ title: m.title, text: m.text, ...(m.bullets.length ? { bullets: m.bullets } : {}) }));
   } else {
+    curriculum.title = clip(`O que você vai aprender em ${data.title}.`, 160);
+    curriculum.lead = '';
+    curriculum.modules = [{ ...PLACEHOLDER_ITEM }];
     curriculumSection.visibility = { enabled: false };
   }
 
   const deliverablesSection = byId('deliverables');
   const deliverables = deliverablesSection.content as S.DeliverablesContent;
+  // A ficha vem sempre do curso: o exemplo do template é de outro curso (Morena Iluminada).
+  deliverables.specs = [
+    { label: 'Curso', value: clip(data.title, 80) },
+    { label: 'Instrutor', value: clip(pro.name, 80) },
+    { label: 'Formato', value: modality },
+    { label: 'Nível', value: level },
+    ...(data.workloadHours ? [{ label: 'Carga horária', value: `${data.workloadHours} ${plural(data.workloadHours, 'hora', 'horas')}` }] : []),
+    ...(data.audience ? [{ label: 'Público', value: clip(data.audience, 80) }] : []),
+    ...(days ? [{ label: 'Garantia', value: `${days} ${plural(days, 'dia', 'dias')}` }] : []),
+  ];
   if (data.deliverables.length) {
     deliverables.title = 'O que você recebe.';
     deliverables.items = data.deliverables;
-    deliverables.specs = [
-      { label: 'Curso', value: clip(data.title, 80) },
-      { label: 'Instrutor', value: clip(pro.name, 80) },
-      { label: 'Formato', value: modality },
-      { label: 'Nível', value: level },
-      ...(data.workloadHours ? [{ label: 'Carga horária', value: `${data.workloadHours} ${plural(data.workloadHours, 'hora', 'horas')}` }] : []),
-      ...(data.audience ? [{ label: 'Público', value: clip(data.audience, 80) }] : []),
-      ...(days ? [{ label: 'Garantia', value: `${days} ${plural(days, 'dia', 'dias')}` }] : []),
-    ];
   } else {
+    deliverables.title = 'O que você recebe.';
+    deliverables.items = [{ ...PLACEHOLDER_ITEM }];
     deliverablesSection.visibility = { enabled: false };
   }
 
@@ -223,3 +231,28 @@ export function professionalCourseCards(cards: readonly CourseCard[], personName
     };
   });
 }
+
+/** Seções do curso cujas listas alimentam o cadastro (benefícios, módulos, entregáveis) e a chave da lista. */
+const LIST_KEY: Record<string, 'cards' | 'modules' | 'items'> = { 'course.benefits': 'cards', 'course.curriculum': 'modules', 'course.deliverables': 'items' };
+const SAMPLE_TITLES = new Set(
+  courseOriginalTemplate.sections.flatMap((s) => {
+    const key = LIST_KEY[s.type];
+    const list = key ? (s.content as Record<string, unknown>)[key] : null;
+    return Array.isArray(list) ? list.map((i) => String((i as { title?: unknown }).title ?? '')) : [];
+  })
+);
+
+/**
+ * Conteúdo de uma seção de lista do curso sem os itens de exemplo do template (texto da página de referência, de outro
+ * curso): se todos os itens são do exemplo, a lista vira o item provisório. Usado ao mostrar uma seção oculta de
+ * documentos antigos, para o exemplo não parecer (nem contar como) conteúdo do curso. `null` = nada a trocar.
+ */
+export function withoutTemplateSamples(type: string, content: Record<string, unknown>): Record<string, unknown> | null {
+  const key = LIST_KEY[type];
+  const list = key ? content[key] : null;
+  if (!key || !Array.isArray(list) || list.length === 0) return null;
+  if (!list.every((i) => SAMPLE_TITLES.has(String((i as { title?: unknown }).title ?? '')))) return null;
+  const placeholder = type === 'course.benefits' ? { icon: 'check', ...PLACEHOLDER_ITEM } : { ...PLACEHOLDER_ITEM };
+  return { ...content, [key]: [placeholder] };
+}
+

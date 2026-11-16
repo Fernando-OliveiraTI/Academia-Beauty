@@ -34,7 +34,8 @@ Tema escuro. Fundo `--color-background #0b0a09`, superfície `--color-surface #1
 | Escolher item com imagem | `ProductPicker` (digitar o ID **ou** abrir lista com busca, miniatura 4:3, nome completo, ID mono) |
 | Imagem de campo | `ImageField` + janela "Trocar arquivo" (`media-dropzone` só aqui) |
 | Galeria de modelos | `TemplateGallery` |
-| Formulário em etapas | `wizard-ui` (`WizardSteps`, `PanelHead`, `Field`/`TextArea` do design-system com ícone, prefixo, dica, contador) |
+| Dados fora da página (profissional/curso) | painel **Configurações** do editor (`editor/page-settings.tsx`), com `Field`/`TextArea` do design-system; não existe mais formulário em etapas |
+| Pendências para publicar | `PublishIssues` no editor: leva à seção/campo (`locateField`) ou às Configurações; nunca redirecionar para fora do editor |
 | Painel do editor visual | `.ed-form` / `.ed-advanced`; ver regras de overflow abaixo |
 | Filtro por situação | chips `.tm-filter` com contagem (`aria-pressed`), nunca `<select>` escondendo as opções |
 | Estado vazio | `.tm-empty` (discreto) — ver regra 5 |

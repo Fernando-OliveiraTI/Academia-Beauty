@@ -31,3 +31,23 @@ describe('sectionNodes', () => {
     expect(map!.get('b')?.id).toBe('b')
   })
 })
+
+describe('fieldAnchor', async () => {
+  const { fieldAnchor } = await import('./section-dom')
+  const hero = { sub: 'Frase', hud: { label: 'Expert / Hair', accent: '', value: '' }, portrait: { src: '/site/placeholder.svg', alt: 'Ana' }, meta: [{ label: 'Instagram', value: '@ana' }] }
+
+  it('campo com valor: o próprio texto ou arquivo', () => {
+    expect(fieldAnchor(hero, 'sub')).toEqual({ texts: ['Frase'], srcs: [], container: false })
+    expect(fieldAnchor(hero, 'portrait.src')).toEqual({ texts: [], srcs: ['/site/placeholder.svg'], container: false })
+  })
+
+  it('campo vazio (pendência): os vizinhos, marcando o bloco que os envolve', () => {
+    expect(fieldAnchor(hero, 'hud.accent')).toEqual({ texts: ['Expert / Hair'], srcs: [], container: true })
+  })
+
+  it('lista: o primeiro texto dentro dela; links não servem de âncora', () => {
+    expect(fieldAnchor({ cards: [{ title: 'Técnica', text: 'Passo' }] }, 'cards').texts).toEqual(['Técnica', 'Passo'])
+    // Sem vizinho visível: nada a marcar (fica só o destaque da seção), em vez de marcar um bloco errado.
+    expect(fieldAnchor({ instagram: { handle: '', href: 'https://x.com' }, title: 'T' }, 'instagram.handle')).toEqual({ texts: [], srcs: [], container: true })
+  })
+})

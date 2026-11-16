@@ -1,5 +1,5 @@
 import type { PageDocument } from '@academia/page-schema';
-import type { CourseCard, ProfessionalData } from '@academia/contracts';
+import { PLACEHOLDER_BIO, type CourseCard, type ProfessionalData } from '@academia/contracts';
 import { PROFESSIONAL_TEMPLATE_KEY, professionalOriginalTemplate } from './template';
 import { SCHEMA_VERSION } from '../schemas-version';
 import { clip } from '../clip';
@@ -89,7 +89,7 @@ export function buildProfessionalDocument(
 
   const bio = byId('bio').content as S.BioContent;
   bio.tickerUnit = `${clip(upper(firstName), 30)} • ACADEMIA BEAUTY • `;
-  bio.paragraphs = data.bio.length ? data.bio : ['Escreva aqui a trajetória do profissional.'];
+  bio.paragraphs = data.bio.length ? data.bio : [PLACEHOLDER_BIO];
   bio.instagram = { handle: data.instagramHandle, followers: data.instagramFollowers, href: data.instagramUrl || '#' };
 
   const works = byId('works');

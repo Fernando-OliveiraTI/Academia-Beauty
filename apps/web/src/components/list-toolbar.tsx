@@ -15,6 +15,8 @@ type Props = {
   statusOptions?: Option[]
   /** Filtro extra por lista (ex.: profissional do curso). `value` vazio = todos. */
   extra?: { name: string; label: string; options: Option[] }
+  /** Outros parâmetros da URL controlados fora da barra (ex.: `professionalId`): contam para mostrar "Limpar filtros". */
+  filterParams?: readonly string[]
   /** `inline`: abas à esquerda e busca/ordem/itens por página à direita, na mesma linha (listas técnicas). Padrão: empilhado. */
   variant?: 'stacked' | 'inline'
 }
@@ -27,7 +29,7 @@ const ChevronIcon = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="
  * Barra de filtros das listas do painel. Tudo vive na URL (compartilhável e com voltar do navegador):
  * a busca aplica depois de uma pausa na digitação e os demais controles aplicam na hora, sempre voltando à página 1.
  */
-export function ListToolbar({ searchPlaceholder, tabs, sorts, perPageOptions = [10, 20, 50], statusOptions, extra, variant = 'stacked' }: Props) {
+export function ListToolbar({ searchPlaceholder, tabs, sorts, perPageOptions = [10, 20, 50], statusOptions, extra, filterParams = [], variant = 'stacked' }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
@@ -59,7 +61,7 @@ export function ListToolbar({ searchPlaceholder, tabs, sorts, perPageOptions = [
     timer.current = setTimeout(() => apply({ q: value.trim() }), 350)
   }
 
-  const dirty = Boolean(q || status || params.get('sort') || params.get('perPage') || (extra && params.get(extra.name)))
+  const dirty = Boolean(q || status || params.get('sort') || params.get('perPage') || (extra && params.get(extra.name)) || filterParams.some((k) => params.get(k)))
 
   if (variant === 'inline') {
     return (

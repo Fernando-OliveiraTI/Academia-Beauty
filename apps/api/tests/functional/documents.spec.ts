@@ -305,7 +305,8 @@ test.group('Documento de página · profissionais', (group) => {
     assert.equal(read.document.sections[1].content.paragraphs[0], 'Texto do editor.')
     const detail = (await a.get(`/admin/professionals/${p.id}`)).body()
     assert.isTrue(detail.hasUnpublishedChanges)
-    assert.equal(detail.revision, 2 + 0)
+    // Editor único: as duas gravações mudaram a trajetória (cadastro 1 → 2 → 3) e restaurar soma mais uma.
+    assert.equal(detail.revision, 4)
 
     ;(
       await a.post(`/admin/professionals/${p.id}/document/versions/99/restore`, { revision: 3 })
@@ -470,7 +471,8 @@ test.group('Documento de página · regras impostas pelo servidor', (group) => {
     // outra pessoa edita o cadastro depois
     ;(
       await a.put(`/admin/professionals/${p.id}`, {
-        data: { ...detail.data, tagline: 'Mudou' },
+        // Campo de Configurações: os da página (frase, trajetória…) vêm do documento.
+        data: { ...detail.data, specialty: 'Mudou' },
         revision: detail.revision,
       })
     ).assertStatus(200)
@@ -479,7 +481,7 @@ test.group('Documento de página · regras impostas pelo servidor', (group) => {
       dataRevision: detail.revision,
     })
     stale.assertStatus(409)
-    assert.equal((await a.get(`/admin/professionals/${p.id}`)).body().data.tagline, 'Mudou')
+    assert.equal((await a.get(`/admin/professionals/${p.id}`)).body().data.specialty, 'Mudou')
     ;(
       await a.post(`/admin/professionals/${p.id}/document/versions/1/restore`, {
         revision: 1,
@@ -571,5 +573,164 @@ test.group('Documento de página · seções repetidas e fundo (9B/9C)', (group)
     )
     onHero.assertStatus(422)
     assert.include(JSON.stringify(onHero.body()), 'não aceita fundo')
+  })
+})
+
+test.group('Editor único · a página alimenta o cadastro', (group) => {
+  group.each.setup(() => testUtils.db().withGlobalTransaction())
+
+  const heroWith = (patch: Record<string, unknown>) => {
+    const h = hero()
+    return { ...h, content: { ...h.content, ...patch } }
+  }
+
+  test('salvar a página copia frase, anos, retrato, trajetória e Instagram; nome e foto do cartão ficam', async ({
+    client,
+    assert,
+  }) => {
+    const a = api(client, await makeUser('editor'))
+    const p = await newProfessional(a)
+    const before = (await a.get(`/admin/professionals/${p.id}`)).body()
+    const saved = await a.put(`/admin/professionals/${p.id}/document`, {
+      document: proDoc(bio('Trajetória escrita no editor.')),
+      revision: 0,
+    })
+    saved.assertStatus(200)
+    assert.equal(saved.body().revision, before.revision + 1)
+    const after = (await a.get(`/admin/professionals/${p.id}`)).body()
+    assert.deepEqual(after.data.bio, ['Trajetória escrita no editor.'])
+    assert.equal(after.data.name, 'Ana Souza')
+    assert.equal(after.data.cardPhotoSrc, '/site/home/lukas-campos.png')
+    assert.equal(after.revision, before.revision + 1)
+
+    // Mesmo conteúdo de novo: o documento sobe de revisão, o cadastro não.
+    const again = await a.put(`/admin/professionals/${p.id}/document`, {
+      document: proDoc(bio('Trajetória escrita no editor.')),
+      revision: 1,
+    })
+    assert.equal(again.body().revision, after.revision)
+  })
+
+  test('publicar confere a página, não o cadastro antigo: pendência aponta o campo e some ao preencher', async ({
+    client,
+    assert,
+  }) => {
+    const a = api(client, await makeUser('editor'))
+    const p = await newProfessional(a) // cadastro com 10 anos de experiência
+    await a.put(`/admin/professionals/${p.id}/document`, {
+      document: {
+        ...proDoc(),
+        sections: [heroWith({ hud: { label: 'Expert / Hair', accent: '', value: 'anos' } }), bio()],
+      },
+      revision: 0,
+    })
+    const blocked = await a.post(`/admin/professionals/${p.id}/publish`)
+    blocked.assertStatus(422)
+    assert.equal(blocked.body().code, 'not_ready')
+    assert.deepEqual(
+      blocked.body().errors.map((e: { field: string }) => e.field),
+      ['experienceYears']
+    )
+
+    await a.put(`/admin/professionals/${p.id}/document`, {
+      document: {
+        ...proDoc(),
+        sections: [
+          heroWith({ hud: { label: 'Expert / Hair', accent: '12', value: 'anos' } }),
+          bio(),
+        ],
+      },
+      revision: 1,
+    })
+    ;(await a.post(`/admin/professionals/${p.id}/publish`)).assertStatus(200)
+    const snap = await db.from('professional_versions').where('professional_id', p.id).first()
+    const data = typeof snap.data === 'string' ? JSON.parse(snap.data) : snap.data
+    assert.equal(data.experienceYears, 12)
+  })
+
+  test('documento salvo antes da sincronização é aplicado ao publicar', async ({
+    client,
+    assert,
+  }) => {
+    const a = api(client, await makeUser('editor'))
+    const p = await newProfessional(a)
+    const doc = { ...proDoc(), sections: [heroWith({ sub: 'Frase só na página.' }), bio()] }
+    // Simula um documento gravado direto no banco, sem passar pela sincronização.
+    await db
+      .from('professionals')
+      .where('id', p.id)
+      .update({ document: JSON.stringify(doc), document_revision: 1 })
+    ;(await a.post(`/admin/professionals/${p.id}/publish`)).assertStatus(200)
+    assert.equal(
+      (await a.get(`/admin/professionals/${p.id}`)).body().data.tagline,
+      'Frase só na página.'
+    )
+  })
+
+  test('curso: listas vêm das seções visíveis; seção oculta conta como vazia', async ({
+    client,
+    assert,
+  }) => {
+    const a = api(client, await makeUser('editor'))
+    const pro = await newProfessional(a)
+    const created = await a.post('/admin/courses', {
+      professionalId: pro.id,
+      slug: slug(),
+      data: {
+        title: 'Morena Iluminada',
+        benefits: [{ title: 'Antigo', text: 'Do cadastro.' }],
+        deliverables: [{ title: 'Antigo', text: 'Do cadastro.' }],
+      },
+    })
+    created.assertStatus(201)
+    const id = created.body().id as number
+    const benefits = section('benefits', 'course.benefits', {
+      eyebrow: 'Por que',
+      title: 'Benefícios',
+      cards: [{ icon: 'gem', title: 'Da página', text: 'Escrito no editor.' }],
+    })
+    const deliverables = {
+      ...section('deliverables', 'course.deliverables', {
+        eyebrow: 'Entrega',
+        title: 'O que você recebe.',
+        items: [{ title: 'Exemplo', text: 'Do template.' }],
+        specsTitle: 'Ficha',
+        specs: [],
+      }),
+      visibility: { enabled: false },
+    }
+    ;(
+      await a.put(`/admin/courses/${id}/document`, {
+        document: courseDoc(benefits, deliverables),
+        revision: 0,
+      })
+    ).assertStatus(200)
+    const data = (await a.get(`/admin/courses/${id}`)).body().data
+    assert.deepEqual(data.benefits, [{ title: 'Da página', text: 'Escrito no editor.' }])
+    assert.deepEqual(data.deliverables, [])
+    assert.equal(data.lead, 'A metodologia de corte para valorizar a cor.')
+  })
+})
+
+test.group('Editor único · Configurações não sobrescrevem a página', (group) => {
+  group.each.setup(() => testUtils.db().withGlobalTransaction())
+
+  test('gravar o cadastro com valores velhos mantém os campos da página e aplica o resto', async ({
+    client,
+    assert,
+  }) => {
+    const a = api(client, await makeUser('editor'))
+    const p = await newProfessional(a)
+    const saved = await a.put(`/admin/professionals/${p.id}/document`, {
+      document: proDoc(bio('Da página.')),
+      revision: 0,
+    })
+    const res = await a.put(`/admin/professionals/${p.id}`, {
+      data: { ...professionalData(), specialty: 'Barber', bio: ['Velho do cadastro.'] },
+      revision: saved.body().revision,
+    })
+    res.assertStatus(200)
+    assert.deepEqual(res.body().data.bio, ['Da página.'])
+    assert.equal(res.body().data.specialty, 'Barber')
   })
 })

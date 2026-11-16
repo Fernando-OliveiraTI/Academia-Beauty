@@ -4,7 +4,7 @@ import { PRICE_DISPLAYS, PRICE_DISPLAY_LABEL, type PriceDisplay } from '@academi
 import { displayFlags } from '@academia/page-renderer'
 import { brl } from '@/lib/format'
 import { priceResult, switchPriceDisplay, type PriceErrors, type PriceForm } from '@/lib/price-form'
-import { maskBRL, maskPercent } from '@/app/admin/(protected)/cursos/form-model'
+import { maskBRL, maskPercent } from '@/lib/money-input'
 
 /**
  * Preço da oferta: o usuário escolhe como o valor aparece e o formulário mostra só os campos daquele formato

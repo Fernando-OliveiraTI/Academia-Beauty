@@ -75,3 +75,34 @@ export function findFieldPath(content: unknown, pick: Pick<PickInfo, 'texts' | '
   }
   return null
 }
+
+/**
+ * O que procurar na página para mostrar onde um campo do formulário aparece (o inverso de `findFieldPath`).
+ * - Campo com valor: o próprio texto ou arquivo.
+ * - Lista: o primeiro texto/arquivo dentro dela.
+ * - Campo vazio (ex.: pendência): os textos dos campos vizinhos, e `container` pede para marcar o bloco que os
+ *   envolve, que é onde o valor vai aparecer.
+ */
+export function fieldAnchor(content: unknown, path: string): { texts: string[]; srcs: string[]; container: boolean } {
+  const parts = path.split('.').filter(Boolean)
+  const at = (keys: string[]) => keys.reduce<unknown>((node, k) => (node && typeof node === 'object' ? (node as Record<string, unknown>)[k] : undefined), content)
+  const leaves = (node: unknown, key = ''): { key: string; value: string }[] => {
+    if (typeof node === 'string') return node.trim() ? [{ key, value: node }] : []
+    if (Array.isArray(node)) return node.flatMap((item) => leaves(item, key))
+    if (node && typeof node === 'object') return Object.entries(node).flatMap(([k, v]) => leaves(v, k))
+    return []
+  }
+  const isMedia = (key: string) => key === 'src' || /Src$/.test(key)
+  const split = (found: { key: string; value: string }[]) => ({
+    texts: found.filter((l) => !isMedia(l.key) && !/^(#|https?:|\/)/.test(l.value)).map((l) => l.value).slice(0, 4),
+    srcs: found.filter((l) => isMedia(l.key)).map((l) => l.value).slice(0, 2),
+  })
+  const own = split(leaves(at(parts), parts.at(-1) ?? ''))
+  if (own.texts.length || own.srcs.length) return { ...own, container: false }
+  // Vazio: procura pelos vizinhos, subindo até achar algo visível.
+  for (let depth = parts.length - 1; depth > 0; depth -= 1) {
+    const near = split(leaves(at(parts.slice(0, depth))))
+    if (near.texts.length || near.srcs.length) return { ...near, container: true }
+  }
+  return { texts: [], srcs: [], container: true }
+}

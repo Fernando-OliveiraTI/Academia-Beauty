@@ -1,5 +1,5 @@
 import { computeOffer, PRICE_MAX_CENTS, PRICE_MIN_CENTS, type ComputedOffer, type PriceDisplay } from '@academia/contracts'
-import { centsToInput, parseBRLToCents } from '@/app/admin/(protected)/cursos/form-model'
+import { centsToInput, parseBRLToCents } from '@/lib/money-input'
 
 /**
  * Campos de preço do formulário da oferta. O formato escolhido decide quais campos aparecem:

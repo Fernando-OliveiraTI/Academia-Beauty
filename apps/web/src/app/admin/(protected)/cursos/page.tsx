@@ -11,6 +11,7 @@ import { isPerPage, pageOf } from '@/lib/list-params'
 import { brl } from '@/lib/format'
 import { relativeTime } from '@/lib/relative-time'
 import { ThemembersSync } from '@/components/themembers-sync'
+import { ProfessionalFilter } from '@/components/professional-filter'
 
 export const metadata = { title: 'Cursos' }
 export const dynamic = 'force-dynamic'
@@ -76,6 +77,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
 
       <ListToolbar
         searchPlaceholder="Buscar por título, profissional ou slug…"
+        filterParams={['professionalId']}
         statusOptions={[{ value: '', label: 'Todos' }, { value: 'published', label: 'Publicados' }, { value: 'draft', label: 'Rascunhos' }, { value: 'archived', label: 'Arquivados' }]}
         sorts={SORTS}
         tabs={[
@@ -85,6 +87,8 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
           { value: 'archived', label: 'Arquivados', icon: TAB_ICONS.archived, count: data?.meta.counts.archived ?? 0 },
         ]}
       />
+
+      <ProfessionalFilter professionals={(pros?.items ?? []).map((p) => ({ id: p.id, name: p.data.name, specialty: p.data.specialty, photo: p.data.cardPhotoSrc || p.data.portraitSrc }))} />
 
       {!data ? (
         <p role="alert" className="form-error">Não foi possível carregar a lista (código {httpStatus}). Tente novamente.</p>
@@ -106,7 +110,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
                     <th scope="row">
                       <div className="admin-person cl-course">
                         {c.data.coverSrc ? <img className="cl-cover" src={mediaSrc(c.data.coverSrc, 320)} alt="" width={160} height={64} loading="lazy" /> : <span className="cl-cover" aria-hidden="true" />}
-                        <div><Link href={`/admin/cursos/${c.id}`}>{c.data.title}</Link><small>/{c.slug}</small></div>
+                        <div><Link href={`/admin/editor/cursos/${c.id}`}>{c.data.title}</Link><small>/{c.slug}</small></div>
                       </div>
                     </th>
                     <td>

@@ -8,14 +8,17 @@ import {
   setBackground, setVisibility, undo, updateContent, type EditError, type EditResult, type History,
 } from '@academia/editor-core'
 import { MAX_PER_REPEATABLE_TYPE, backgroundsFor, editorRules, isRepeatable, metaFor, validatePageDocument } from '@academia/section-schemas'
-import type { AdminCourse, DocumentVersion } from '@academia/contracts'
+import { courseReadiness, locateField, publishReadiness, syncDataFromDocument, type AdminCourse, type AdminProfessional, type DocumentVersion, type ReadinessIssue } from '@academia/contracts'
 import { apiGet, apiSend } from '@/lib/api-client'
 import { useConfirm } from '@/components/confirm-dialog'
-import { CheckoutSettings } from './checkout-settings'
+import { CourseSettings, ProfessionalSettings, type SettingsFocus } from './page-settings'
+import { PublishIssues, type PublishIssue } from './publish-issues'
+import { PublishOverlay, type PublishPhase } from './publish-overlay'
 import { useAutosave, type SaveState } from './use-autosave'
 import { SchemaForm, type JsonSchema } from '@/components/schema-form'
-import { EDITOR_FOCUS, EDITOR_INTERACTIVE, EDITOR_MESSAGE, EDITOR_PICK } from '@/components/live-preview'
-import { findFieldPath, type PickInfo } from '@/lib/section-dom'
+import { withoutTemplateSamples } from '@academia/page-renderer'
+import { EDITOR_FIELD, EDITOR_FOCUS, EDITOR_INTERACTIVE, EDITOR_MESSAGE, EDITOR_PICK } from '@/components/live-preview'
+import { fieldAnchor, findFieldPath, type PickInfo } from '@/lib/section-dom'
 
 type Kind = 'professional' | 'course' | 'home'
 export type EditorProps = {
@@ -39,11 +42,20 @@ export type EditorProps = {
   backHref: string
   /** Página pública da página editada (botão "Ver página"). */
   viewHref: string
-  /** Assistente com os dados do cadastro (nome, preço, publicação…); a Home não tem. */
-  registryHref?: string
-  /** Só em cursos: oferta atual e permissão para trocar o checkout (aba Avançado das seções de compra). */
-  commerce?: { commercial: NonNullable<AdminCourse['commercial']> | null; canManage: boolean }
+  /**
+   * Dados de fora da página (nome, endereço, foto do cartão, oferta…), editados no painel Configurações do próprio
+   * editor. A Home não tem.
+   */
+  cadastro?: { kind: 'professional'; value: AdminProfessional } | { kind: 'course'; value: AdminCourse }
+  /** Só em cursos: quem pode alterar preço e checkout (`commerce.manage`). */
+  canCommerce?: boolean
 }
+
+/** Campo de texto onde dá para digitar (antes de seletores como o de ícone, e nunca botões ou campos desativados). */
+const TEXT_FIELD = 'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not(:disabled), textarea:not(:disabled)'
+
+/** Pendências da oferta: o editor não conhece os domínios autorizados, então só o servidor as confirma ao publicar. */
+const OFFER_FIELDS = new Set(['commercial', 'active', 'checkoutUrl', 'environment'])
 
 const SAVE_LABEL: Record<SaveState, string> = {
   idle: 'Sem alterações', dirty: 'Alterações não salvas', saving: 'Salvando…', saved: 'Rascunho salvo agora', invalid: 'Corrija os campos para salvar',
@@ -170,7 +182,10 @@ function friendlyError(raw: string, doc: PageDocument): string {
 export function Editor(props: EditorProps) {
   const { confirm: askConfirm, dialog: confirmDialog } = useConfirm()
   const { kind, id, library, templateKey } = props
-  const editable = props.canWrite && props.status !== 'archived'
+  // Situação da página: muda ao publicar sem recarregar o editor (menu Despublicar, botão Ver página).
+  const [status, setStatus] = useState(props.status)
+  const [publishPhase, setPublishPhase] = useState<PublishPhase>(null)
+  const editable = props.canWrite && status !== 'archived'
   const rules = useMemo(() => editorRules(templateKey), [templateKey])
   const base = kind === 'professional' ? `/admin/professionals/${id}` : kind === 'course' ? `/admin/courses/${id}` : '/admin/home'
 
@@ -179,8 +194,17 @@ export function Editor(props: EditorProps) {
   const [selectedId, setSelectedId] = useState<string | null>(props.initial.sections[0]?.id ?? null)
   const [notice, setNotice] = useState<string | null>(null)
   const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
-  const [panel, setPanel] = useState<'none' | 'history'>('none')
+  const [panel, setPanel] = useState<'none' | 'history' | 'settings' | 'issues'>('none')
   const [confirm, setConfirm] = useState<null | { kind: 'reset' } | { kind: 'restore'; version: number }>(null)
+  const [cadastro, setCadastro] = useState(props.cadastro)
+  // Pendências da última tentativa de publicar; a oferta só é reconferida pelo servidor (ver OFFER_FIELDS).
+  const [serverIssues, setServerIssues] = useState<ReadinessIssue[]>([])
+  const [offerTouched, setOfferTouched] = useState(false)
+  const [settingsFocus, setSettingsFocus] = useState<SettingsFocus>(null)
+  // Revisão atual do cadastro: a página também o grava (editor único), e restaurar uma versão precisa dela.
+  const cadastroRevision = useRef(props.cadastroRevision)
+  // Sequência dos pedidos de foco vindos das pendências (cada clique precisa de um valor novo).
+  const focusSeq = useRef(0)
   const [publishMsg, setPublishMsg] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [dragId, setDragId] = useState<string | null>(null)
@@ -212,7 +236,11 @@ export function Editor(props: EditorProps) {
     initialRevision: props.documentRevision,
     enabled: editable,
     validate: (d) => validatePageDocument(d).ok,
-    put: (d, revision) => apiSend<{ documentRevision: number; code?: string }>('PUT', `${base}/document`, { document: d, revision }),
+    put: async (d, revision) => {
+      const res = await apiSend<{ documentRevision: number; revision?: number; code?: string }>('PUT', `${base}/document`, { document: d, revision })
+      if (res.ok && typeof res.data?.revision === 'number') cadastroRevision.current = res.data.revision
+      return res
+    },
     getServer: () => apiGet<{ document: unknown; documentRevision: number }>(`${base}/document`),
   })
   const saveState = autosave.state
@@ -250,6 +278,48 @@ export function Editor(props: EditorProps) {
   const selected = doc.sections.find((s) => s.id === selectedId) ?? null
   const selectedSchema = selected ? jsonSchemaOf(selected.type) : null
 
+  /* --------------------------- pendências de publicação -------------------------- */
+  // O que ainda falta segundo a página atual (editor único: o cadastro recebe os campos da página ao salvar).
+  const localIssueFields = useMemo(() => {
+    if (!cadastro) return new Set<string>()
+    const issues = cadastro.kind === 'professional'
+      ? publishReadiness(syncDataFromDocument('professional', cadastro.value.data, deferredDoc).data)
+      : courseReadiness(syncDataFromDocument('course', cadastro.value.data, deferredDoc).data)
+    return new Set(issues.map((i) => i.field))
+  }, [cadastro, deferredDoc])
+  const issues: PublishIssue[] = serverIssues.map((i) => ({
+    ...i,
+    // Profissional não publicado: só a próxima tentativa confirma (ele é publicado no editor dele).
+    resolved: i.field === 'professionalId' ? false : OFFER_FIELDS.has(i.field) ? offerTouched : !localIssueFields.has(i.field),
+  }))
+
+  /** Leva à seção (e ao campo) onde a pendência se resolve, ou ao painel Configurações. */
+  const goToIssue = (field: string) => {
+    if (!cadastro) return
+    const loc = locateField(cadastro.kind, field)
+    if ('settings' in loc) {
+      setPanel('settings')
+      setSettingsFocus({ field, n: ++focusSeq.current })
+      return
+    }
+    let section = doc.sections.find((s) => s.type === loc.section)
+    if (!section) {
+      const fromLibrary = library.sections.find((s) => s.type === loc.section)
+      // Volta visível: a seção removida/oculta não conta para publicar.
+      if (!fromLibrary || !editable || !apply(addSection(doc, { ...structuredClone(fromLibrary), visibility: { enabled: true } }, insertIndexFor(loc.section), rules))) return
+      section = fromLibrary
+    } else if (!section.visibility.enabled && editable) {
+      apply(reveal(doc, section.id))
+    }
+    setPanel('none')
+    setTab('content')
+    if (view === 'all') setOpenIds((prev) => new Set(prev).add(section.id))
+    lastFocusedSection.current = section.id
+    scrollNext.current = true
+    setSelectedId(section.id)
+    setPendingFocus({ sectionId: section.id, path: loc.path, n: ++focusSeq.current })
+  }
+
   /* ------------------------------- comandos ------------------------------- */
   const apply = useCallback((result: EditResult, coalesceKey?: string) => {
     if (!result.ok) { setNotice(ERROR_TEXT(result.error)); return false }
@@ -259,6 +329,17 @@ export function Editor(props: EditorProps) {
   }, [])
 
   const run = (fn: (d: PageDocument) => EditResult, key?: string) => { if (editable) apply(fn(doc), key) }
+  /**
+   * Mostra uma seção oculta. No curso, se a lista dela ainda tem só o exemplo do template (texto de outro curso), troca
+   * pelo item provisório: o exemplo não pode parecer, nem contar como, conteúdo do curso.
+   */
+  const reveal = (d: PageDocument, sectionId: string): EditResult => {
+    const shown = setVisibility(d, sectionId, true)
+    if (!shown.ok || kind !== 'course') return shown
+    const section = shown.doc.sections.find((x) => x.id === sectionId)
+    const cleaned = section ? withoutTemplateSamples(section.type, section.content) : null
+    return cleaned ? updateContent(shown.doc, sectionId, cleaned) : shown
+  }
 
   const insertIndexFor = (type: string): number => {
     const order = library.sections.map((s) => s.type)
@@ -317,7 +398,8 @@ export function Editor(props: EditorProps) {
     const timer = window.setTimeout(() => {
       const scope = view === 'all' ? document.getElementById(`ed-sec-${pendingFocus.sectionId}`) : document.querySelector('.ed-section-panel')
       const field = pendingFocus.path ? scope?.querySelector<HTMLElement>(`[data-field-path="${CSS.escape(pendingFocus.path)}"]`) : null
-      const control = field?.matches('input, textarea, select, button') ? field : field?.querySelector<HTMLElement>('input, textarea, select, button')
+      // Numa lista, o primeiro controle é a seta "mover" (desativada no 1º item): o cursor vai para o primeiro campo editável.
+      const control = field?.matches('input, textarea, select, button') ? field : (field?.querySelector<HTMLElement>(TEXT_FIELD) ?? field?.querySelector<HTMLElement>('select:not(:disabled), button:not(:disabled)'))
       field?.scrollIntoView({ block: 'center', behavior: 'smooth' })
       control?.focus({ preventScroll: true })
       field?.setAttribute('data-flash', '')
@@ -342,6 +424,39 @@ export function Editor(props: EditorProps) {
   }
 
   const selectedIndex = selected ? doc.sections.findIndex((s) => s.id === selected.id) : -1
+  // Pendências de publicação que se resolvem nesta seção (com a dica de qual campo preencher).
+  const selectedIssues = selected && cadastro
+    ? issues.flatMap((i) => {
+      if (i.resolved) return []
+      const loc = locateField(cadastro.kind, i.field)
+      return 'section' in loc && loc.section === selected.type ? [{ ...i, hint: loc.hint, path: loc.path }] : []
+    })
+    : []
+  const pendingPaths = selectedIssues.map((i) => i.path).filter((p): p is string => Boolean(p)).join('|')
+
+  // Campos pendentes ficam marcados no formulário até serem preenchidos (o destaque do foco some em 1,4 s).
+  useEffect(() => {
+    const scope = window.document.querySelector('.ed-props')
+    if (!scope) return
+    scope.querySelectorAll('[data-pending-field]').forEach((el) => el.removeAttribute('data-pending-field'))
+    for (const path of pendingPaths ? pendingPaths.split('|') : []) {
+      scope.querySelector(`[data-field-path="${CSS.escape(path)}"]`)?.setAttribute('data-pending-field', '')
+    }
+  }, [pendingPaths, selectedId, tab, view, panel])
+
+  /** Campo focado no formulário → a pré-visualização rola até ele e mostra a moldura com o nome do campo. */
+  const showFieldInPreview = (sectionId: string, target: EventTarget) => {
+    const box = (target as HTMLElement | null)?.closest?.('[data-field-path]')
+    const path = box?.getAttribute('data-field-path')
+    const section = path ? doc.sections.find((x) => x.id === sectionId) : null
+    if (!box || !path || !section) return
+    const name = box.querySelector('.ds-label, legend')?.textContent?.replace(/\(\d+(\/\d+)?\)/, '').trim() || 'Campo'
+    const label = box.hasAttribute('data-pending-field') ? `Pendente · ${name}` : name
+    const anchor = fieldAnchor(section.content, path)
+    if (!anchor.texts.length && !anchor.srcs.length) return
+    // Depois da troca de seção (que limpa a moldura no quadro), não antes.
+    window.setTimeout(() => postToPreview({ type: EDITOR_FIELD, sectionId, ...anchor, label }), 250)
+  }
   const selectedErrors = errors.filter((e) => e.startsWith(`sections.${selectedIndex}.`))
   const errorSections = new Set(errors.map((e) => Number(/^sections\.(\d+)\./.exec(e)?.[1])).filter((n) => !Number.isNaN(n)))
 
@@ -425,23 +540,40 @@ export function Editor(props: EditorProps) {
     if (busy) return
     setBusy(true)
     setPublishMsg(null)
+    let succeeded = false
     try {
       // Garante que o servidor tem exatamente o que está na tela antes de publicar.
+      if (!autosave.isSaved()) setPublishPhase('saving')
       if (!(await autosave.ensureSaved())) { setPublishMsg('Não foi possível salvar as alterações antes de publicar. Veja o aviso acima.'); return }
-      const res = await apiSend<{ code?: string; message?: string; errors?: { message: string }[] }>('POST', `${base}/publish`)
-      if (res.ok) { setPublishMsg('Publicado. O site será atualizado em instantes.'); void loadVersions() }
-      else if (res.status === 422 && res.data?.code === 'not_ready' && props.registryHref) {
-        // Falta algo no cadastro (ou na oferta): abre o formulário já na etapa de revisão, com as pendências.
-        setPublishMsg('Faltam informações para publicar. Abrindo o cadastro…')
-        window.location.assign(`${props.registryHref}?pendencias=1`)
+      setPublishPhase('publishing')
+      // Tempo mínimo da animação: uma resposta rápida não pode virar um piscar de tela que ninguém percebe.
+      const [res] = await Promise.all([
+        apiSend<{ code?: string; message?: string; errors?: ReadinessIssue[] }>('POST', `${base}/publish`),
+        new Promise((r) => setTimeout(r, 900)),
+      ])
+      if (res.ok) {
+        succeeded = true
+        setServerIssues([])
+        setPanel((p) => (p === 'issues' ? 'none' : p))
+        setStatus('published')
+        setPublishPhase('done')
+        void loadVersions()
+      }
+      else if (res.status === 422 && res.data?.code === 'not_ready' && cadastro && res.data.errors?.length) {
+        // Editor único: as pendências ficam aqui; cada uma leva à seção (ou às Configurações) onde se resolve.
+        setServerIssues(res.data.errors)
+        setOfferTouched(false)
+        setPanel('issues')
       }
       else if (res.status === 0) setPublishMsg('Sem conexão com o servidor. Tente publicar novamente.')
       else if (res.status === 401) setPublishMsg('Sua sessão expirou. Entre novamente para publicar.')
       else setPublishMsg([res.data?.message ?? `Falha ao publicar (código ${res.status}).`, ...(res.data?.errors ?? []).map((e) => e.message)].join(' · '))
     } finally {
+      if (!succeeded) setPublishPhase(null)
       setBusy(false)
     }
   }
+  const closePublished = useCallback(() => setPublishPhase(null), [])
 
   /** Operações que trocam o documento no servidor (restaurar): suspendem o autosave e recarregam a tela. */
   const replaceOnServer = async (call: () => Promise<{ ok: boolean; status: number }>) => {
@@ -458,9 +590,28 @@ export function Editor(props: EditorProps) {
       setBusy(false)
     }
   }
+  /**
+   * Troca o modelo da página do profissional: descarta o documento (a página volta a ser montada do cadastro, que já tem
+   * os campos da página sincronizados) e grava o novo modelo. Recarrega o editor no fim.
+   */
+  const changeTemplate = async (next: string) => {
+    if (kind !== 'professional') return
+    if (!(await askConfirm({ title: 'Trocar o modelo da página?', message: 'A página é recriada no novo modelo com a frase, o retrato, a trajetória, o Instagram, os trabalhos e o vídeo atuais. Ajustes de layout e textos extras das seções (títulos, ordem, fundos) são descartados.', confirmLabel: 'Trocar modelo', tone: 'danger' }))) return
+    await replaceOnServer(async () => {
+      if (autosave.revisionRef.current > 0) {
+        const cleared = await apiSend('DELETE', `${base}/document`, { revision: autosave.revisionRef.current })
+        if (!cleared.ok) return cleared
+      }
+      const fresh = await apiGet<AdminProfessional>(base)
+      if (!fresh.ok || !fresh.data) return fresh
+      return apiSend('PUT', base, { data: fresh.data.data, revision: fresh.data.revision, templateKey: next })
+    })
+  }
   const resetToRegistry = () => replaceOnServer(() => apiSend('DELETE', `${base}/document`, { revision: autosave.revisionRef.current }))
-  const restoreVersion = (version: number) => replaceOnServer(() => apiSend('POST', `${base}/document/versions/${version}/restore`, { revision: autosave.revisionRef.current, ...(kind === 'home' ? {} : { dataRevision: props.cadastroRevision }) }))
+  const restoreVersion = (version: number) => replaceOnServer(() => apiSend('POST', `${base}/document/versions/${version}/restore`, { revision: autosave.revisionRef.current, ...(kind === 'home' ? {} : { dataRevision: cadastroRevision.current }) }))
 
+  // Endereço público da página (depois de publicar, "Ver página" leva ao site, não à pré-visualização).
+  const publicHref = kind === 'home' || !cadastro ? '/' : `/${cadastro.kind === 'course' ? 'cursos' : 'profissionais'}/${cadastro.value.slug}`
   const frameWidth = viewport === 'desktop' ? '100%' : viewport === 'tablet' ? '820px' : '390px'
   const previewSrc = kind === 'home' ? '/admin/preview/home/live' : `/admin/preview/${kind === 'professional' ? 'profissionais' : 'cursos'}/${id}/live`
   const blockedBanner: Partial<Record<SaveState, ReactNode>> = {
@@ -474,6 +625,7 @@ export function Editor(props: EditorProps) {
   return (
     <div className="ed">
       {confirmDialog}
+      <PublishOverlay phase={publishPhase} publicHref={publicHref} onClose={closePublished} />
       <div className="ed-bar" role="toolbar" aria-label="Ações do editor">
         <div className="ed-bar-group">
           <a href={props.backHref} className="link-button ed-back">← Voltar</a>
@@ -489,40 +641,45 @@ export function Editor(props: EditorProps) {
             })}
           </div>
           <button type="button" className="ed-icon-btn" aria-label="Tela cheia" title="Pré-visualizar em tela cheia" onClick={toggleFull}>{FULL_ICON}</button>
-          {props.registryHref ? <a className="admin-button secondary" href={props.registryHref}>Configurações</a> : null}
-          <a className="admin-button secondary" href={props.viewHref} target="_blank" rel="noreferrer">Ver página</a>
+          {cadastro ? <button type="button" className="admin-button secondary" aria-pressed={panel === 'settings'} onClick={() => { setSettingsFocus(null); setPanel(panel === 'settings' ? 'none' : 'settings') }}>Configurações</button> : null}
+          <a className="admin-button secondary" href={status === 'published' ? publicHref : props.viewHref} target="_blank" rel="noreferrer">Ver página</a>
           <div className="ed-menu" ref={moreMenu.ref}>
             <button type="button" className="admin-button secondary" aria-haspopup="menu" aria-expanded={moreMenu.open} onClick={() => moreMenu.setOpen((v) => !v)}>Mais ações {CHEVRON}</button>
             {moreMenu.open ? (
               <div className="ed-menu-list" role="menu">
                 <button type="button" role="menuitem" onClick={() => { doUndo(); moreMenu.setOpen(false) }} disabled={!editable || !canUndo(history)}>Desfazer<small>Ctrl+Z</small></button>
                 <button type="button" role="menuitem" onClick={() => { doRedo(); moreMenu.setOpen(false) }} disabled={!editable || !canRedo(history)}>Refazer<small>Ctrl+Shift+Z</small></button>
-                {props.registryHref ? <a role="menuitem" className="ed-menu-link" href={props.registryHref}>Dados do cadastro<small>{kind === 'course' ? 'Título, oferta e publicação' : 'Nome, especialidade e publicação'}</small></a> : null}
                 {props.canWrite && kind !== 'home' ? <button type="button" role="menuitem" disabled={busy} onClick={() => { moreMenu.setOpen(false); void duplicatePage() }}>{kind === 'course' ? 'Duplicar curso' : 'Duplicar profissional'}<small>Cria um rascunho com o mesmo conteúdo</small></button> : null}
-                {props.canPublish && props.status === 'published' && kind !== 'home' ? <button type="button" role="menuitem" disabled={busy} onClick={() => { moreMenu.setOpen(false); void unpublishPage() }}>Despublicar<small>Tira a página do site e mantém o rascunho</small></button> : null}
+                {props.canPublish && status === 'published' && kind !== 'home' ? <button type="button" role="menuitem" disabled={busy} onClick={() => { moreMenu.setOpen(false); void unpublishPage() }}>Despublicar<small>Tira a página do site e mantém o rascunho</small></button> : null}
                 <button type="button" role="menuitem" aria-expanded={panel === 'history'} onClick={() => { if (panel !== 'history') void loadVersions(); setPanel(panel === 'history' ? 'none' : 'history'); moreMenu.setOpen(false) }}>Histórico</button>
-                {editable ? <button type="button" role="menuitem" disabled={busy} onClick={() => { setConfirm({ kind: 'reset' }); moreMenu.setOpen(false) }}>{kind === 'home' ? 'Restaurar padrão' : 'Restaurar do cadastro'}</button> : null}
+                {editable && kind === 'home' ? <button type="button" role="menuitem" disabled={busy} onClick={() => { setConfirm({ kind: 'reset' }); moreMenu.setOpen(false) }}>Restaurar padrão</button> : null}
               </div>
             ) : null}
           </div>
-          {props.canPublish && props.status !== 'archived' ? <button type="button" className="admin-button" onClick={publish} disabled={busy || saveState === 'conflict' || !validation.ok}>{CLOUD_ICON}{busy ? 'Aguarde…' : 'Publicar'}</button> : null}
+          {props.canPublish && status !== 'archived' ? <button type="button" className="admin-button" onClick={publish} disabled={busy || saveState === 'conflict' || !validation.ok}>{CLOUD_ICON}{busy ? 'Aguarde…' : 'Publicar'}</button> : null}
         </div>
       </div>
 
       {blockedBanner[saveState] ? <p role="alert" className="ed-banner">{blockedBanner[saveState]}</p> : null}
       {notice ? <p role="alert" className="ed-banner">{notice}</p> : null}
       {publishMsg ? <p role="status" className="ed-banner ed-banner-info">{publishMsg}</p> : null}
+      {panel !== 'issues' && issues.some((i) => !i.resolved) ? (
+        <p role="status" className="ed-banner ed-banner-info">
+          Ainda {issues.filter((i) => !i.resolved).length === 1 ? 'falta 1 item' : `faltam ${issues.filter((i) => !i.resolved).length} itens`} para publicar.{' '}
+          <button type="button" className="link-button" onClick={() => setPanel('issues')}>Ver pendências</button>
+        </p>
+      ) : null}
       {confirm ? (
         <ConfirmBar
           title={confirm.kind === 'reset'
-            ? (kind === 'home' ? 'Descartar as edições do editor e voltar à Home original?' : 'Descartar as edições do editor e voltar à página gerada pelo cadastro?')
-            : (kind === 'home' ? `Voltar o rascunho à versão ${confirm.version}?` : `Voltar o rascunho à versão ${confirm.version}? O cadastro também volta ao que estava nessa versão.`)}
+            ? 'Descartar as edições do editor e voltar à Home original?'
+            : (kind === 'home' ? `Voltar o rascunho à versão ${confirm.version}?` : `Voltar o rascunho à versão ${confirm.version}? As configurações também voltam ao que estavam nessa versão.`)}
           busy={busy}
           onConfirm={() => (confirm.kind === 'reset' ? resetToRegistry() : restoreVersion(confirm.version))}
           onCancel={() => setConfirm(null)}
         />
       ) : null}
-      {props.status === 'archived' ? <p role="alert" className="ed-banner">Este item está arquivado: restaure-o para editar.</p> : null}
+      {status === 'archived' ? <p role="alert" className="ed-banner">Este item está arquivado: restaure-o para editar.</p> : null}
 
       <div className="ed-body">
         <fieldset className="ed-pane ed-tree" disabled={!editable} aria-label="Seções da página">
@@ -562,7 +719,7 @@ export function Editor(props: EditorProps) {
                       <small>{SECTION_DESC[s.type] ?? REGION_LABEL[meta?.placement ?? 'main']}{!s.visibility.enabled ? ' · oculta' : ''}{dynamic ? ' · automática' : ''}{errorSections.has(index) ? ' · com erro' : ''}</small>
                     </span>
                   </button>
-                  <button type="button" className="ed-eye" disabled={dynamic} aria-pressed={s.visibility.enabled} onClick={() => run((d) => setVisibility(d, s.id, !s.visibility.enabled))} aria-label={`${s.visibility.enabled ? 'Ocultar' : 'Mostrar'} ${meta?.label ?? s.type}`}><EyeIcon off={!s.visibility.enabled} /></button>
+                  <button type="button" className="ed-eye" disabled={dynamic} aria-pressed={s.visibility.enabled} onClick={() => run((d) => (s.visibility.enabled ? setVisibility(d, s.id, false) : reveal(d, s.id)))} aria-label={`${s.visibility.enabled ? 'Ocultar' : 'Mostrar'} ${meta?.label ?? s.type}`}><EyeIcon off={!s.visibility.enabled} /></button>
                 </li>
               )
             })}
@@ -590,14 +747,36 @@ export function Editor(props: EditorProps) {
             <button type="button" className="admin-button secondary" aria-pressed={view === 'section'} onClick={() => { chooseView('section'); setPanel('none') }}>Por seção</button>
             <button type="button" className="admin-button secondary" aria-pressed={view === 'all'} onClick={() => { chooseView('all'); setPanel('none') }}>Todos os elementos</button>
           </div>
-          {panel === 'history' ? (
+          {panel === 'settings' && cadastro ? (
+            <section className="ed-panel-head-wrap" aria-labelledby="ed-settings-title">
+              <div className="ed-panel-head">
+                <div>
+                  <h2 id="ed-settings-title" className="ed-h2">Configurações</h2>
+                  <p className="ed-cfg-desc">O que não aparece na página: identidade, {cadastro.kind === 'course' ? 'oferta' : 'foto do cartão'}, buscadores e vitrine.</p>
+                </div>
+                <button type="button" className="link-button" onClick={() => setPanel(serverIssues.length ? 'issues' : 'none')}>{serverIssues.length ? '← Pendências' : '← Seções'}</button>
+              </div>
+              {cadastro.kind === 'professional' ? (
+                <ProfessionalSettings cadastro={cadastro.value} canWrite={props.canWrite} canPublish={props.canPublish} focus={settingsFocus}
+                  templateKey={templateKey} onChangeTemplate={(next) => void changeTemplate(next)}
+                  onSaved={(next) => { cadastroRevision.current = next.revision; setCadastro({ kind: 'professional', value: next }) }} />
+              ) : (
+                <CourseSettings cadastro={cadastro.value} canWrite={props.canWrite} canPublish={props.canPublish} canCommerce={Boolean(props.canCommerce)} focus={settingsFocus}
+                  onSaved={(next) => { cadastroRevision.current = next.revision; setCadastro({ kind: 'course', value: { ...next, commercial: next.commercial ?? (cadastro.value as AdminCourse).commercial } }) }}
+                  onOfferSaved={(commercial) => { setOfferTouched(true); setCadastro((c) => (c && c.kind === 'course' ? { kind: 'course', value: { ...c.value, commercial } } : c)) }} />
+              )}
+            </section>
+          ) : panel === 'issues' && cadastro ? (
+            <PublishIssues kind={cadastro.kind} issues={issues} doc={doc} busy={busy} canPublish={props.canPublish}
+              onGo={goToIssue} onPublish={() => void publish()} onClose={() => setPanel('none')} />
+          ) : panel === 'history' ? (
             <section aria-label="Histórico de versões">
               <h2 className="ed-h2">Versões publicadas</h2>
               {versions.length === 0 ? <p className="wizard-hint">Nenhuma publicação ainda.</p> : (
                 <ul className="ed-versions">
                   {versions.map((v) => (
                     <li key={v.version}>
-                      <span>Versão {v.version}{v.current ? ' (no ar)' : ''}<small> · {new Date(v.createdAt).toLocaleString('pt-BR')}{v.hasDocument ? '' : kind === 'home' ? ' · Home original' : ' · gerada pelo cadastro'}</small></span>
+                      <span>Versão {v.version}{v.current ? ' (no ar)' : ''}<small> · {new Date(v.createdAt).toLocaleString('pt-BR')}{v.hasDocument ? '' : kind === 'home' ? ' · Home original' : ' · página automática'}</small></span>
                       {editable ? <button type="button" className="link-button" onClick={() => setConfirm({ kind: 'restore', version: v.version })}>Restaurar no rascunho</button> : null}
                     </li>
                   ))}
@@ -618,7 +797,7 @@ export function Editor(props: EditorProps) {
                 const open = openIds.has(s.id)
                 const sectionErrors = errors.filter((e) => e.startsWith(`sections.${index}.`))
                 return (
-                  <section key={s.id} id={`ed-sec-${s.id}`} onFocusCapture={() => onFieldFocus(s.id)} className="ed-acc" data-selected={s.id === selectedId || undefined} data-error={sectionErrors.length ? true : undefined}>
+                  <section key={s.id} id={`ed-sec-${s.id}`} onFocusCapture={(e) => { onFieldFocus(s.id); showFieldInPreview(s.id, e.target) }} className="ed-acc" data-selected={s.id === selectedId || undefined} data-error={sectionErrors.length ? true : undefined}>
                     <h3>
                       <button type="button" className="ed-acc-head" aria-expanded={open} aria-controls={`ed-sec-body-${s.id}`} onClick={() => { selectSection(s.id); toggleOpen(s.id) }}>
                         <span>{open ? '▾' : '▸'} {metaFor(s.type)?.label ?? s.type}</span>
@@ -640,7 +819,7 @@ export function Editor(props: EditorProps) {
               <p className="wizard-hint">Duplicar seções não está disponível neste template (cada seção tem âncoras próprias).</p>
             </div>
           ) : selected && selectedSchema ? (
-            <div className="ed-section-panel" onFocusCapture={() => onFieldFocus(selected.id)}>
+            <div className="ed-section-panel" onFocusCapture={(e) => { onFieldFocus(selected.id); showFieldInPreview(selected.id, e.target) }}>
               <div className="ed-current">
                 <span className="ed-current-num" aria-hidden="true">{selectedIndex + 1}</span>
                 <div>
@@ -657,6 +836,18 @@ export function Editor(props: EditorProps) {
               {tab === 'content' ? (
                 <fieldset disabled={!editable} className="ed-form">
                   <legend className="sr-only">{metaFor(selected.type)?.label ?? selected.type}</legend>
+                  {selectedIssues.length ? (
+                    <div className="ed-pending-note" role="status">
+                      <strong>Para publicar</strong>
+                      <ul>{selectedIssues.map((i) => <li key={i.field}>{i.message}.{i.hint ? ` ${i.hint}` : ''}</li>)}</ul>
+                    </div>
+                  ) : null}
+                  {!selected.visibility.enabled && !props.dynamicTypes.includes(selected.type) ? (
+                    <p className="ed-hidden-note" role="status">
+                      Esta seção está oculta: não aparece na página{kind !== 'home' ? ' e o conteúdo dela não conta para publicar' : ''}.{' '}
+                      <button type="button" className="link-button" onClick={() => run((d) => reveal(d, selected.id))}>Mostrar seção</button>
+                    </p>
+                  ) : null}
                   {selectedErrors.length ? (
                     <ul role="alert" className="form-error ed-errors">{selectedErrors.map((e) => <li key={e}>{friendlyError(e, deferredDoc)}</li>)}</ul>
                   ) : null}
@@ -689,11 +880,15 @@ export function Editor(props: EditorProps) {
                 <fieldset disabled={!editable} className="ed-form ed-advanced">
                   <legend className="sr-only">Avançado: {metaFor(selected.type)?.label ?? selected.type}</legend>
                   <label className="sf-check">
-                    <input type="checkbox" checked={selected.visibility.enabled} disabled={props.dynamicTypes.includes(selected.type)} onChange={(e) => run((d) => setVisibility(d, selected.id, e.target.checked))} /> Mostrar esta seção na página
+                    <input type="checkbox" checked={selected.visibility.enabled} disabled={props.dynamicTypes.includes(selected.type)} onChange={(e) => run((d) => (e.target.checked ? reveal(d, selected.id) : setVisibility(d, selected.id, false)))} /> Mostrar esta seção na página
                   </label>
                   {props.dynamicTypes.includes(selected.type) ? <p className="wizard-hint">Esta seção é automática: aparece quando há itens publicados.</p> : null}
-                  {kind === 'course' && props.commerce && (selected.type === 'course.checkout' || selected.type === 'course.offer') ? (
-                    <CheckoutSettings courseId={id} commercial={props.commerce.commercial} canCommerce={props.commerce.canManage} />
+                  {kind === 'course' && cadastro && (selected.type === 'course.checkout' || selected.type === 'course.offer') ? (
+                    <div className="sf-field">
+                      <span className="ds-label">Preço e checkout</span>
+                      <p className="wizard-hint">Preço, parcelas e o link de pagamento ficam na oferta do curso, fora da página.</p>
+                      <button type="button" className="admin-button secondary" onClick={() => { setPanel('settings'); setSettingsFocus({ field: 'checkoutUrl', n: ++focusSeq.current }) }}>Abrir a oferta nas Configurações</button>
+                    </div>
                   ) : null}
                   <div className="sf-field">
                     <span className="ds-label">Posição</span>
