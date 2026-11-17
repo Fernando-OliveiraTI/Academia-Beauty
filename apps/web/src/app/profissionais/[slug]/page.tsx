@@ -5,6 +5,8 @@ import { NO_OFFER, PageRenderer, resolveProfessionalDocument } from '@academia/p
 import type { PageDocument } from '@academia/page-schema'
 import { publicGet } from '@/lib/api-server'
 import { PageTracker } from '@/components/page-tracker'
+import { JsonLd } from '@/components/json-ld'
+import { pageMetadata, personJsonLd } from '@/lib/seo'
 import '@academia/page-renderer/professional.css'
 
 type Params = { params: Promise<{ slug: string }> }
@@ -29,8 +31,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { slug } = await params
   const professional = await load(slug)
   if (!professional) return { title: 'Profissional não encontrado' }
-  const { name, tagline, metaDescription } = professional.data
-  return { title: `${name} · Academia Beauty`, description: metaDescription || tagline || undefined }
+  const { name, tagline, metaDescription, portraitSrc } = professional.data
+  return pageMetadata({ path: `/profissionais/${slug}`, title: name, description: metaDescription || tagline || undefined, image: portraitSrc || undefined, type: 'profile' })
 }
 
 // Página servida do snapshot publicado; atualizada por tag quando o admin publica.
@@ -43,6 +45,7 @@ export default async function ProfessionalPage({ params }: Params) {
   return (
     <>
       <PageRenderer document={document} ctx={{ offer: NO_OFFER, year: new Date().getFullYear() }} />
+      <JsonLd data={personJsonLd({ slug, name: professional.data.name, specialty: professional.data.specialty, tagline: professional.data.tagline, portraitSrc: professional.data.portraitSrc, instagramUrl: professional.data.instagramUrl })} />
       <PageTracker type="professional" slug={slug} />
     </>
   )

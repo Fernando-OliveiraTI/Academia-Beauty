@@ -204,3 +204,32 @@ Limitações: vídeo sem poster nem transcodificação (sem ffmpeg); original nu
 E2E `home-editor` (14): editor da Home com prévia ao vivo e autosave, regras (hero obrigatório, profissionais/cursos automáticos), publicar → `/` muda na hora, curso publicado aparece na Home com link que abre, despublicar tira o cartão, rascunho não muda o público, histórico/restaurar versão, "Restaurar padrão", CSRF 403, 390px. E2E `templates` (11): exemplos dos 6 modelos com `data-tpl`, escolher Premium no assistente e criar, um profissional publicado por modelo com composição conferida na página pública, troca de modelo no rascunho, editor com Números/Chamada, bloqueio após personalizar, "Restaurar do cadastro" libera, 390px nos 6 exemplos e no assistente.
 Defeitos achados pelos testes e corrigidos: (1) `testUtils.db().truncate()` deixava a suíte de API intermitente (D-027); (2) linha da Home sumia com `truncate` → `ensureHomeRow`; (3) texto escuro sobre cartão branco no Premium/Imersivo, grade do Imersivo com buraco, CTA da Conversão dourada colada na bio dourada, selo "Trabalhos em destaque" ilegível no fundo escuro (ajustados por inspeção das capturas); (4) E2E de mídia dependia de um texto ambíguo ("publicad") e corria contra a publicação.
 Limitações: Curso e Home não ganharam modelos adicionais; o tema dos modelos foi validado por inspeção de capturas e por testes de estrutura, **não por comparação de pixel** (não há original para comparar) — espere ajustes após a sua conferência em tela; `/preview/modelos/*` e `/preview/*` são públicas (noindex) até a Fase 8; sem axe/Lighthouse nem Firefox/Safari; Home sem agendamento; vídeo sem poster; nenhum teste de carga; o seed `lukas-campos` continua no modelo Original.
+
+## Fase 8A — SEO e indexação (2026-10-22, implementada; aguarda conferência)
+Entregue: `lib/site.ts` (`SITE_URL`, `SITE_INDEXING`), `lib/seo.ts` (metadados e JSON-LD), `robots.ts`, `sitemap.ts`, `components/json-ld.tsx`, `GET /public/sitemap` (API: `SitemapService`), layout do painel `noindex`, `X-Robots-Tag` em `/admin|preview|internal`, metadados das páginas Home/Profissional/Curso. Detalhes e limites em D-037.
+| Verificação | Resultado |
+|---|---|
+| Web: typecheck, lint (0 erros), vitest | 132 testes passando (novos: `site.test.ts`, `seo.test.ts`) |
+| API: typecheck, lint, suíte completa | 214 testes passando (novo: `sitemap.spec.ts`: só publicados, vazio sem dados) |
+| Build de produção | ok; `/robots.txt` e `/sitemap.xml` dinâmicos |
+| Sem configuração (`:3100`) | `robots.txt` = `Disallow: /`; sitemap vazio; `<meta robots noindex>` |
+| `SITE_URL` + `SITE_INDEXING=true` (`:3101`, produção) | `robots.txt` libera o site e bloqueia `/admin /api /preview /internal`; sitemap com Home + publicados; Home/Profissional/Curso com `index, follow`, canonical e `og:*` absolutos e JSON-LD válido |
+| Cabeçalho `X-Robots-Tag: noindex, nofollow` | presente em `/admin/login` e `/preview/home`; ausente em `/` |
+Limitações: teste manual contra a API local (com dados de teste `e2e-*` publicados); nada foi publicado no Azure; Rich Results Test do Google e Search Console não foram usados; `og:image` de capas SVG não renderiza em redes sociais; a indexação só liga ao definir `SITE_URL`/`SITE_INDEXING` nos dois apps do Azure (sem domínio próprio ainda).
+
+## Fase 8B — Observabilidade (2026-10-22, implementada; recursos do Azure NÃO criados)
+Entregue: `packages/telemetry` (cliente `/v2/track`, `scrub`, conexão validada), API (`telemetry_service`, `request_telemetry`, `start/telemetry`, handler de exceções, auditoria, webhook, comando `telemetry:check`), site (`instrumentation.ts`, `report-request-error`, `/healthz`), `infra/azure/monitoring.sh`, `docs/observabilidade.md`. Detalhes em D-038.
+| Verificação | Resultado |
+|---|---|
+| `packages/telemetry`: typecheck + vitest | 29 testes (conexão, limpeza de dados pessoais, formato dos envelopes, lote, nova tentativa, 206, limite de fila, falha de rede, `onError` que lança, `check`) |
+| API: typecheck, lint, suíte completa | 221 passando (novo `telemetry.spec.ts`: requisições por padrão de rota, só 5xx vira exceção, auditoria sem dados pessoais, desfecho do webhook, cliente real com serviço simulado) |
+| Site: typecheck, lint, vitest | 137 testes passando (novos: `report-request-error.test.ts`, `healthz/route.test.ts`); lint 0 erros; typecheck ok |
+| `node ace telemetry:check` | sem configuração: erro claro, exit 1; connection string inválida: avisa e não derruba; válida com host inexistente: "Recusado: HTTP 0 … fetch failed" (nada foi enviado) |
+| Build da imagem Docker da API | ok; `@academia/telemetry` dentro da imagem e carrega sem quebrar com configuração inválida |
+| `/healthz` (imagem Docker do site, API fora do ar) | simples: 200 (liveness, não depende da API: uma queda da API não pode reiniciar o site); `?deep=1`: 503; `cache-control: no-store`, `X-Robots-Tag: noindex` |
+| Imagem do site, telemetria ligada e API fora do ar | `/` dá 500; o erro entra na fila e o envio é tentado (falha só porque o host de teste não existe) |
+| Servidor real da API com telemetria ligada (banco de teste) | log "telemetria ligada"; requisições e exceção enfileiradas e envio tentado; o preload `{ environment: ['web'] }` funciona |
+| CI local: `pnpm typecheck`, `pnpm test` (todos os pacotes), `pnpm audit:prod`, gitleaks (via Docker) | typecheck ok; todos os testes passando; audit exit 0 (mesmos avisos de antes); gitleaks só os 2 falsos positivos já liberados |
+| `monitoring.sh` | sintaxe (`bash -n`) e simulação ok; comandos conferidos contra `az … --help`; **não executado** |
+Limitações: nenhuma telemetria real foi enviada (sem recurso no Azure); alertas de consulta criados sem validar a KQL (validar no portal com os primeiros dados); sem erros do navegador, rastreio distribuído, dependências nem latência por página do site; logs de stdout não centralizados; o script não foi testado contra o Azure.
+

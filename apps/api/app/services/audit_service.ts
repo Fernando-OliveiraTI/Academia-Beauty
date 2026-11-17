@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import logger from '@adonisjs/core/services/logger'
 import db from '@adonisjs/lucid/services/db'
+import telemetry from '#services/telemetry_service'
 
 export type AuditEntry = {
   action: string
@@ -16,6 +17,8 @@ export default class AuditService {
     // A auditoria roda depois do commit: falhar aqui não pode virar 500 nem pular a revalidação do cache.
     try {
       await AuditService.#insert(ctx, entry)
+      // Só o nome da ação e o tipo de recurso: sem ator, IP, ids nem metadados (alertas de login e publicações).
+      telemetry.trackEvent(`audit.${entry.action}`, { resource: entry.resourceType })
     } catch (error) {
       logger.error({ err: error, action: entry.action }, 'falha ao gravar auditoria')
     }

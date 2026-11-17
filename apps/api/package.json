@@ -54,6 +54,7 @@
     "@academia/contracts": "workspace:*",
     "@academia/page-schema": "workspace:*",
     "@academia/section-schemas": "workspace:*",
+    "@academia/telemetry": "workspace:*",
     "@adonisjs/auth": "^9.4.0",
     "@adonisjs/core": "^6.18.0",
     "@adonisjs/cors": "^2.2.1",

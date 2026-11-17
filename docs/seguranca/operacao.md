@@ -34,6 +34,6 @@ Depois do seed **remova `ADMIN_PASSWORD` do ambiente**, entre, ative a verifica�
 - **Bloqueio de login (429):** expira em 15 minutos. Para liberar antes: apague a linha correspondente em `rate_limits`.
 - **Vazamento de segredo:** rotacione o segredo (acima), invalide sessões (`UPDATE users SET session_epoch = session_epoch + 1`), revise auditoria e comunique conforme a LGPD (prazo razoável à ANPD e aos titulares).
 
-## Monitoramento recomendado (ainda não implementado)
+## Monitoramento
 
-Os logs saem em JSON no stdout (cookies, tokens e senhas são redigidos). Falta ligar a um agregador (Loki/ELK/CloudWatch) e a um monitor de erros (Sentry ou equivalente), com alertas para: `/health` fora do ar, taxa de 5xx, picos de `auth.login_failed`/`auth.login_throttled`, falha do backup e disco. Defina quem recebe os alertas.
+Implementado na Fase 8B com Azure Application Insights: ver [`docs/observabilidade.md`](../observabilidade.md) (o que é coletado, privacidade, como ligar, alertas e consultas). Os logs seguem em JSON no stdout (cookies, tokens e senhas são redigidos) e ficam no *Log stream* do App Service; a centralização deles (*Diagnostic settings*) e o monitor de falha do backup e de disco ainda não foram configurados. Defina quem recebe os alertas (`ALERT_EMAIL` do `infra/azure/monitoring.sh`).

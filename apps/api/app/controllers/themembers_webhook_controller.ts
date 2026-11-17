@@ -2,6 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import env from '#start/env'
 import ThemembersWebhookService from '#services/themembers_webhook_service'
 import WebhookLogService from '#services/webhook_log_service'
+import telemetry from '#services/telemetry_service'
 
 /** Janela simples por IP em memória: o receptor é público (a assinatura é a defesa; isto só limita enchente). */
 const hits = new Map<string, { count: number; reset: number }>()
@@ -36,8 +37,10 @@ export default class ThemembersWebhookController {
       result: string,
       httpStatus: number,
       extra: { event?: string | null; scheme?: string | null; paymentEventId?: number | null } = {}
-    ) =>
-      WebhookLogService.record({
+    ) => {
+      // Desfecho de cada chamada (aceita, duplicada, assinatura inválida…): base do alerta de webhook recusado.
+      telemetry.trackEvent('webhook.themembers', { result, status: httpStatus, event: extra.event })
+      return WebhookLogService.record({
         result,
         httpStatus,
         raw,
@@ -47,6 +50,7 @@ export default class ThemembersWebhookController {
         signatureScheme: extra.scheme ?? null,
         paymentEventId: extra.paymentEventId ?? null,
       })
+    }
 
     if (!raw) {
       await log('empty_body', 400)
