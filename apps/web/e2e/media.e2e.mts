@@ -1,8 +1,8 @@
 /**
  * E2E da biblioteca de mídia (Fase 7A): envio de imagem e vídeo, derivados e cabeçalhos pelo proxy do site,
- * Range do vídeo, seletor no assistente do profissional, página pública com `/media/<id>?w=`, CSP sem violações,
+ * Range do vídeo, seletor no editor (seção Topo), página pública com `/media/<id>?w=`, CSP sem violações,
  * detalhes de uso, exclusão bloqueada para arquivo em uso, exclusão de arquivo livre e 390px sem overflow.
- * Cria um profissional `e2e-media-*` (arquivado no fim) e remove os arquivos que enviou.
+ * Cria um profissional `e2e-media-*` (apagado no fim) e remove os arquivos que enviou.
  * Requer API (3333) migrada e o build de produção do web (3100).
  * Uso: E2E_ADMIN_EMAIL=... E2E_ADMIN_PASSWORD=... pnpm --filter @academia/web e2e:media
  */
@@ -53,6 +53,15 @@ const professional = {
 const uploaded: string[] = []
 let id = 0
 let imageId = ''
+/** Abre o editor do profissional, seleciona a seção Topo e abre o seletor de arquivo do retrato. */
+async function openPortraitPicker() {
+  await page.goto(`${BASE}/admin/editor/profissionais/${id}`)
+  await page.locator('.ed-item').first().waitFor()
+  await page.locator('.ed-item').filter({ has: page.locator('.ed-name', { hasText: 'Topo (hero)' }) }).locator('.ed-select').click()
+  await page.locator('[data-field-path="portrait.src"]').getByRole('button', { name: /^Editar/ }).click()
+  await page.getByRole('dialog', { name: /Trocar/i }).waitFor()
+}
+
 try {
   await step('login', async () => {
     await page.goto(`${BASE}/admin/login`)
@@ -113,23 +122,20 @@ try {
     assert.equal((await get('/admin/media')).body.total, before)
   })
 
-  await step('assistente do profissional: escolhe a imagem na biblioteca, salva e publica', async () => {
+  await step('editor: escolhe o retrato na biblioteca (seção Topo), o cadastro acompanha e publica', async () => {
     const created = await send(context, 'post', '/admin/professionals', { slug: SLUG, data: professional })
     assert.equal(created.status, 201, JSON.stringify(created.body))
     id = created.body.id
-    await page.goto(`${BASE}/admin/profissionais/${id}`)
-    await page.getByRole('button', { name: 'Imagens e vídeo' }).click()
-    await page.getByRole('button', { name: 'Editar Retrato da página' }).click()
-    const dialog = page.getByRole('dialog', { name: /Trocar retrato da página/i })
-    await dialog.waitFor()
+    await openPortraitPicker()
+    const dialog = page.getByRole('dialog', { name: /Trocar/i })
     await dialog.getByRole('button', { name: /Usar\s*foto-e2e\.png/ }).click()
     await dialog.waitFor({ state: 'hidden' })
-    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
-    await page.getByText('Alterações salvas.').waitFor()
+    await page.getByRole('status').filter({ hasText: 'salvo' }).waitFor({ timeout: 10_000 })
+    // Editor único: a imagem escolhida na página vai para o cadastro (cartões, SEO, curso).
     assert.equal((await get(`/admin/professionals/${id}`)).body.data.portraitSrc, `/media/${imageId}`)
-    await page.getByRole('button', { name: 'Revisão e publicação' }).click()
     await page.getByRole('button', { name: 'Publicar', exact: true }).click()
-    await page.getByText('Publicado. A página pública já foi atualizada.').waitFor()
+    await page.getByRole('dialog', { name: 'Publicado!' }).waitFor()
+    await page.getByRole('button', { name: 'Continuar editando' }).click()
   })
 
   await step('página pública usa /media/<id>?w=, a imagem carrega e o CSP não reclama', async () => {
@@ -169,10 +175,7 @@ try {
     await page.goto(`${BASE}/admin/midia`)
     await page.locator('.media-card').first().waitFor()
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'overflow em /admin/midia')
-    await page.goto(`${BASE}/admin/profissionais/${id}`)
-    await page.getByRole('button', { name: 'Imagens e vídeo' }).click()
-    await page.getByRole('button', { name: 'Editar Retrato da página' }).click()
-    await page.getByRole('dialog').waitFor()
+    await openPortraitPicker()
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'overflow com o seletor aberto')
     await page.keyboard.press('Escape')
     await page.getByRole('dialog').waitFor({ state: 'hidden' })
@@ -184,15 +187,12 @@ try {
     assert.equal(res.status(), 403)
   })
 } finally {
-  // Limpeza: tira a mídia do cadastro, despublica, arquiva e exclui o que enviou.
+  // Limpeza: despublica e apaga o profissional de teste e exclui o que enviou.
   try {
     if (id) {
-      const row = await get(`/admin/professionals/${id}`)
-      if (row.status === 200) {
-        await send(context, 'put', `/admin/professionals/${id}`, { revision: row.body.revision, data: { ...row.body.data, portraitSrc: professional.portraitSrc } })
-        await send(context, 'post', `/admin/professionals/${id}/unpublish`)
-        await send(context, 'post', `/admin/professionals/${id}/archive`)
-      }
+      // O retrato mora na página (editor único): apagar o profissional (documento e versões) libera a imagem.
+      await send(context, 'post', `/admin/professionals/${id}/unpublish`)
+      await send(context, 'delete', `/admin/professionals/${id}`)
     }
     for (const mid of uploaded) await send(context, 'delete', `/admin/media/${mid}`)
   } catch (error) {

@@ -2,7 +2,7 @@
  * E2E dos modelos de página do Profissional (Fase 7C): escolher o modelo no assistente (com exemplo), criar e
  * publicar com cada um dos seis modelos, conferir composição e tema na página pública, trocar de modelo antes de
  * personalizar, bloqueio depois de editar, editor com as seções Números/Chamada e 390px sem rolagem horizontal.
- * Cria profissionais `e2e-tpl-*` (arquivados no fim).
+ * Cria profissionais `e2e-tpl-*` (apagados no fim).
  * Requer API (3333) migrada e o build de produção do web (3100).
  * Uso: E2E_ADMIN_EMAIL=... E2E_ADMIN_PASSWORD=... pnpm --filter @academia/web e2e:templates
  */
@@ -59,6 +59,21 @@ const data = (name: string) => ({
 })
 
 const ids = new Map<string, { id: number; slug: string }>()
+/** Troca o modelo pela tela: Configurações → Modelo da página → Trocar modelo → confirmar (o editor recarrega). */
+async function changeTemplate(id: number, label: RegExp) {
+  await page.goto(`${BASE}/admin/editor/profissionais/${id}`)
+  await page.locator('.ed-item').first().waitFor()
+  await page.getByRole('button', { name: 'Configurações' }).click()
+  // O rádio fica escondido sob o cartão do modelo: clica no cartão, como a pessoa faz.
+  await page.locator('label.ed-bg-opt').filter({ has: page.locator('strong', { hasText: label }) }).click()
+  assert.equal(await page.getByRole('radio', { name: label }).isChecked(), true)
+  await page.getByRole('button', { name: 'Trocar modelo', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Trocar o modelo da página?' })
+  await dialog.waitFor()
+  await Promise.all([page.waitForEvent('load'), dialog.getByRole('button', { name: 'Trocar modelo' }).click()])
+  await page.locator('.ed-item').first().waitFor()
+}
+
 try {
   await step('login', async () => {
     await page.goto(`${BASE}/admin/login`)
@@ -126,14 +141,11 @@ try {
     assert.ok(video.indexOf('id="video"') < video.indexOf('bio-section') || !video.includes('id="video"'), 'vídeo (se houver) antes da bio')
   })
 
-  await step('trocar o modelo de um rascunho pela tela, antes de personalizar', async () => {
+  await step('trocar o modelo de um rascunho pela tela (Configurações do editor), antes de personalizar', async () => {
     const created = await send('post', '/admin/professionals', { slug: `e2e-tpl-troca-${stamp}`, data: data(`Troca ${stamp}`) })
     const id = created.body.id
     ids.set('troca', { id, slug: `e2e-tpl-troca-${stamp}` })
-    await page.goto(`${BASE}/admin/profissionais/${id}`)
-    await page.getByRole('radio', { name: /^Imersivo/ }).check()
-    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
-    await page.getByText('Alterações salvas.').waitFor()
+    await changeTemplate(id, /^Imersivo/)
     assert.equal((await get(`/admin/professionals/${id}`)).body.templateKey, 'professional-immersive')
   })
 
@@ -149,30 +161,25 @@ try {
     await page.frameLocator('iframe[title="Pré-visualização da página"]').getByText(text).waitFor({ timeout: 10_000 })
     await page.getByRole('status').filter({ hasText: 'Salvo' }).waitFor({ timeout: 10_000 })
     await page.getByRole('button', { name: 'Publicar', exact: true }).click()
-    await page.getByText('Publicado. O site será atualizado em instantes.').waitFor()
+    // A publicação confirma num cartão ("Publicado!") que cobre o editor: espera e fecha antes de seguir.
+    await page.getByRole('dialog', { name: 'Publicado!' }).waitFor()
+    await page.getByRole('button', { name: 'Continuar editando' }).click()
     await until(async () => (await html(`/profissionais/${slug}`)).includes(text), 'chamada editada no ar')
     assert.match(await html(`/profissionais/${slug}`), /data-tpl="professional-premium"/)
   })
 
-  await step('depois de personalizar no editor, trocar o modelo é bloqueado (e o assistente avisa)', async () => {
-    const { id } = ids.get('professional-premium')!
+  await step('depois de personalizar, a API recusa trocar o modelo direto; as Configurações recriam a página no novo modelo', async () => {
+    const { id, slug } = ids.get('professional-premium')!
     const row = await get(`/admin/professionals/${id}`)
     const res = await send('put', `/admin/professionals/${id}`, { revision: row.body.revision, data: row.body.data, templateKey: 'professional-video' })
     assert.equal(res.status, 422)
     assert.equal(res.body.code, 'template_locked')
-    await page.goto(`${BASE}/admin/profissionais/${id}`)
-    assert.equal(await page.getByRole('radio', { name: /^Vídeo/ }).isDisabled(), true)
-    await page.getByText(/personalizada no editor/).first().waitFor()
-  })
-
-  await step('"Restaurar do cadastro" libera a troca e a página volta ao modelo escolhido', async () => {
-    const { id } = ids.get('professional-premium')!
-    const state = await get(`/admin/professionals/${id}/document`)
-    assert.equal((await send('delete', `/admin/professionals/${id}/document`, { revision: state.body.documentRevision })).status, 200)
-    const row = await get(`/admin/professionals/${id}`)
-    const res = await send('put', `/admin/professionals/${id}`, { revision: row.body.revision, data: row.body.data, templateKey: 'professional-video' })
-    assert.equal(res.status, 200)
-    assert.equal(res.body.templateKey, 'professional-video')
+    await changeTemplate(id, /^Vídeo/)
+    const after = await get(`/admin/professionals/${id}`)
+    assert.equal(after.body.templateKey, 'professional-video')
+    assert.equal((await get(`/admin/professionals/${id}/document`)).body.document, null, 'a página volta a ser montada do cadastro')
+    assert.equal(after.body.data.name, row.body.data.name, 'o cadastro é preservado')
+    assert.ok(slug)
   })
 
   await step('390px: exemplos dos seis modelos e galeria sem rolagem horizontal', async () => {
@@ -196,7 +203,7 @@ try {
   try {
     for (const { id } of ids.values()) {
       await send('post', `/admin/professionals/${id}/unpublish`)
-      await send('post', `/admin/professionals/${id}/archive`)
+      await send('delete', `/admin/professionals/${id}`)
     }
   } catch (error) {
     console.error('limpeza falhou:', error)

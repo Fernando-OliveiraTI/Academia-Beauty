@@ -1,7 +1,7 @@
 /**
  * E2E da 9B (fundo da seção, aba Estilo) e 9C (duplicar/adicionar outra seção repetível) no editor do Profissional:
  * escolhe um tom, vê na pré-visualização, duplica a Trajetória, respeita o limite de 4, publica e confere a página pública
- * (tom aplicado, ids únicos). Cria um profissional `e2e-sec-*` e o arquiva no fim.
+ * (tom aplicado, ids únicos). Cria um profissional `e2e-sec-*` e o apaga no fim.
  * Requer API (3333) migrada e o build de produção do web (3100).
  * Uso: E2E_ADMIN_EMAIL=... E2E_ADMIN_PASSWORD=... pnpm --filter @academia/web e2e:editor-sections
  */
@@ -112,7 +112,9 @@ try {
 
   await step('publicar leva as 4 trajetórias ao site (2 em "Papel": original e duplicata); ids de DOM únicos', async () => {
     await page.getByRole('button', { name: 'Publicar', exact: true }).click()
-    await page.getByText('Publicado. O site será atualizado em instantes.').waitFor()
+    // A publicação confirma num cartão ("Publicado!") que cobre o editor: espera e fecha antes de seguir.
+    await page.getByRole('dialog', { name: 'Publicado!' }).waitFor()
+    await page.getByRole('button', { name: 'Continuar editando' }).click()
     let html = ''
     for (let i = 0; i < 30; i++) {
       html = await publicHtml()
@@ -165,7 +167,7 @@ try {
 } finally {
   if (id) {
     await send('post', `/admin/professionals/${id}/unpublish`)
-    await send('post', `/admin/professionals/${id}/archive`)
+    await send('delete', `/admin/professionals/${id}`)
   }
   await browser.close()
 }

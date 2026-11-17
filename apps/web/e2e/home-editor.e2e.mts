@@ -2,7 +2,7 @@
  * E2E do CMS da Home (Fase 7B): editor da Home com pré-visualização ao vivo e autosave, regras das seções
  * automáticas, publicar → `/` muda na hora, histórico e restauração, e a vitrine de cursos dinâmica
  * (curso publicado aparece na Home com link que funciona; despublicado some). Ao final volta a Home ao padrão.
- * Cria um profissional e um curso `e2e-home-*` (arquivados no fim).
+ * Cria um profissional e um curso `e2e-home-*` (apagados no fim).
  * Requer API (3333) migrada e o build de produção do web (3100).
  * Uso: E2E_ADMIN_EMAIL=... E2E_ADMIN_PASSWORD=... pnpm --filter @academia/web e2e:home-editor
  */
@@ -103,7 +103,9 @@ try {
 
   await step('publicar muda a Home pública na hora', async () => {
     await page.getByRole('button', { name: 'Publicar', exact: true }).click()
-    await page.getByText('Publicado. O site será atualizado em instantes.').waitFor()
+    // A publicação confirma num cartão ("Publicado!") que cobre o editor: espera e fecha antes de seguir.
+    await page.getByRole('dialog', { name: 'Publicado!' }).waitFor()
+    await page.getByRole('button', { name: 'Continuar editando' }).click()
     await until(async () => (await homeHtml()).includes(KICKER), 'Home pública com o texto publicado')
     assert.equal((await get('/admin/home')).body.hasUnpublishedChanges, false)
   })
@@ -186,7 +188,9 @@ try {
     await page.getByRole('button', { name: /Topo \(hero\)/ }).first().click()
     assert.notEqual(await page.getByLabel('Kicker', { exact: true }).inputValue(), KICKER)
     await page.getByRole('button', { name: 'Publicar', exact: true }).click()
-    await page.getByText('Publicado. O site será atualizado em instantes.').waitFor()
+    // A publicação confirma num cartão ("Publicado!") que cobre o editor: espera e fecha antes de seguir.
+    await page.getByRole('dialog', { name: 'Publicado!' }).waitFor()
+    await page.getByRole('button', { name: 'Continuar editando' }).click()
     await until(async () => !(await homeHtml()).includes(KICKER), 'Home pública de volta ao original')
   })
 
@@ -206,8 +210,8 @@ try {
   })
 } finally {
   try {
-    if (courseId) { await send('post', `/admin/courses/${courseId}/unpublish`); await send('post', `/admin/courses/${courseId}/archive`) }
-    if (professionalId) { await send('post', `/admin/professionals/${professionalId}/unpublish`); await send('post', `/admin/professionals/${professionalId}/archive`) }
+    if (courseId) { await send('post', `/admin/courses/${courseId}/unpublish`); await send('delete', `/admin/courses/${courseId}`) }
+    if (professionalId) { await send('post', `/admin/professionals/${professionalId}/unpublish`); await send('delete', `/admin/professionals/${professionalId}`) }
   } catch (error) {
     console.error('limpeza falhou:', error)
   }

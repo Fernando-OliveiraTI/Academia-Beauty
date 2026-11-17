@@ -1,7 +1,7 @@
 /**
  * E2E da confirmação de pagamento na página pública do curso (checkout embutido da The Members): abre a página, lê o
  * código da visita na URL do iframe, "dispara" o webhook assinado e confere o aviso de espera (Pix) e a tela de sucesso.
- * Cria profissional/curso `e2e-pagto-*` e os arquiva no fim.
+ * Cria profissional/curso `e2e-pagto-*` e os apaga no fim.
  * Requer API (3333) com `THEMEMBERS_WEBHOOK_SECRET` igual a `E2E_WEBHOOK_SECRET` e `PUBLIC_SHOW_DRAFTS=false`, e o build do web (3100).
  * Uso: E2E_WEBHOOK_SECRET=... E2E_ADMIN_EMAIL=... E2E_ADMIN_PASSWORD=... pnpm --filter @academia/web e2e:checkout-status
  */
@@ -156,8 +156,8 @@ try {
   console.log(results.join('\n'))
   process.exitCode = 1
 } finally {
-  if (courseId) { await send('post', `/admin/courses/${courseId}/unpublish`); await send('post', `/admin/courses/${courseId}/archive`) }
-  if (proId) { await send('post', `/admin/professionals/${proId}/unpublish`); await send('post', `/admin/professionals/${proId}/archive`) }
+  if (courseId) { await send('post', `/admin/courses/${courseId}/unpublish`); await send('delete', `/admin/courses/${courseId}`) }
+  if (proId) { await send('post', `/admin/professionals/${proId}/unpublish`); await send('delete', `/admin/professionals/${proId}`) }
   await browser.close()
 }
 console.log(results.join('\n'))
