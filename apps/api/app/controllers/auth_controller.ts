@@ -39,6 +39,7 @@ export function describeUser(user: User) {
     twoFactorEnabled: user.twoFactorEnabled,
     mustChangePassword: user.mustChangePassword,
     twoFactorRequired: requires2fa(user),
+    professionalId: user.professionalId ?? null,
   }
 }
 

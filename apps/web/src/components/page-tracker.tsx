@@ -4,7 +4,10 @@ import { useEffect } from 'react'
 
 type Props = { type: 'home' | 'professional' | 'course'; slug?: string }
 
-function send(payload: Record<string, string | undefined>) {
+/** Intervalo dos envios parciais de tempo enquanto a página está visível. */
+export const HEARTBEAT_MS = 15_000
+
+function send(payload: Record<string, string | number | undefined>) {
   try {
     const body = JSON.stringify(payload)
     const url = '/api/public/track'
@@ -19,11 +22,36 @@ function send(payload: Record<string, string | undefined>) {
  * Medição das páginas públicas (alimenta o dashboard): uma visualização por abertura e os cliques de compra.
  * Cliques em `[data-cta]` contam como interesse; se o clique sai para outro domínio (checkout do provedor) conta como checkout.
  * Com o checkout embutido na página, ele conta como checkout quando aparece na tela (uma vez por visita).
+ * Tempo na página (Insights): soma só o tempo com a aba visível e envia o acumulado sempre que a aba fica oculta, a
+ * página é fechada e, enquanto visível, a cada 15 s (o envio da saída pode se perder em alguns navegadores; assim
+ * perde-se no máximo o último trecho). O servidor soma os envios e descarta os menores que 1 s.
  * Não grava cookie nem identificador no navegador; o servidor guarda só um resumo diário anônimo.
  */
 export function PageTracker({ type, slug }: Props) {
   useEffect(() => {
-    send({ kind: 'view', type, slug, referrer: document.referrer || undefined })
+    const referrer = document.referrer || undefined
+    send({ kind: 'view', type, slug, referrer })
+
+    // Tempo visível: conta desde que a aba ficou visível; envia ao ocultar/sair (o envio leva a mesma origem da visita).
+    let visibleSince: number | null = document.visibilityState === 'visible' ? performance.now() : null
+    const flush = () => {
+      if (visibleSince === null) return
+      const ms = Math.round(performance.now() - visibleSince)
+      visibleSince = null
+      if (ms >= 1000) send({ kind: 'time', type, slug, referrer, durationMs: ms })
+    }
+    // Envio parcial periódico: fecha o trecho atual e começa outro (só com a aba visível).
+    const heartbeat = window.setInterval(() => {
+      if (document.visibilityState !== 'visible' || visibleSince === null) return
+      flush()
+      visibleSince = performance.now()
+    }, HEARTBEAT_MS)
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flush()
+      else if (visibleSince === null) visibleSince = performance.now()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pagehide', flush)
 
     const onClick = (ev: MouseEvent) => {
       const anchor = (ev.target as Element | null)?.closest?.('a') as HTMLAnchorElement | null
@@ -49,6 +77,10 @@ export function PageTracker({ type, slug }: Props) {
       io.observe(embedded)
     }
     return () => {
+      window.clearInterval(heartbeat)
+      flush() // navegação interna (sem pagehide) também fecha a contagem
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pagehide', flush)
       document.removeEventListener('click', onClick)
       io?.disconnect()
     }

@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
-/** Papéis iniciais do painel. Podem ser ajustados pelo cliente (decisão D-004, item 10). */
-export const ROLES = ['admin', 'editor', 'viewer'] as const;
+/**
+ * Papéis do painel (D-004, item 10). `professional`: login de um profissional, ligado a ele (`users.professional_id`),
+ * que só vê os Insights dos próprios cursos (D-040).
+ */
+export const ROLES = ['admin', 'editor', 'viewer', 'professional'] as const;
 export type Role = (typeof ROLES)[number];
 
 export const PERMISSIONS = [
@@ -18,6 +21,10 @@ export const PERMISSIONS = [
   'media.manage',
   'commerce.manage',
   'audit.read',
+  /** Ver a área Insights (engajamento e vendas). Sem `insights.all`, só os dados do próprio profissional. */
+  'insights.read',
+  /** Ver os Insights de todos os profissionais e cursos. */
+  'insights.all',
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -30,6 +37,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'pages.read', 'pages.write', 'pages.publish', 'media.manage',
   ],
   viewer: ['professionals.read', 'courses.read', 'pages.read'],
+  professional: ['insights.read'],
 };
 
 export const loginInputSchema = z.object({
@@ -48,6 +56,8 @@ export const meSchema = z.object({
   mustChangePassword: z.boolean().default(false),
   /** Administrador sem 2FA numa instalação que o exige: só acessa a própria conta. */
   twoFactorRequired: z.boolean().default(false),
+  /** Papel `professional`: o profissional a que o login pertence (os Insights ficam restritos a ele). */
+  professionalId: z.number().int().positive().nullable().default(null),
 });
 export type Me = z.infer<typeof meSchema>;
 
@@ -64,3 +74,4 @@ export * from './media.js';
 export * from './home.js';
 export * from './payments.js';
 export * from './document-sync.js';
+export * from './insights.js';

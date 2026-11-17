@@ -8,6 +8,8 @@ Regra: **consolidar lógica e estrutura, nunca a aparência.** Uma mudança visu
 | `Pager`, `lastPageOf` | `src/components/pager.tsx` | Rodapé numerado. Modo URL (`hrefFor`) ou cliente (`onPageChange`). | Profissionais, Cursos, Checkouts, Webhooks, Biblioteca de mídia |
 | `ListToolbar` | `src/components/list-toolbar.tsx` | Busca, abas de situação, ordenação, itens por página (tudo na URL). | Listas de Profissionais, Cursos, Checkouts, Webhooks |
 | `ProfessionalFilter` | `src/components/professional-filter.tsx` | Filtro da lista por profissional em cartõezinhos (foto, nome, especialidade); grava `?professionalId=`. Com `ListToolbar filterParams={['professionalId']}` o "Limpar filtros" aparece. | Lista de Cursos |
+| `Kpi`, `Card`, `RankBars`, `Split`, `Sparkline`, `Icon`, `Empty`, `Period`, `Avatar`, `DeltaChip` | `src/components/dash-ui.tsx` | Peças dos painéis de números (extraídas do Dashboard sem mudar a aparência). | Dashboard, Insights |
+| `InsightsFilters` | `src/components/insights-filters.tsx` | Filtros da área Insights (período livre, profissional, curso, aparelho, origem) na URL. | Insights |
 | `ListEmpty` | `src/components/list-empty.tsx` | Estado vazio das listas (título + orientação). | As 4 listas acima |
 | `pageOf`, `isPerPage`, `listHref`, `PER_PAGE_VALUES` | `src/lib/list-params.ts` | Leitura/validação de `?page=`, `?perPage=` e montagem da URL de página. | As 4 listas |
 | `brl`, `money` | `src/lib/format.ts` | Moeda pt-BR (`money` aceita `null` → "—" e outra moeda). | Lista de cursos, `checkout-settings`, `course-payments`, `checkout-sessions`, `audience-insights` |

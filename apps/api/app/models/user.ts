@@ -63,6 +63,10 @@ export default class User extends compose(BaseModel, AuthFinder) {
     return this.totpEnabledAt !== null && this.totpSecret !== null
   }
 
+  /** Papel `professional`: o profissional a que o login pertence (os Insights ficam restritos a ele). */
+  @column()
+  declare professionalId: number | null
+
   @manyToMany(() => Role, { pivotTable: 'user_roles' })
   declare roles: ManyToMany<typeof Role>
 

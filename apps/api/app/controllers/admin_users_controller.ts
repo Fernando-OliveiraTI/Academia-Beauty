@@ -2,6 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { Role as RoleName } from '@academia/contracts'
 import Role from '#models/role'
 import User from '#models/user'
+import db from '@adonisjs/lucid/services/db'
 import AuditService from '#services/audit_service'
 import { generateTemporaryPassword } from '#services/password_policy'
 import { createUserValidator, updateUserValidator } from '#validators/auth'
@@ -12,6 +13,7 @@ function present(user: User) {
     email: user.email,
     fullName: user.fullName,
     role: user.roleNames[0] ?? null,
+    professionalId: user.professionalId ?? null,
     isActive: user.isActive,
     twoFactorEnabled: user.twoFactorEnabled,
     mustChangePassword: user.mustChangePassword,
@@ -25,6 +27,17 @@ async function activeAdmins(): Promise<number> {
     .where('is_active', true)
     .whereHas('roles', (q) => q.where('name', 'admin'))
   return rows.length
+}
+
+/**
+ * Papel `professional` exige um profissional existente; os outros papéis não têm vínculo. Devolve o id a gravar ou a
+ * mensagem de erro.
+ */
+async function professionalFor(role: RoleName, requested: number | null | undefined) {
+  if (role !== 'professional') return { id: null as number | null }
+  if (!requested) return { error: 'Escolha o profissional deste login.' }
+  const row = await db.from('professionals').where('id', requested).select('id').first()
+  return row ? { id: row.id as number } : { error: 'Profissional não encontrado.' }
 }
 
 async function setRole(user: User, role: RoleName) {
@@ -48,6 +61,14 @@ export default class AdminUsersController {
         code: 'email_taken',
       })
     }
+    const link = await professionalFor(input.role, input.professionalId)
+    if ('error' in link) {
+      return response.unprocessableEntity({
+        message: link.error,
+        code: 'professional_required',
+        errors: [{ field: 'professionalId', message: link.error }],
+      })
+    }
     const temporaryPassword = generateTemporaryPassword()
     const user = await User.create({
       email: input.email,
@@ -55,6 +76,7 @@ export default class AdminUsersController {
       password: temporaryPassword,
       isActive: true,
       mustChangePassword: true,
+      professionalId: link.id,
     })
     await setRole(user, input.role)
     await user.load('roles')
@@ -63,7 +85,7 @@ export default class AdminUsersController {
       actorId: auth.getUserOrFail().id,
       resourceType: 'user',
       resourceId: user.id,
-      metadata: { email: user.email, role: input.role },
+      metadata: { email: user.email, role: input.role, professionalId: link.id },
     })
     return response.created({ user: present(user), temporaryPassword })
   }
@@ -97,12 +119,28 @@ export default class AdminUsersController {
       })
     }
 
+    // Vínculo com o profissional segue o papel final (o atual, se o papel não mudou).
+    const finalRole = input.role ?? user.roleNames[0]
+    const requested =
+      input.professionalId !== undefined ? input.professionalId : user.professionalId
+    const link = finalRole ? await professionalFor(finalRole, requested) : { id: null }
+    if ('error' in link) {
+      return response.unprocessableEntity({
+        message: link.error,
+        code: 'professional_required',
+        errors: [{ field: 'professionalId', message: link.error }],
+      })
+    }
+    const relinked = (link.id ?? null) !== (user.professionalId ?? null)
+    user.professionalId = link.id ?? null
+
     if (input.fullName !== undefined) user.fullName = input.fullName
     if (input.isActive !== undefined) user.isActive = input.isActive
     if (input.role !== undefined && input.role !== user.roleNames[0])
       await setRole(user, input.role)
     // Desativar ou mudar de papel encerra as sessões abertas: o acesso novo vale já.
-    if (deactivating || (input.role !== undefined && input.role !== user.roleNames[0]))
+    // Trocar o profissional muda o que o login enxerga: também encerra as sessões.
+    if (deactivating || relinked || (input.role !== undefined && input.role !== user.roleNames[0]))
       user.sessionEpoch += 1
     await user.save()
     await user.load('roles')
