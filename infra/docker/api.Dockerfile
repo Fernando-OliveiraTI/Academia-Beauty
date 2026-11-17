@@ -15,10 +15,12 @@ ENV NODE_ENV=production PORT=3333 HOST=0.0.0.0
 WORKDIR /app
 COPY --from=build /out/node_modules ./node_modules
 COPY --from=build /repo/apps/api/build ./
+COPY infra/docker/api-entrypoint.sh ./entrypoint.sh
 # Mídia enviada (monte um volume em /app/storage) e usuário sem privilégios.
-RUN mkdir -p /app/storage/media && chown -R node:node /app
+RUN mkdir -p /app/storage/media && chmod +x /app/entrypoint.sh && chown -R node:node /app
 USER node
 EXPOSE 3333
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "bin/server.js"]
+# Migra e sobe (ver entrypoint.sh; SKIP_MIGRATIONS=true pula a migração).
+CMD ["./entrypoint.sh"]
