@@ -10,7 +10,11 @@ export default async function UsersPage() {
   if (!user.permissions.includes('users.manage')) {
     return <main><h1>Usuários</h1><p>Só administradores gerenciam usuários.</p></main>
   }
-  const { data, status } = await adminGet<{ items: UserRow[] }>('/admin/users')
+  const [{ data, status }, { data: pros }] = await Promise.all([
+    adminGet<{ items: UserRow[] }>('/admin/users'),
+    adminGet<{ items: { id: number; data: { name: string; specialty?: string; cardPhotoSrc?: string; portraitSrc?: string } }[] }>('/admin/professionals?perPage=100&sort=name'),
+  ])
+  const professionals = (pros?.items ?? []).map((p) => ({ id: p.id, name: p.data.name, specialty: p.data.specialty ?? '', photo: p.data.cardPhotoSrc || p.data.portraitSrc || '' }))
   return (
     <main>
       <section className="admin-hero">
@@ -21,7 +25,7 @@ export default async function UsersPage() {
         </div>
       </section>
       {data
-        ? <UsersManager items={data.items} currentUserId={user.id} />
+        ? <UsersManager items={data.items} currentUserId={user.id} professionals={professionals} />
         : <p role="alert" className="form-error">Não foi possível carregar os usuários (código {status}). Tente recarregar a página.</p>}
     </main>
   )

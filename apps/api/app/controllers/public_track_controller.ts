@@ -13,6 +13,7 @@ export default class PublicTrackController {
           type: str(body.type, 16) ?? '',
           slug: str(body.slug, 80),
           referrer: str(body.referrer, 300),
+          durationMs: typeof body.durationMs === 'number' ? body.durationMs : null,
           ip: request.ip(),
           userAgent: request.header('user-agent') ?? '',
         },

@@ -10,7 +10,12 @@ export type FilterProfessional = { id: number; name: string; specialty?: string;
  * Filtro da lista por profissional: cartõezinhos com foto e nome (mesma ideia do seletor de "Novo curso"), em vez de
  * um `<select>` sem imagem. Grava `?professionalId=` na URL (a API já filtra) e volta à página 1.
  */
-export function ProfessionalFilter({ professionals, param = 'professionalId' }: { professionals: readonly FilterProfessional[]; param?: string }) {
+export function ProfessionalFilter({ professionals, param = 'professionalId', reset = [] }: {
+  professionals: readonly FilterProfessional[]
+  param?: string
+  /** Outros parâmetros que perdem o sentido ao trocar de profissional (ex.: o curso escolhido). */
+  reset?: readonly string[]
+}) {
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
@@ -22,6 +27,7 @@ export function ProfessionalFilter({ professionals, param = 'professionalId' }: 
     if (id) next.set(param, id)
     else next.delete(param)
     next.delete('page')
+    for (const key of reset) next.delete(key)
     start(() => router.replace(`${pathname}${next.size ? `?${next}` : ''}`, { scroll: false }))
   }
 

@@ -7,24 +7,49 @@ import { apiSend } from '@/lib/api-client'
 import { useConfirm } from '@/components/confirm-dialog'
 import { useDialogSync } from '@/components/use-dialog'
 import { relativeTime } from '@/lib/relative-time'
+import { mediaSrc } from '@academia/page-renderer'
 
 export type UserRow = {
   id: number
   email: string
   fullName: string | null
-  role: 'admin' | 'editor' | 'viewer' | null
+  role: 'admin' | 'editor' | 'viewer' | 'professional' | null
+  /** Papel `professional`: o profissional que o login enxerga nos Insights. */
+  professionalId: number | null
   isActive: boolean
   twoFactorEnabled: boolean
   mustChangePassword: boolean
   lastLoginAt: string | null
 }
 
-const ROLE_LABEL = { admin: 'Administrador', editor: 'Editor', viewer: 'Leitor' } as const
+const ROLE_LABEL = { admin: 'Administrador', editor: 'Editor', viewer: 'Leitor', professional: 'Profissional' } as const
 type Role = keyof typeof ROLE_LABEL
 const ROLE_HELP: Record<Role, string> = {
   admin: 'Acesso total, inclusive usuários, pagamentos e registros técnicos.',
   editor: 'Cria, edita e publica profissionais, cursos, páginas e mídia.',
   viewer: 'Só consulta profissionais, cursos e páginas.',
+  professional: 'Login de um profissional: vê só os Insights (visitas, cliques e vendas) dos próprios cursos.',
+}
+
+export type ProfessionalOption = { id: number; name: string; specialty: string; photo: string }
+
+/** Escolha do profissional do login (cartões com foto e nome, como o filtro da lista de cursos). */
+function ProfessionalChoice({ options, value, onChange }: { options: readonly ProfessionalOption[]; value: number | null; onChange: (id: number) => void }) {
+  if (options.length === 0) return <p className="form-error">Cadastre um profissional antes de criar o login dele.</p>
+  return (
+    <div className="ds-field">
+      <span className="ds-label" id="usr-pro-label">Profissional</span>
+      <div className="pf usr-pros" role="radiogroup" aria-labelledby="usr-pro-label">
+        {options.map((p) => (
+          <button key={p.id} type="button" role="radio" aria-checked={value === p.id} className="pf-chip" onClick={() => onChange(p.id)} title={p.specialty ? `${p.name} · ${p.specialty}` : p.name}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {p.photo ? <img src={mediaSrc(p.photo, 96)} alt="" width={28} height={28} loading="lazy" /> : <span className="pf-initial" aria-hidden="true">{p.name.slice(0, 1).toUpperCase()}</span>}
+            <span className="pf-text"><strong>{p.name}</strong>{p.specialty ? <small>{p.specialty}</small> : null}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 type Created = { name: string; email: string; password: string; reset: boolean }
@@ -65,7 +90,7 @@ function RowMenu({ row, self, onAction, busy }: { row: UserRow; self: boolean; o
       <button ref={trigger} type="button" className="icon-button" aria-label={`Ações para ${row.fullName ?? row.email}`} title="Ações" aria-haspopup="menu" aria-expanded={open} onClick={toggle}><DotsIcon /></button>
       {open && at ? (
         <div className="row-menu-list" role="menu" style={{ position: 'fixed', top: at.top, right: at.right, left: 'auto', width: 'max-content', minWidth: 220 }}>
-          <button type="button" role="menuitem" disabled={busy} onClick={() => run('role')}>Mudar papel</button>
+          <button type="button" role="menuitem" disabled={busy} onClick={() => run('role')}>{row.role === 'professional' ? 'Mudar papel ou profissional' : 'Mudar papel'}</button>
           <button type="button" role="menuitem" disabled={busy} onClick={() => run('reset-password')}>Redefinir senha</button>
           <button type="button" role="menuitem" disabled={busy} onClick={() => run('revoke')}>Encerrar sessões</button>
           {row.twoFactorEnabled ? <button type="button" role="menuitem" disabled={busy} onClick={() => run('reset-2fa')}>Remover verificação em 2 etapas</button> : null}
@@ -76,7 +101,7 @@ function RowMenu({ row, self, onAction, busy }: { row: UserRow; self: boolean; o
   )
 }
 
-export function UsersManager({ items, currentUserId }: { items: UserRow[]; currentUserId: number }) {
+export function UsersManager({ items, currentUserId, professionals = [] }: { items: UserRow[]; currentUserId: number; professionals?: readonly ProfessionalOption[] }) {
   const router = useRouter()
   const { confirm, dialog: confirmDialog } = useConfirm()
   const dialog = useRef<HTMLDialogElement>(null)
@@ -88,6 +113,9 @@ export function UsersManager({ items, currentUserId }: { items: UserRow[]; curre
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
   const [role, setRole] = useState<Role>('editor')
+  const [professionalId, setProfessionalId] = useState<number | null>(null)
+  const proName = (id: number | null) => professionals.find((p) => p.id === id)?.name
+  const needsPro = role === 'professional' && !professionalId
 
   useDialogSync(dialog, mode !== null || created !== null)
 
@@ -98,12 +126,12 @@ export function UsersManager({ items, currentUserId }: { items: UserRow[]; curre
   async function create(e: React.FormEvent) {
     e.preventDefault()
     setBusy(true); setError(null)
-    const res = await apiSend<{ user: UserRow; temporaryPassword: string } & ApiMessage>('POST', '/admin/users', { email, fullName, role })
+    const res = await apiSend<{ user: UserRow; temporaryPassword: string } & ApiMessage>('POST', '/admin/users', { email, fullName, role, ...(role === 'professional' ? { professionalId } : {}) })
     setBusy(false)
     if (!res.ok || !res.data?.temporaryPassword) return setError(reason(res))
     setMode(null)
     setCreated({ name: res.data.user.fullName ?? res.data.user.email, email: res.data.user.email, password: res.data.temporaryPassword, reset: false })
-    setEmail(''); setFullName(''); setRole('editor')
+    setEmail(''); setFullName(''); setRole('editor'); setProfessionalId(null)
     router.refresh()
   }
 
@@ -111,7 +139,7 @@ export function UsersManager({ items, currentUserId }: { items: UserRow[]; curre
     e.preventDefault()
     if (mode?.kind !== 'role') return
     setBusy(true); setError(null)
-    const res = await apiSend<ApiMessage>('PUT', `/admin/users/${mode.row.id}`, { role })
+    const res = await apiSend<ApiMessage>('PUT', `/admin/users/${mode.row.id}`, { role, ...(role === 'professional' ? { professionalId } : {}) })
     setBusy(false)
     if (!res.ok) return setError(reason(res))
     close(); flash('Papel atualizado. As sessões abertas dessa pessoa foram encerradas.')
@@ -120,7 +148,7 @@ export function UsersManager({ items, currentUserId }: { items: UserRow[]; curre
 
   async function act(action: 'role' | 'toggle' | 'reset-password' | 'revoke' | 'reset-2fa', row: UserRow) {
     const name = row.fullName ?? row.email
-    if (action === 'role') { setRole(row.role ?? 'viewer'); setError(null); return setMode({ kind: 'role', row }) }
+    if (action === 'role') { setRole(row.role ?? 'viewer'); setProfessionalId(row.professionalId); setError(null); return setMode({ kind: 'role', row }) }
     setBusy(true); setNotice(null)
     try {
       if (action === 'toggle') {
@@ -170,7 +198,7 @@ export function UsersManager({ items, currentUserId }: { items: UserRow[]; curre
               {items.map((u) => (
                 <tr key={u.id}>
                   <th scope="row">{u.fullName ?? '—'}<small style={{ display: 'block', fontWeight: 400, color: 'var(--color-text-secondary)', overflowWrap: 'anywhere' }}>{u.email}{u.id === currentUserId ? ' · você' : ''}</small></th>
-                  <td>{u.role ? ROLE_LABEL[u.role] : '—'}</td>
+                  <td>{u.role ? ROLE_LABEL[u.role] : '—'}{u.role === 'professional' ? <small className="usr-pro">{proName(u.professionalId) ?? 'sem profissional'}</small> : null}</td>
                   <td>
                     <span className="pay-pill" data-tone={u.isActive ? 'ok' : 'bad'}>{u.isActive ? 'Ativo' : 'Desativado'}</span>
                     {u.mustChangePassword ? <small style={{ display: 'block', color: 'var(--color-text-secondary)' }}>Troca de senha pendente</small> : null}
@@ -208,10 +236,11 @@ export function UsersManager({ items, currentUserId }: { items: UserRow[]; curre
               </select>
               <p className="wizard-hint">{ROLE_HELP[role]}</p>
             </div>
+            {role === 'professional' ? <ProfessionalChoice options={professionals} value={professionalId} onChange={setProfessionalId} /> : null}
             {error ? <p role="alert" className="form-error">{error}</p> : null}
             <div className="acct-actions">
               <Button variant="secondary" onClick={close}>Cancelar</Button>
-              <Button type="submit" disabled={busy || !fullName.trim() || !email.trim()}>{busy ? 'Criando…' : 'Criar usuário'}</Button>
+              <Button type="submit" disabled={busy || !fullName.trim() || !email.trim() || needsPro}>{busy ? 'Criando…' : 'Criar usuário'}</Button>
             </div>
           </form>
         ) : mode?.kind === 'role' ? (
@@ -224,10 +253,11 @@ export function UsersManager({ items, currentUserId }: { items: UserRow[]; curre
               </select>
               <p className="wizard-hint">{ROLE_HELP[role]}</p>
             </div>
+            {role === 'professional' ? <ProfessionalChoice options={professionals} value={professionalId} onChange={setProfessionalId} /> : null}
             {error ? <p role="alert" className="form-error">{error}</p> : null}
             <div className="acct-actions">
               <Button variant="secondary" onClick={close}>Cancelar</Button>
-              <Button type="submit" disabled={busy || role === mode.row.role}>{busy ? 'Salvando…' : 'Salvar'}</Button>
+              <Button type="submit" disabled={busy || needsPro || (role === mode.row.role && (role !== 'professional' || professionalId === mode.row.professionalId))}>{busy ? 'Salvando…' : 'Salvar'}</Button>
             </div>
           </form>
         ) : null}

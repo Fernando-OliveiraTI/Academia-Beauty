@@ -42,14 +42,17 @@ export const createUserValidator = vine.compile(
   vine.object({
     email: vine.string().trim().toLowerCase().email().maxLength(254),
     fullName: vine.string().trim().minLength(2).maxLength(120),
-    role: vine.enum(['admin', 'editor', 'viewer'] as const),
+    role: vine.enum(['admin', 'editor', 'viewer', 'professional'] as const),
+    /** Obrigatório no papel `professional` (D-040): o profissional que o login enxerga. */
+    professionalId: vine.number().withoutDecimals().positive().nullable().optional(),
   })
 )
 
 export const updateUserValidator = vine.compile(
   vine.object({
     fullName: vine.string().trim().minLength(2).maxLength(120).optional(),
-    role: vine.enum(['admin', 'editor', 'viewer'] as const).optional(),
+    role: vine.enum(['admin', 'editor', 'viewer', 'professional'] as const).optional(),
+    professionalId: vine.number().withoutDecimals().positive().nullable().optional(),
     isActive: vine.boolean().optional(),
   })
 )

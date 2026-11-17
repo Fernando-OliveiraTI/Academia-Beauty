@@ -20,6 +20,7 @@
     "e2e:media": "tsx e2e/media.e2e.mts",
     "e2e:home-editor": "tsx e2e/home-editor.e2e.mts",
     "e2e:templates": "tsx e2e/templates.e2e.mts",
+    "e2e:insights": "tsx e2e/insights.e2e.mts",
     "section-thumbs": "tsx tools/section-thumbs.mts",
     "lint": "eslint ."
   },

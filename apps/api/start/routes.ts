@@ -29,6 +29,7 @@ const PublicMediaController = () => import('#controllers/public_media_controller
 const PublicTrackController = () => import('#controllers/public_track_controller')
 const PublicSitemapController = () => import('#controllers/public_sitemap_controller')
 const AdminDashboardController = () => import('#controllers/admin_dashboard_controller')
+const AdminInsightsController = () => import('#controllers/admin_insights_controller')
 
 router.get('/health', async ({ response }) => {
   try {
@@ -105,10 +106,17 @@ router
   .where('id', router.matchers.number())
   .use(middleware.can({ permission: 'users.manage' }))
 
-// Painel de indicadores: qualquer usuário autenticado do painel.
+// Painel de indicadores: equipe do painel. O login de profissional (D-040) não vê o tráfego do site inteiro.
 router
   .get('/admin/dashboard', [AdminDashboardController, 'show'])
   .use(middleware.auth({ gate: true }))
+  .use(middleware.can({ permission: 'professionals.read' }))
+
+// Insights (D-040): engajamento e vendas por curso. Sem `insights.all`, só o profissional do login.
+router
+  .get('/admin/insights', [AdminInsightsController, 'show'])
+  .use(middleware.auth({ gate: true }))
+  .use(middleware.can({ permission: 'insights.read' }))
 
 // Administração de profissionais. Leitura, escrita e publicação têm permissões distintas.
 router

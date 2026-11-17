@@ -5,7 +5,8 @@ import IpRateLimit from '#services/ip_rate_limit'
 
 const LIMIT_PER_MINUTE = 90
 
-export const EVENT_KINDS = ['view', 'cta', 'checkout'] as const
+/** `time`: tempo com a página visível desde o envio anterior (Insights, D-040). */
+export const EVENT_KINDS = ['view', 'cta', 'checkout', 'time'] as const
 export const RESOURCE_TYPES = ['home', 'professional', 'course'] as const
 export type EventKind = (typeof EVENT_KINDS)[number]
 export type ResourceType = (typeof RESOURCE_TYPES)[number]
@@ -13,12 +14,17 @@ export type ResourceType = (typeof RESOURCE_TYPES)[number]
 const BOT =
   /bot|crawl|spider|slurp|headless|lighthouse|preview|monitor|curl|wget|python|axios|node-fetch/i
 const SLUG = /^[a-z0-9-]{3,80}$/
+/** Tempo aceito por envio: abaixo de 1 s é ruído; acima de 30 min, aba esquecida aberta (vira o teto). */
+const MIN_TIME_MS = 1000
+const MAX_TIME_MS = 30 * 60 * 1000
 
 export type TrackInput = {
   kind: string
   type: string
   slug?: string | null
   referrer?: string | null
+  /** Só em `time`: milissegundos com a página visível. */
+  durationMs?: number | null
   ip: string
   userAgent: string
 }
@@ -56,6 +62,12 @@ export default class TrackingService {
     if (!(EVENT_KINDS as readonly string[]).includes(input.kind)) return false
     if (!(RESOURCE_TYPES as readonly string[]).includes(input.type)) return false
     if (!input.userAgent || BOT.test(input.userAgent)) return false
+    let durationMs: number | null = null
+    if (input.kind === 'time') {
+      const ms = Number(input.durationMs)
+      if (!Number.isFinite(ms) || ms < MIN_TIME_MS) return false
+      durationMs = Math.min(Math.round(ms), MAX_TIME_MS)
+    }
     if (!(await IpRateLimit.allow('track', input.ip, LIMIT_PER_MINUTE))) return false
 
     let slug: string | null = null
@@ -76,6 +88,7 @@ export default class TrackingService {
       visitor_hash: visitorHash(input.ip, input.userAgent, day),
       device: device(input.userAgent),
       referrer_host: referrerHost(input.referrer, ownHost),
+      duration_ms: durationMs,
       created_at: now,
     })
     return true

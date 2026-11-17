@@ -14,7 +14,8 @@ export function AdminShell({ user, restricted = false, children }: { user: Me; r
       <header className="admin-header">
         <div className="admin-brand">ACADEMIA <span>BEAUTY</span></div>
         <nav className="admin-nav" aria-label="Painel">
-          {restricted ? null : <NavLink href="/admin">Dashboard</NavLink>}
+          {can('professionals.read') ? <NavLink href="/admin">Dashboard</NavLink> : null}
+          {can('insights.read') ? <NavLink href="/admin/insights">Insights</NavLink> : null}
           {can('professionals.read') ? <NavLink href="/admin/profissionais">Profissionais</NavLink> : null}
           {can('courses.read') ? <NavLink href="/admin/cursos">Cursos</NavLink> : null}
           {can('pages.read') ? <NavLink href="/admin/editor/home">Home</NavLink> : null}
