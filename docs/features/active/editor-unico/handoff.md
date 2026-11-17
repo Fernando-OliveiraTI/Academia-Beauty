@@ -14,12 +14,15 @@
 
 - Campo ↔ página: focar um campo do formulário (por pendência ou clique) manda `EDITOR_FIELD` ao quadro, que rola até o elemento e mostra a moldura com o nome do campo (`fieldAnchor` em `lib/section-dom.ts`; campo vazio marca o bloco dos vizinhos). Campos pendentes ficam marcados "Pendente" no formulário até serem preenchidos.
 
+- Next.js 16.4.2 → 16.4.6 (e `eslint-config-next`): corrige GHSA-mfr8-8qww-v76h (moderada). A auditoria ainda aponta 4 moderadas na API (AdonisJS http-server/core e minimatch), não tratadas aqui.
+- Escolher uma seção (lista ou clique na página) fecha os painéis Configurações/Pendências, que escondiam o formulário da seção (achado pelo E2E).
+
 ## Testes executados (2026-11-16)
 - contracts 50 ✔ · page-renderer 157 ✔ (inclui ida e volta nos 6 modelos) · web vitest 130 ✔ · API 226 ✔ · typecheck web/api/renderer ✔ · lint web/api sem erros (48 avisos já existentes no web).
 - Tela conferida no Chrome (banco **local** de dev, 1440 e 390 px, sem estouro horizontal): pendência do profissional → foco no campo dos anos → resolvido ao preencher (valor revertido depois); curso com 6 pendências (profissional, público, benefícios/entregáveis em seção oculta, oferta); Configurações do profissional e do curso; diálogo de troca de modelo (cancelado); redirecionamento da rota antiga.
 
 ## Pendências
-1. **E2E** que usavam o assistente precisam ser reescritos para o editor: `professionals.e2e.mts` (linhas ~92–97), `courses.e2e.mts` (~116–123 e oferta 171–234), `media.e2e.mts` (~120, ~172), `templates.e2e.mts` (~83–185, inclui "Restaurar do cadastro"), `editor.e2e.mts` (~188, "Restaurar do cadastro"). Não foram executados (exigem build de produção e `E2E_ADMIN_*`).
+1. ~~E2E~~ **reescritos e verdes (2026-11-16)**: os 12 roteiros passam contra o banco local (build de produção do web, API com `PUBLIC_SHOW_DRAFTS=false` e `THEMEMBERS_WEBHOOK_SECRET` temporário). `professionals` e `courses` reescritos para o editor (Configurações, pendências → campo, página → cadastro, confirmação de publicação, arquivar/restaurar pela lista); `media` escolhe o retrato na seção Topo; `templates` troca o modelo em Configurações; `editor` verifica página → cadastro. Limpeza de todos passou a **apagar** o que cria (contagem de `e2e-*` no banco não sobe).
 2. CSS `wz-*`/`wizard-*` do assistente ficou sem uso em `globals.css` (algumas classes, como `wizard-hint`, continuam em uso; remover só o que não tiver consumidor).
 3. Revisão independente (F5) e `review-context.md`.
 

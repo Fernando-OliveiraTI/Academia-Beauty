@@ -12,7 +12,7 @@ import { courseReadiness, locateField, publishReadiness, syncDataFromDocument, t
 import { apiGet, apiSend } from '@/lib/api-client'
 import { useConfirm } from '@/components/confirm-dialog'
 import { CourseSettings, ProfessionalSettings, type SettingsFocus } from './page-settings'
-import { PublishIssues, type PublishIssue } from './publish-issues'
+import { PublishBlockedNotice, PublishIssues, type PublishIssue } from './publish-issues'
 import { PublishOverlay, type PublishPhase } from './publish-overlay'
 import { useAutosave, type SaveState } from './use-autosave'
 import { SchemaForm, type JsonSchema } from '@/components/schema-form'
@@ -185,6 +185,8 @@ export function Editor(props: EditorProps) {
   // Situação da página: muda ao publicar sem recarregar o editor (menu Despublicar, botão Ver página).
   const [status, setStatus] = useState(props.status)
   const [publishPhase, setPublishPhase] = useState<PublishPhase>(null)
+  // Aviso "Não publicado" (pendências): só informa; a lista fica no painel lateral.
+  const [blockedNotice, setBlockedNotice] = useState(false)
   const editable = props.canWrite && status !== 'archived'
   const rules = useMemo(() => editorRules(templateKey), [templateKey])
   const base = kind === 'professional' ? `/admin/professionals/${id}` : kind === 'course' ? `/admin/courses/${id}` : '/admin/home'
@@ -269,6 +271,8 @@ export function Editor(props: EditorProps) {
   }
   const selectSection = (sectionId: string) => {
     lastFocusedSection.current = sectionId
+    // Escolher uma seção mostra o formulário dela: fecha Configurações/Pendências, que ocupam o mesmo painel.
+    setPanel((p) => (p === 'settings' || p === 'issues' ? 'none' : p))
     setTab('content')
     if (sectionId === selectedId) { postToPreview({ type: EDITOR_FOCUS, sectionId, scroll: true }); return }
     scrollNext.current = true
@@ -292,6 +296,19 @@ export function Editor(props: EditorProps) {
     // Profissional não publicado: só a próxima tentativa confirma (ele é publicado no editor dele).
     resolved: i.field === 'professionalId' ? false : OFFER_FIELDS.has(i.field) ? offerTouched : !localIssueFields.has(i.field),
   }))
+
+  // Onde ainda há pendência: marca a seção na lista (a primeira do tipo, a que alimenta o cadastro) e o botão Configurações.
+  const pendingPlaces = { sections: new Map<string, number>(), settings: 0 }
+  if (cadastro) {
+    for (const i of issues) {
+      if (i.resolved) continue
+      const loc = locateField(cadastro.kind, i.field)
+      if ('settings' in loc) pendingPlaces.settings += 1
+      else pendingPlaces.sections.set(loc.section, (pendingPlaces.sections.get(loc.section) ?? 0) + 1)
+    }
+  }
+  const pendingFor = (sectionId: string, type: string) =>
+    doc.sections.find((x) => x.type === type)?.id === sectionId ? pendingPlaces.sections.get(type) ?? 0 : 0
 
   /** Leva à seção (e ao campo) onde a pendência se resolve, ou ao painel Configurações. */
   const goToIssue = (field: string) => {
@@ -480,6 +497,7 @@ export function Editor(props: EditorProps) {
   pickRef.current = (info) => {
     const section = doc.sections.find((x) => x.id === info.sectionId)
     if (!section || !editable) return
+    setPanel((p) => (p === 'settings' || p === 'issues' ? 'none' : p))
     setSelectedId(section.id)
     setTab('content')
     if (view === 'all') setOpenIds((prev) => new Set(prev).add(section.id))
@@ -564,6 +582,7 @@ export function Editor(props: EditorProps) {
         setServerIssues(res.data.errors)
         setOfferTouched(false)
         setPanel('issues')
+        setBlockedNotice(true)
       }
       else if (res.status === 0) setPublishMsg('Sem conexão com o servidor. Tente publicar novamente.')
       else if (res.status === 401) setPublishMsg('Sua sessão expirou. Entre novamente para publicar.')
@@ -574,6 +593,7 @@ export function Editor(props: EditorProps) {
     }
   }
   const closePublished = useCallback(() => setPublishPhase(null), [])
+  const closeBlocked = useCallback(() => setBlockedNotice(false), [])
 
   /** Operações que trocam o documento no servidor (restaurar): suspendem o autosave e recarregam a tela. */
   const replaceOnServer = async (call: () => Promise<{ ok: boolean; status: number }>) => {
@@ -626,6 +646,7 @@ export function Editor(props: EditorProps) {
     <div className="ed">
       {confirmDialog}
       <PublishOverlay phase={publishPhase} publicHref={publicHref} onClose={closePublished} />
+      {blockedNotice && !publishPhase ? <PublishBlockedNotice count={issues.filter((i) => !i.resolved).length} onClose={closeBlocked} /> : null}
       <div className="ed-bar" role="toolbar" aria-label="Ações do editor">
         <div className="ed-bar-group">
           <a href={props.backHref} className="link-button ed-back">← Voltar</a>
@@ -641,7 +662,7 @@ export function Editor(props: EditorProps) {
             })}
           </div>
           <button type="button" className="ed-icon-btn" aria-label="Tela cheia" title="Pré-visualizar em tela cheia" onClick={toggleFull}>{FULL_ICON}</button>
-          {cadastro ? <button type="button" className="admin-button secondary" aria-pressed={panel === 'settings'} onClick={() => { setSettingsFocus(null); setPanel(panel === 'settings' ? 'none' : 'settings') }}>Configurações</button> : null}
+          {cadastro ? <button type="button" className="admin-button secondary" aria-pressed={panel === 'settings'} data-pending={pendingPlaces.settings > 0 || undefined} title={pendingPlaces.settings ? `${pendingPlaces.settings} pendência(s) para publicar aqui` : undefined} onClick={() => { setSettingsFocus(null); setPanel(panel === 'settings' ? 'none' : 'settings') }}>Configurações{pendingPlaces.settings ? <span className="ed-pend-dot" aria-hidden="true">{pendingPlaces.settings}</span> : null}</button> : null}
           <a className="admin-button secondary" href={status === 'published' ? publicHref : props.viewHref} target="_blank" rel="noreferrer">Ver página</a>
           <div className="ed-menu" ref={moreMenu.ref}>
             <button type="button" className="admin-button secondary" aria-haspopup="menu" aria-expanded={moreMenu.open} onClick={() => moreMenu.setOpen((v) => !v)}>Mais ações {CHEVRON}</button>
@@ -704,6 +725,7 @@ export function Editor(props: EditorProps) {
                   data-selected={s.id === selectedId || undefined}
                   data-hidden={!s.visibility.enabled || undefined}
                   data-error={errorSections.has(index) || undefined}
+                  data-pending={pendingFor(s.id, s.type) > 0 || undefined}
                   draggable={editable}
                   onDragStart={(e) => { e.dataTransfer.setData('text/plain', s.id); e.dataTransfer.effectAllowed = 'move'; setDragId(s.id) }}
                   onDragEnd={() => setDragId(null)}
@@ -716,6 +738,7 @@ export function Editor(props: EditorProps) {
                     <SectionThumb type={s.type} />
                     <span className="ed-text">
                       <span className="ed-name">{meta?.label ?? s.type}</span>
+                      {pendingFor(s.id, s.type) ? <span className="ed-pend-badge" title={`${pendingFor(s.id, s.type)} pendência(s) para publicar`}>Pendente para publicar</span> : null}
                       <small>{SECTION_DESC[s.type] ?? REGION_LABEL[meta?.placement ?? 'main']}{!s.visibility.enabled ? ' · oculta' : ''}{dynamic ? ' · automática' : ''}{errorSections.has(index) ? ' · com erro' : ''}</small>
                     </span>
                   </button>

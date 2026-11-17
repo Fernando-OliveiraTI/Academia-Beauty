@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import type { PageDocument } from '@academia/page-schema'
 import { locateField } from '@academia/contracts'
 import { metaFor } from '@academia/section-schemas'
@@ -61,5 +62,29 @@ export function PublishIssues({ kind, issues, doc, busy, canPublish, onGo, onPub
         <button type="button" className="admin-button secondary" onClick={onClose}>Voltar às seções</button>
       </div>
     </section>
+  )
+}
+
+/**
+ * Aviso ao tentar publicar com pendências: a página NÃO foi publicada. Só informa; a lista continua no painel lateral.
+ * "Ver pendências" fecha o aviso (o painel já está aberto). Esc ou clique fora também fecham.
+ */
+export function PublishBlockedNotice({ count, onClose }: { count: number; onClose: () => void }) {
+  const button = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    button.current?.focus()
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  return (
+    <div className="wz-publishing" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="wz-publishing-card ed-blocked-card" role="dialog" aria-modal="true" aria-labelledby="ed-blocked-title">
+        <span className="ed-issues-icon" aria-hidden="true">!</span>
+        <strong id="ed-blocked-title">Não publicado</strong>
+        <small>{count === 1 ? 'Existe 1 pendência' : `Existem ${count} pendências`} que impede{count === 1 ? '' : 'm'} a publicação. A página continua como estava no site.</small>
+        <button ref={button} type="button" className="admin-button" onClick={onClose}>Ver pendências</button>
+      </div>
+    </div>
   )
 }

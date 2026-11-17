@@ -1661,3 +1661,12 @@ span.tm-check { display: block; cursor: default; }
 /* Campo pendente para publicar: marcado no formulário até ser preenchido. */
 [data-pending-field] { position: relative; border-radius: var(--radius-sm); box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 60%, transparent), 0 0 0 5px color-mix(in srgb, var(--color-primary) 10%, transparent); }
 [data-pending-field]::after { content: 'Pendente'; position: absolute; top: -9px; right: 8px; padding: 1px 6px; border-radius: 999px; background: var(--color-primary); color: var(--color-cta-text); font: 600 .6rem/1.5 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; pointer-events: none; }
+
+/* Pendências ao publicar: aviso "Não publicado" (janela pequena) e marcas onde há o que preencher. */
+.ed-blocked-card { width: min(400px, 100%); }
+.ed-blocked-card small { line-height: 1.5; }
+.ed-blocked-card .admin-button { margin-top: var(--space-2); }
+.ed-pend-badge { display: inline-block; justify-self: start; width: max-content; max-width: 100%; margin: 2px 0; padding: 1px 6px; border-radius: 999px; background: var(--color-primary); color: var(--color-cta-text); font: 600 .58rem/1.5 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; }
+.ed-item[data-pending] .ed-select { box-shadow: inset 2px 0 0 var(--color-primary); }
+.ed-pend-dot { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin-left: 6px; padding: 0 5px; border-radius: 999px; background: var(--color-primary); color: var(--color-cta-text); font-size: .68rem; font-weight: 700; }
+
