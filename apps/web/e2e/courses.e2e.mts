@@ -1,9 +1,10 @@
 /**
- * E2E do módulo de cursos e comércio Modo A (Fase 4): cadastro em etapas, oferta com link de
- * checkout validado, publicação, página pública (preço do backend, redirecionamento), vitrine no
- * profissional, snapshot (alterar preço só vale após republicar) e despublicação.
+ * E2E do módulo de cursos e comércio Modo A no editor único (D-039): criação pela galeria direto no editor,
+ * Configurações (dados e oferta com link de checkout validado), pendências que levam às seções, conteúdo escrito
+ * na página indo para o cadastro, publicação com confirmação, página pública (preço do backend, redirecionamento),
+ * vitrine no profissional, snapshot (alterar preço só vale após republicar), oferta inativa e despublicação.
  * Requer API (3333) com migrações, CHECKOUT_ALLOWED_HOSTS=pay.example.com e PUBLIC_SHOW_DRAFTS=false. Cria o próprio profissional
- * e um curso publicado (`e2e-*`, arquivados no fim); não depende do seed.
+ * e um curso publicado (`e2e-*`, apagados no fim); não depende do seed.
  * e o build de produção do web (3100) com REVALIDATE_SECRET igual ao da API.
  * Uso: E2E_ADMIN_EMAIL=... E2E_ADMIN_PASSWORD=... pnpm --filter @academia/web e2e:courses
  */
@@ -60,8 +61,23 @@ const waitUntil = async (what: string, check: () => Promise<boolean>, ms = 8000)
   while (Date.now() < end) { if (await check()) return; await new Promise((r) => setTimeout(r, 250)) }
   assert.fail(`Tempo esgotado: ${what}`)
 }
-const goStep = (p: Page, label: string) => p.getByRole('button', { name: label }).click()
-const save = async (p: Page) => { await p.getByRole('button', { name: /Salvar rascunho/ }).click(); await p.getByText('Alterações salvas.').waitFor() }
+const saved = (p: Page) => p.getByRole('status').filter({ hasText: 'salvo' }).waitFor({ timeout: 10_000 })
+const field = (p: Page, path: string) => p.locator(`[data-field-path="${path}"]`).locator('input, textarea').first()
+const section = async (p: Page, name: string) => {
+  await p.locator('.ed-item').filter({ has: p.locator('.ed-name', { hasText: name }) }).locator('.ed-select').click()
+  await p.getByRole('tab', { name: 'Conteúdo' }).click()
+}
+const settings = async (p: Page) => { if (!(await p.getByRole('heading', { name: 'Configurações', exact: true }).isVisible())) await p.getByRole('button', { name: 'Configurações', exact: true }).click(); await p.getByRole('heading', { name: 'Configurações', exact: true }).waitFor() }
+/** Abre a lista de pendências (pelo aviso) e segue a do texto informado até a seção/campo. */
+const goIssue = async (p: Page, text: string) => {
+  if (!(await p.locator('.ed-issues').isVisible())) await p.getByRole('button', { name: 'Ver pendências' }).click()
+  await p.locator('.ed-issues-list li', { hasText: text }).getByRole('button').click()
+}
+const publishOk = async (p: Page) => {
+  await p.getByRole('button', { name: 'Publicar', exact: true }).click()
+  await p.getByRole('dialog', { name: 'Publicado!' }).waitFor()
+  await p.getByRole('button', { name: 'Continuar editando' }).click()
+}
 const publicStatus = async (path: string) => (await fetch(`${BASE}${path}`, { redirect: 'manual' })).status
 const publicHtml = async (path: string) => (await fetch(`${BASE}${path}`, { cache: 'no-store' })).text()
 const decode = (html: string) => html.replace(/&nbsp;| /g, ' ').replace(/&#x27;/g, "'")
@@ -112,66 +128,86 @@ try {
     assert.equal(href, `/cursos/${SEED_SLUG}`)
   })
 
-  await step('galeria: escolhe o profissional e o template; o rascunho abre no editor; etapa 1 do cadastro preenche título e slug', async () => {
+  let id = ''
+  let editUrl = ''
+
+  await step('galeria: escolhe o profissional e o template; o rascunho abre no editor; Configurações gravam título e endereço', async () => {
     await page.goto(`${BASE}/admin/cursos/novo`)
     assert.equal(await page.getByRole('button', { name: /Usar este template/ }).first().isDisabled(), true, 'sem profissional não cria')
     await page.locator('label.pro-card', { hasText: PRO_NAME }).click()
     await page.getByRole('button', { name: /Usar este template/ }).first().click()
     await page.waitForURL(/\/admin\/editor\/cursos\/\d+$/)
-    const draftId = page.url().split('/').pop()!
-    createdCourses.push(Number(draftId))
-    await page.goto(`${BASE}/admin/cursos/${draftId}`)
+    editUrl = page.url()
+    id = editUrl.split('/').pop()!
+    createdCourses.push(Number(id))
+    await page.locator('.ed-item').first().waitFor()
+    await settings(page)
     await page.getByLabel('Título do curso').fill(TITLE)
-    await page.getByLabel('Endereço da página (slug)').fill(SLUG)
-    await page.getByLabel('Para quem é o curso').fill('Cabeleireiros')
-    await save(page)
+    await page.getByLabel('Endereço da página').fill(SLUG)
+    await page.getByRole('button', { name: 'Salvar configurações' }).click()
+    await page.getByText('Configurações salvas.').waitFor()
+    assert.equal((await send('get', `/admin/courses/${id}`)).body.slug, SLUG)
   })
-  const editUrl = page.url()
-  const id = editUrl.split('/').pop()!
 
-  await step('rascunho vazio: publicar bloqueado, pendências listadas, pré-visualização já renderiza com dados provisórios', async () => {
-    await goStep(page, 'Revisão e publicação')
-    await page.getByRole('heading', { name: 'Pendências para publicar' }).waitFor()
-    assert.equal(await page.getByRole('button', { name: 'Publicar curso' }).isDisabled(), true)
+  await step('rascunho vazio: publicar lista as pendências no editor; pré-visualização já renderiza com conteúdo provisório', async () => {
+    await page.getByRole('button', { name: 'Publicar', exact: true }).click()
+    // O aviso "Não publicado" cobre o editor: "Ver pendências" fecha e deixa a lista no painel.
+    await page.getByRole('dialog', { name: 'Não publicado' }).getByRole('button', { name: 'Ver pendências' }).click()
+    await page.getByRole('heading', { name: /Faltam \d+ itens para publicar/ }).waitFor()
+    const items = await page.locator('.ed-issues-list li').allInnerTexts()
+    for (const msg of ['Escreva a descrição do curso', 'Informe ao menos um benefício', 'Informe ao menos um módulo', 'Informe o que o aluno recebe', 'Configure a oferta']) {
+      assert.ok(items.some((t) => t.includes(msg)), `pendência ausente: ${msg} (${items.join(' | ')})`)
+    }
+    assert.ok(!items.some((t) => /para quem é o curso/i.test(t)), 'público não é mais exigido')
     const preview = await context.newPage()
     await preview.goto(`${BASE}/admin/preview/cursos/${id}`)
-    await preview.locator('h1.hero-title').waitFor() // desde a 9A a prévia usa conteúdo provisório em vez de bloquear
+    await preview.locator('h1.hero-title').waitFor()
     await preview.close()
   })
 
-  await step('etapa 2: conteúdo; rejeita URL perigosa e marcação', async () => {
-    await goStep(page, 'Conteúdo')
-    await page.getByLabel('Descrição do curso').fill('Descrição <b>do</b> curso')
-    await page.getByRole('button', { name: /Salvar rascunho/ }).click()
-    await page.getByText('Corrija os campos destacados.').waitFor()
-    await page.getByLabel('Descrição do curso').fill('Um curso de teste sobre técnica e carreira.')
-    await page.getByLabel('Descrição da capa (texto alternativo)').fill('Capa do curso de teste')
-    await page.getByRole('button', { name: 'Adicionar benefício' }).click()
-    await page.getByLabel('Benefício 1 · título').fill('Mais técnica')
-    await page.getByLabel('Texto', { exact: true }).first().fill('Aprenda com quem faz.')
-    await page.getByRole('button', { name: 'Adicionar módulo' }).click()
-    await page.getByLabel('Módulo 1 · título').fill('Fundamentos')
-    await page.getByLabel('Descrição', { exact: true }).fill('Base do método.')
-    await page.getByRole('button', { name: 'Adicionar item' }).click()
-    await page.getByLabel('Item 1 · título').fill('Aulas gravadas')
-    await page.getByLabel('Texto', { exact: true }).last().fill('Acesso ao conteúdo completo.')
-    await save(page)
-    // A capa agora é escolhida na biblioteca (seletor de imagem). Aqui só se confere que a API recusa caminho perigoso e aceita o válido.
-    const row = await send('get', `/admin/courses/${id}`)
-    const bad = await send('put', `/admin/courses/${id}`, { revision: row.body.revision, data: { ...row.body.data, coverSrc: 'javascript:alert(1)' } })
-    assert.equal(bad.status, 422)
-    const ok = await send('put', `/admin/courses/${id}`, { revision: row.body.revision, data: { ...row.body.data, coverSrc: '/site/curso/produto-morena-iluminada.svg' } })
-    assert.equal(ok.status, 200, JSON.stringify(ok.body))
-    await page.reload()
+  await step('conteúdo escrito nas seções (marcação recusada); listas vazias trazem o item provisório, não o exemplo de outro curso', async () => {
+    await goIssue(page, 'descrição do curso')
+    await field(page, 'lead').fill('Descrição <b>do</b> curso')
+    await page.getByRole('status').filter({ hasText: 'Corrija os campos para salvar' }).waitFor()
+    await field(page, 'lead').fill('Um curso de teste sobre técnica e carreira.')
+    await field(page, 'image.alt').fill('Capa do curso de teste')
+    await goIssue(page, 'benefício')
+    assert.equal(await field(page, 'cards.0.title').inputValue(), 'Preencha este item')
+    await field(page, 'cards.0.title').fill('Mais técnica')
+    await field(page, 'cards.0.text').fill('Aprenda com quem faz.')
+    await goIssue(page, 'módulo')
+    await field(page, 'modules.0.title').fill('Fundamentos')
+    await field(page, 'modules.0.text').fill('Base do método.')
+    await goIssue(page, 'o aluno recebe')
+    assert.equal(await field(page, 'items.0.title').inputValue(), 'Preencha este item')
+    await field(page, 'items.0.title').fill('Aulas gravadas')
+    await field(page, 'items.0.text').fill('Acesso ao conteúdo completo.')
+    await saved(page)
+    const data = (await send('get', `/admin/courses/${id}`)).body.data
+    assert.equal(data.lead, 'Um curso de teste sobre técnica e carreira.')
+    assert.deepEqual(data.benefits, [{ title: 'Mais técnica', text: 'Aprenda com quem faz.' }])
+    assert.equal(data.modules[0].title, 'Fundamentos')
+    assert.deepEqual(data.deliverables, [{ title: 'Aulas gravadas', text: 'Acesso ao conteúdo completo.' }])
+    assert.doesNotMatch(JSON.stringify(data), /Lukas Campos|Mais brilho na cor/, 'exemplo do template não pode virar conteúdo')
   })
 
-  await step('etapa 4: link de checkout fora da lista é recusado; preço inválido também', async () => {
-    await goStep(page, 'Oferta e checkout')
-    await page.getByLabel('Preço de tabela').fill('abc')
+  await step('capa: a API recusa caminho perigoso e aceita o válido (a capa da página vai para o cadastro)', async () => {
+    const state = await send('get', `/admin/courses/${id}/document`)
+    const withCover = (src: string) => ({ ...state.body.document, sections: state.body.document.sections.map((x: any) => (x.type === 'course.hero' ? { ...x, content: { ...x.content, image: { ...x.content.image, src } } } : x)) })
+    assert.equal((await send('put', `/admin/courses/${id}/document`, { document: withCover('javascript:alert(1)'), revision: state.body.documentRevision })).status, 422)
+    assert.equal((await send('put', `/admin/courses/${id}/document`, { document: withCover('/site/curso/produto-morena-iluminada.svg'), revision: state.body.documentRevision })).status, 200)
+    assert.equal((await send('get', `/admin/courses/${id}`)).body.data.coverSrc, '/site/curso/produto-morena-iluminada.svg')
+    await page.reload()
+    await page.locator('.ed-item').first().waitFor()
+  })
+
+  await step('oferta (Configurações): preço inválido e link fora da lista ou sem https são recusados', async () => {
+    await settings(page)
+    await page.getByLabel('De (R$)').fill('abc')
     await page.getByRole('button', { name: 'Salvar oferta' }).click()
-    await page.getByText('Corrija os campos destacados.').waitFor()
-    await page.getByLabel('Preço de tabela').fill('199,90')
-    await page.getByLabel('Desconto', { exact: true }).fill('10')
+    await page.getByText('Corrija os campos de preço destacados.').waitFor()
+    await page.getByLabel('De (R$)').fill('199,90')
+    await page.getByLabel('Por (R$)').fill('179,91')
     await page.getByLabel('Parcelas máximas (sem juros, exibição)').selectOption('3')
     await page.getByLabel('Link do checkout (https)').fill('https://malicioso.example.org/pagar')
     await page.getByRole('button', { name: 'Salvar oferta' }).click()
@@ -181,10 +217,10 @@ try {
     await page.getByText(/deve usar https/i).first().waitFor()
   })
 
-  await step('oferta válida: prévia de cálculo e gravação', async () => {
+  await step('oferta válida: prévia do valor e gravação', async () => {
     await page.getByLabel('Link do checkout (https)').fill(CHECKOUT)
     await page.getByLabel('Oferta ativa (permite publicar o curso)').check()
-    await page.getByText(/Prévia: de R\$\s*199,90 por/).waitFor()
+    await page.getByText(/Valor final:\s*R\$\s*179,91/).waitFor()
     await page.getByRole('button', { name: 'Salvar oferta' }).click()
     await page.getByText(/Oferta salva/).waitFor()
   })
@@ -200,11 +236,8 @@ try {
     assert.equal(await publicStatus(`/admin/preview/cursos/${id}`), 307)
   })
 
-  await step('publica: página pública e vitrine do profissional atualizam na hora', async () => {
-    await goStep(page, 'Revisão e publicação')
-    await page.getByText('Curso completo: pronto para publicar.').waitFor()
-    await page.getByRole('button', { name: 'Publicar curso' }).click()
-    await page.getByText('Publicado. A página pública já foi atualizada.').waitFor()
+  await step('publica com confirmação: página pública e vitrine do profissional atualizam na hora', async () => {
+    await publishOk(page)
     const html = decode(await publicHtml(`/cursos/${SLUG}`))
     assert.match(html, /R\$ 179,91/)
     assert.match(html, /10% OFF/)
@@ -215,46 +248,62 @@ try {
   })
 
   await step('alterar o preço não muda a página pública até republicar (snapshot)', async () => {
-    await goStep(page, 'Oferta e checkout')
-    await page.getByLabel('Preço de tabela').fill('300,00')
+    await settings(page)
+    await page.getByLabel('De (R$)').fill('300,00')
+    await page.getByLabel('Por (R$)').fill('270,00')
     await page.getByRole('button', { name: 'Salvar oferta' }).click()
     await page.getByText(/Oferta salva/).waitFor()
     assert.match(decode(await publicHtml(`/cursos/${SLUG}`)), /R\$ 179,91/)
-    await goStep(page, 'Revisão e publicação')
-    await page.getByText(/há alterações não publicadas/).waitFor()
-    await page.getByRole('button', { name: 'Publicar alterações' }).click()
-    await page.getByText('Publicado. A página pública já foi atualizada.').waitFor()
+    assert.equal((await send('get', `/admin/courses/${id}`)).body.hasUnpublishedChanges, true)
+    await publishOk(page)
     const html = decode(await publicHtml(`/cursos/${SLUG}`))
     assert.match(html, /R\$ 270,00/)
     assert.doesNotMatch(html, /R\$ 179,91/)
   })
 
-  await step('oferta desativada + republicar: botão de compra fica indisponível; não há link externo', async () => {
-    await goStep(page, 'Oferta e checkout')
+  await step('oferta desativada: publicar aponta "Ative a oferta" e leva às Configurações; reativar libera', async () => {
+    await settings(page)
     await page.getByLabel('Oferta ativa (permite publicar o curso)').uncheck()
     await page.getByRole('button', { name: 'Salvar oferta' }).click()
     await page.getByText(/Oferta salva/).waitFor()
-    await goStep(page, 'Revisão e publicação')
-    await page.getByText(/Ative a oferta/).waitFor()
-    assert.equal(await page.getByRole('button', { name: 'Publicar alterações' }).isDisabled(), true)
-    await goStep(page, 'Oferta e checkout')
+    await page.getByRole('button', { name: 'Publicar', exact: true }).click()
+    // O aviso "Não publicado" cobre o editor: "Ver pendências" fecha e deixa a lista no painel.
+    await page.getByRole('dialog', { name: 'Não publicado' }).getByRole('button', { name: 'Ver pendências' }).click()
+    await page.locator('.ed-issues-list li', { hasText: 'Ative a oferta' }).waitFor()
+    await goIssue(page, 'Ative a oferta')
+    await page.getByRole('heading', { name: 'Configurações', exact: true }).waitFor()
     await page.getByLabel('Oferta ativa (permite publicar o curso)').check()
     await page.getByRole('button', { name: 'Salvar oferta' }).click()
     await page.getByText(/Oferta salva/).waitFor()
   })
 
-  await step('despublicar tira a página e o cartão do ar; arquivar e restaurar', async () => {
-    await goStep(page, 'Revisão e publicação')
-    await page.getByRole('button', { name: 'Despublicar' }).click()
-    await page.getByText('Curso tirado do ar.').waitFor()
+  await step('despublicar (editor) tira a página e o cartão do ar; arquivar e restaurar pela lista', async () => {
+    await page.getByRole('button', { name: 'Mais ações' }).click()
+    await page.getByRole('menuitem', { name: /Despublicar/ }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Despublicar' }).click()
+    await waitUntil('curso em rascunho na API', async () => (await send('get', `/admin/courses/${id}`)).body.status === 'draft')
+    await page.waitForLoadState('load')
     // A invalidação do cache público termina logo depois da resposta: espera em vez de checar no mesmo instante.
     await waitUntil('página do curso fora do ar', async () => (await publicStatus(`/cursos/${SLUG}`)) === 404)
     await waitUntil('cartão fora da vitrine do profissional', async () => !new RegExp(SLUG).test(await publicHtml(`/profissionais/${PRO_SLUG}`)))
-    await page.getByRole('button', { name: 'Arquivar' }).click()
+    await page.goto(`${BASE}/admin/cursos?q=${encodeURIComponent(SLUG)}`)
+    await page.getByRole('button', { name: `Mais ações para ${TITLE}` }).click()
+    await page.getByRole('menuitem', { name: 'Arquivar' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Arquivar' }).click()
-    await page.getByText('Curso arquivado.').waitFor()
-    await page.getByRole('button', { name: 'Restaurar' }).click()
-    await page.getByText('Curso restaurado.').waitFor()
+    await waitUntil('arquivado', async () => (await send('get', `/admin/courses/${id}`)).body.status === 'archived')
+    await page.goto(`${BASE}/admin/cursos?status=archived&q=${encodeURIComponent(SLUG)}`)
+    await page.getByRole('button', { name: `Mais ações para ${TITLE}` }).click()
+    await page.getByRole('menuitem', { name: 'Restaurar' }).click()
+    await waitUntil('restaurado', async () => (await send('get', `/admin/courses/${id}`)).body.status === 'draft')
+  })
+
+  await step('lista filtra por profissional (cartões) e o link antigo do cadastro leva ao editor', async () => {
+    await page.goto(`${BASE}/admin/cursos`)
+    await page.locator('.pf-chip', { hasText: PRO_NAME }).click()
+    await page.waitForURL(new RegExp(`professionalId=${professionalId}`))
+    await page.getByRole('link', { name: SEED_TITLE }).first().waitFor()
+    await page.goto(`${BASE}/admin/cursos/${id}`)
+    await page.waitForURL(`**/admin/editor/cursos/${id}`)
   })
 
   await step('mobile 390px: páginas do módulo sem rolagem horizontal', async () => {
@@ -266,9 +315,9 @@ try {
     }
   })
 
-  await step('sem erros ou avisos de console, exceto as 2 recusas 422 provocadas de propósito (link fora da lista e http)', async () => {
+  await step('sem erros ou avisos de console, exceto as 4 recusas 422 provocadas de propósito (2 publicações com pendência, link fora da lista e http)', async () => {
     const expected = consoleErrors.filter((e) => e.includes('status of 422'))
-    assert.equal(expected.length, 2)
+    assert.equal(expected.length, 4)
     assert.deepEqual(consoleErrors.filter((e) => !e.includes('status of 422')), [])
   })
 
@@ -281,13 +330,14 @@ try {
   process.exitCode = 1
 } finally {
   try {
+    // Apaga (não só arquiva) o que o teste criou: cursos antes do profissional.
     for (const courseId of createdCourses) {
       await send('post', `/admin/courses/${courseId}/unpublish`)
-      await send('post', `/admin/courses/${courseId}/archive`)
+      await send('delete', `/admin/courses/${courseId}`)
     }
     if (professionalId) {
       await send('post', `/admin/professionals/${professionalId}/unpublish`)
-      await send('post', `/admin/professionals/${professionalId}/archive`)
+      await send('delete', `/admin/professionals/${professionalId}`)
     }
   } catch (error) {
     console.error('limpeza falhou:', error)

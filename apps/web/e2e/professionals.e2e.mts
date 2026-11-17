@@ -1,6 +1,8 @@
 /**
- * E2E do módulo de profissionais (Fase 3): cadastro em etapas, pré-visualização, publicação,
- * página pública, vitrine da Home, alterações não publicadas, despublicar e arquivar.
+ * E2E do módulo de profissionais no editor único (D-039): criação pela galeria direto no editor, Configurações
+ * (identidade e vitrine), pendências de publicação que levam ao campo, página → cadastro, publicação com confirmação,
+ * página pública, vitrine da Home, alterações não publicadas, conflito entre abas, despublicar, arquivar e restaurar.
+ * Tudo o que cria (`e2e-*`) é apagado no fim.
  * Requer API (3333) com migrações e seed, e o build de produção do web (3100) com REVALIDATE_SECRET igual ao da API.
  * Uso: E2E_ADMIN_EMAIL=... E2E_ADMIN_PASSWORD=... pnpm --filter @academia/web e2e:professionals
  */
@@ -48,7 +50,18 @@ const waitUntil = async (what: string, check: () => Promise<boolean>, ms = 8000)
   while (Date.now() < end) { if (await check()) return; await new Promise((r) => setTimeout(r, 250)) }
   assert.fail(`Tempo esgotado: ${what}`)
 }
-const goStep = (p: Page, label: string) => p.getByRole('button', { name: label }).click()
+const saved = (p: Page) => p.getByRole('status').filter({ hasText: 'salvo' }).waitFor({ timeout: 10_000 })
+const field = (p: Page, path: string) => p.locator(`[data-field-path="${path}"]`).locator('input, textarea').first()
+const section = async (p: Page, name: string) => {
+  await p.locator('.ed-item').filter({ has: p.locator('.ed-name', { hasText: name }) }).locator('.ed-select').click()
+  await p.getByRole('tab', { name: 'Conteúdo' }).click()
+}
+const settings = async (p: Page) => { if (!(await p.getByRole('heading', { name: 'Configurações', exact: true }).isVisible())) await p.getByRole('button', { name: 'Configurações', exact: true }).click(); await p.getByRole('heading', { name: 'Configurações', exact: true }).waitFor() }
+const publishOk = async (p: Page) => {
+  await p.getByRole('button', { name: 'Publicar', exact: true }).click()
+  await p.getByRole('dialog', { name: 'Publicado!' }).waitFor()
+  await p.getByRole('button', { name: 'Continuar editando' }).click()
+}
 const publicStatus = async (path: string) => (await fetch(`${BASE}${path}`, { redirect: 'manual' })).status
 const has = async (path: string, re: RegExp) => re.test(await publicHtml(path))
 const publicHtml = async (path: string) => (await fetch(`${BASE}${path}`, { cache: 'no-store' })).text()
@@ -88,143 +101,152 @@ try {
     assert.ok(!links.includes(`/profissionais/${DRAFT_SLUG}`), 'rascunho não pode aparecer na vitrine')
   })
 
-  await step('galeria: escolhe o template (abre no editor); cadastro: etapa 1 valida nome e preenche slug', async () => {
+  let id = ''
+  let editUrl = ''
+
+  await step('galeria: escolhe o template e cai no editor; Configurações validam o nome e gravam nome, especialidade e endereço', async () => {
     await page.goto(`${BASE}/admin/profissionais/novo`)
     await page.getByRole('button', { name: /Usar este template/ }).first().click()
     await page.waitForURL(/\/admin\/editor\/profissionais\/\d+$/)
-    const draftId = page.url().split('/').pop()!
-    created.push(Number(draftId))
-    await page.goto(`${BASE}/admin/profissionais/${draftId}`)
+    editUrl = page.url()
+    id = editUrl.split('/').pop()!
+    created.push(Number(id))
+    await page.locator('.ed-item').first().waitFor()
+    await settings(page)
     await page.getByLabel('Nome completo').fill('')
-    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
-    await page.getByRole('alert').first().waitFor()
-    await page.getByLabel('Nome completo').fill(NAME)
-    await page.getByLabel('Especialidade').fill('Barber')
-    await page.getByLabel('Endereço da página (slug)').fill(SLUG)
-    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
-    await page.getByText('Alterações salvas.').waitFor()
-  })
-
-  const editUrl = page.url()
-  const id = editUrl.split('/').pop()!
-
-  await step('rascunho incompleto: publicar bloqueado e pendências listadas', async () => {
-    await goStep(page, 'Revisão e publicação')
-    await page.getByText('Pendências para publicar:').waitFor()
-    assert.equal(await page.getByRole('button', { name: 'Publicar', exact: true }).isDisabled(), true)
-  })
-
-  await step('rejeita marcação no nome (cliente) sem enviar ao servidor', async () => {
-    await goStep(page, 'Identidade')
-    await page.getByLabel('Nome completo').fill('<script>alert(1)</script>')
-    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
+    await page.getByRole('button', { name: 'Salvar configurações' }).click()
+    await page.getByText('Corrija os campos destacados.').waitFor()
+    await page.getByLabel('Nome completo').fill('<script>alert(1)</script>') // marcação recusada no cliente
+    await page.getByRole('button', { name: 'Salvar configurações' }).click()
     await page.getByText('Corrija os campos destacados.').waitFor()
     await page.getByLabel('Nome completo').fill(NAME)
-    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
-    await page.getByText('Alterações salvas.').waitFor()
+    await page.getByLabel('Especialidade').fill('Barber')
+    await page.getByLabel('Endereço da página').fill(SLUG)
+    await page.getByRole('button', { name: 'Salvar configurações' }).click()
+    await page.getByText('Configurações salvas.').waitFor()
+    const row = await send('get', `/admin/professionals/${id}`)
+    assert.equal(row.body.data.name, NAME)
+    assert.equal(row.body.slug, SLUG)
   })
 
-  await step('etapas 2 a 4: preenche e salva', async () => {
-    await goStep(page, 'Apresentação')
-    await page.getByLabel('Frase de apresentação').fill('Técnica, ritmo e carreira.')
-    await page.getByLabel('Anos de experiência').fill('7')
-    await page.getByLabel('Instagram (usuário)').fill('@teste')
-    await page.getByLabel('Seguidores (texto exibido)').fill('1 Mil seguidores')
-    await page.getByLabel('Link do Instagram').fill('https://instagram.com/teste')
-    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
-    await page.getByText('Alterações salvas.').waitFor()
+  await step('rascunho incompleto: publicar lista as pendências no próprio editor (sem sair dele)', async () => {
+    await page.getByRole('button', { name: 'Publicar', exact: true }).click()
+    // O aviso "Não publicado" cobre o editor: "Ver pendências" fecha e deixa a lista no painel.
+    await page.getByRole('dialog', { name: 'Não publicado' }).getByRole('button', { name: 'Ver pendências' }).click()
+    await page.getByRole('heading', { name: /Faltam \d+ itens para publicar/ }).waitFor()
+    const items = await page.locator('.ed-issues-list li').allInnerTexts()
+    for (const msg of ['Informe os anos de experiência', 'Informe a frase de apresentação', 'Escreva ao menos um parágrafo de trajetória', 'Informe a foto do cartão da Home']) {
+      assert.ok(items.some((t) => t.includes(msg)), `pendência ausente: ${msg} (${items.join(' | ')})`)
+    }
+    assert.match(page.url(), /\/admin\/editor\/profissionais\/\d+$/, 'continua no editor')
+  })
 
-    await goStep(page, 'Imagens e vídeo')
-    // As imagens agora são escolhidas pelo seletor (biblioteca). Aqui se confere que a API recusa caminho perigoso e aceita o válido.
+  await step('pendência leva ao campo da seção; preencher na página resolve a pendência e vai para o cadastro', async () => {
+    await page.locator('.ed-issues-list li', { hasText: 'anos de experiência' }).getByRole('button').click()
+    await page.waitForFunction(() => document.activeElement?.closest('[data-field-path]')?.getAttribute('data-field-path') === 'hud.accent')
+    await page.locator('[data-field-path="hud.accent"][data-pending-field]').waitFor()
+    await page.keyboard.type('7')
+    await field(page, 'sub').fill('Técnica, ritmo e carreira.')
+    await section(page, 'Trajetória')
+    await field(page, 'paragraphs.0').fill('Trajetória do profissional de teste.')
+    await field(page, 'instagram.handle').fill('@teste')
+    await field(page, 'instagram.followers').fill('1 Mil seguidores')
+    await field(page, 'instagram.href').fill('https://instagram.com/teste')
+    await saved(page)
+    await page.getByRole('button', { name: 'Ver pendências' }).click()
+    const items = await page.locator('.ed-issues-list li').allInnerTexts()
+    assert.ok(items.filter((t) => /resolvido/i.test(t)).length >= 4, items.join(' | '))
     const row = await send('get', `/admin/professionals/${id}`)
-    const bad = await send('put', `/admin/professionals/${id}`, { revision: row.body.revision, data: { ...row.body.data, portraitSrc: 'javascript:alert(1)' } })
-    assert.equal(bad.status, 422)
-    const ok = await send('put', `/admin/professionals/${id}`, { revision: row.body.revision, data: { ...row.body.data, portraitSrc: '/site/profissional/lukas_perfil.png', cardPhotoSrc: '/site/home/lukas-campos.png' } })
-    assert.equal(ok.status, 200, JSON.stringify(ok.body))
-    await page.reload()
+    assert.equal(row.body.data.experienceYears, 7)
+    assert.equal(row.body.data.tagline, 'Técnica, ritmo e carreira.')
+    assert.deepEqual(row.body.data.bio, ['Trajetória do profissional de teste.'])
+    assert.equal(row.body.data.instagramUrl, 'https://instagram.com/teste')
+  })
 
-    await goStep(page, 'Trajetória e trabalhos')
-    await page.getByRole('button', { name: 'Adicionar parágrafo' }).click()
-    await page.getByLabel('Parágrafo 1').fill('Trajetória do profissional de teste.')
-    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
-    await page.getByText('Alterações salvas.').waitFor()
-    // O trabalho exige imagem, escolhida pelo seletor (biblioteca): aqui entra pela API.
-    const row2 = await send('get', `/admin/professionals/${id}`)
-    const works = [{ imageSrc: '/site/profissional/trabLukas01.png', alt: 'Corte de teste', title: 'Corte Teste', tags: [] }]
-    assert.equal((await send('put', `/admin/professionals/${id}`, { revision: row2.body.revision, data: { ...row2.body.data, works } })).status, 200)
+  await step('imagens: a API recusa caminho perigoso e aceita o válido (retrato na página, foto do cartão no cadastro)', async () => {
+    // As imagens são escolhidas pelo seletor da biblioteca; aqui entram pela API para não depender de envio.
+    const state = await send('get', `/admin/professionals/${id}/document`)
+    const withPortrait = (src: string) => ({ ...state.body.document, sections: state.body.document.sections.map((s: any) => (s.type === 'professional.hero' ? { ...s, content: { ...s.content, portrait: { ...s.content.portrait, src } } } : s)) })
+    assert.equal((await send('put', `/admin/professionals/${id}/document`, { document: withPortrait('javascript:alert(1)'), revision: state.body.documentRevision })).status, 422)
+    assert.equal((await send('put', `/admin/professionals/${id}/document`, { document: withPortrait('/site/profissional/lukas_perfil.png'), revision: state.body.documentRevision })).status, 200)
+    const row = await send('get', `/admin/professionals/${id}`)
+    assert.equal(row.body.data.portraitSrc, '/site/profissional/lukas_perfil.png', 'o retrato da página vai para o cadastro')
+    assert.equal((await send('put', `/admin/professionals/${id}`, { revision: row.body.revision, data: { ...row.body.data, cardPhotoSrc: 'javascript:alert(1)' } })).status, 422)
+    assert.equal((await send('put', `/admin/professionals/${id}`, { revision: row.body.revision, data: { ...row.body.data, cardPhotoSrc: '/site/home/lukas-campos.png' } })).status, 200)
     await page.reload()
+    await page.locator('.ed-item').first().waitFor()
   })
 
   await step('pré-visualização do rascunho renderiza com os dados e não é pública', async () => {
     const preview = await context.newPage()
     await preview.goto(`${BASE}/admin/preview/profissionais/${id}`)
     await preview.locator('h1.hero-name').waitFor()
-    assert.match(await preview.locator('h1.hero-name').innerText(), /Teste/i)
+    assert.match(await preview.locator('h1.hero-name').innerText(), /Novo|Teste/i)
     await preview.close()
     assert.equal(await publicStatus(`/profissionais/${SLUG}`), 404)
     assert.equal(await publicStatus(`/admin/preview/profissionais/${id}`), 307) // sem sessão → login
   })
 
-  await step('publica: página pública e vitrine da Home atualizam na hora (invalidação por tag)', async () => {
-    await goStep(page, 'Revisão e publicação')
-    await page.getByText('Cadastro completo: pronto para publicar.').waitFor()
-    await page.getByLabel('Exibir na Home quando publicado').check()
+  await step('publica com confirmação: página pública e vitrine da Home atualizam na hora', async () => {
+    await settings(page)
+    await page.getByLabel('Exibir na Home').check()
     await page.getByLabel('Posição (menor aparece primeiro)').fill('50')
     await page.getByRole('button', { name: 'Salvar vitrine' }).click()
     await page.getByText('Vitrine atualizada.').waitFor()
-    await page.getByRole('button', { name: 'Publicar', exact: true }).click()
-    await page.getByText('Publicado. A página pública já foi atualizada.').waitFor()
-
+    await publishOk(page)
     assert.equal(await publicStatus(`/profissionais/${SLUG}`), 200)
     assert.ok(await has(`/profissionais/${SLUG}`, /Trajetória do profissional de teste\./), 'bio publicada ausente')
     assert.ok(await has('/', new RegExp(`/profissionais/${SLUG}`)), 'vitrine da Home não listou o publicado')
+    await page.getByRole('button', { name: 'Mais ações' }).click()
+    await page.getByRole('menuitem', { name: /Despublicar/ }).waitFor() // a situação muda sem recarregar
+    await page.keyboard.press('Escape')
   })
 
   await step('editar após publicar não muda o público até republicar', async () => {
-    await goStep(page, 'Apresentação')
-    await page.getByLabel('Frase de apresentação').fill('Frase NOVA ainda não publicada.')
-    await goStep(page, 'Revisão e publicação')
-    await page.getByText('Há alterações não salvas.').waitFor()
-    assert.equal(await page.getByRole('button', { name: /Publicar/ }).first().isDisabled(), true)
-    await goStep(page, 'Apresentação')
-    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
-    await page.getByText('Alterações salvas.').waitFor()
+    await section(page, 'Topo (hero)')
+    await field(page, 'sub').fill('Frase NOVA ainda não publicada.')
+    await saved(page)
     assert.ok(!(await has(`/profissionais/${SLUG}`, /Frase NOVA/)), 'rascunho vazou para o público')
-    await goStep(page, 'Revisão e publicação')
-    await page.getByText('há alterações não publicadas').waitFor()
-    await page.getByRole('button', { name: 'Publicar alterações' }).click()
-    await page.getByText('Publicado. A página pública já foi atualizada.').waitFor()
-    assert.ok(await has(`/profissionais/${SLUG}`, /Frase NOVA/), 'republicação não apareceu')
+    assert.equal((await send('get', `/admin/professionals/${id}`)).body.hasUnpublishedChanges, true)
+    await publishOk(page)
+    await waitUntil('republicação no ar', () => has(`/profissionais/${SLUG}`, /Frase NOVA/))
   })
 
-  await step('edição concorrente: segunda aba com revisão antiga recebe aviso e nada é sobrescrito', async () => {
+  await step('edição concorrente: a segunda aba com revisão antiga é bloqueada e nada é sobrescrito', async () => {
     const other = await context.newPage()
     await other.goto(editUrl)
-    await other.getByLabel('Nome completo').waitFor()
-    await goStep(page, 'Apresentação')
-    await page.getByLabel('Frase de apresentação').fill('Alteração da aba 1')
-    await page.getByRole('button', { name: 'Salvar', exact: true }).click()
-    await page.getByText('Alterações salvas.').waitFor()
-    await other.getByLabel('Especialidade').fill('Alteração da aba 2')
-    await other.getByRole('button', { name: 'Salvar', exact: true }).click()
-    await other.getByText(/Outra pessoa alterou este cadastro/).waitFor()
+    await other.locator('.ed-item').first().waitFor()
+    await section(page, 'Topo (hero)')
+    await field(page, 'sub').fill('Alteração da aba 1')
+    await saved(page)
+    await section(other, 'Topo (hero)')
+    await field(other, 'sub').fill('Alteração da aba 2')
+    await other.getByRole('alert').filter({ hasText: 'Outra pessoa alterou esta página' }).waitFor({ timeout: 10_000 })
     await other.close()
+    assert.equal((await send('get', `/admin/professionals/${id}`)).body.data.tagline, 'Alteração da aba 1')
   })
 
-  await step('despublicar tira a página e a vitrine do ar; arquivar mantém fora; restaurar volta a rascunho', async () => {
-    await goStep(page, 'Revisão e publicação')
-    await page.getByRole('button', { name: 'Despublicar' }).click()
-    await page.getByText('Página tirada do ar.').waitFor()
+  await step('despublicar (editor) tira a página e a vitrine do ar; arquivar e restaurar pela lista', async () => {
+    await page.getByRole('button', { name: 'Mais ações' }).click()
+    await page.getByRole('menuitem', { name: /Despublicar/ }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Despublicar' }).click()
+    await page.waitForLoadState('load')
     await waitUntil('página do profissional fora do ar', async () => (await publicStatus(`/profissionais/${SLUG}`)) === 404)
     await waitUntil('profissional fora da vitrine da Home', async () => !(await has('/', new RegExp(`/profissionais/${SLUG}`))))
-    await page.getByRole('button', { name: 'Arquivar' }).click()
+    await page.goto(`${BASE}/admin/profissionais?q=${encodeURIComponent(SLUG)}`)
+    await page.getByRole('button', { name: `Mais ações para ${NAME}` }).click()
+    await page.getByRole('menuitem', { name: 'Arquivar' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Arquivar' }).click()
-    await page.getByText('Profissional arquivado.').waitFor()
-    await page.getByRole('button', { name: 'Restaurar' }).click()
-    await page.getByText('Profissional restaurado como rascunho.').waitFor()
-    await page.getByRole('button', { name: 'Arquivar' }).click()
-    await page.getByRole('dialog').getByRole('button', { name: 'Arquivar' }).click()
-    await page.getByText('Profissional arquivado.').waitFor()
+    await waitUntil('arquivado', async () => (await send('get', `/admin/professionals/${id}`)).body.status === 'archived')
+    await page.goto(`${BASE}/admin/profissionais?status=archived&q=${encodeURIComponent(SLUG)}`)
+    await page.getByRole('button', { name: `Mais ações para ${NAME}` }).click()
+    await page.getByRole('menuitem', { name: 'Restaurar' }).click()
+    await waitUntil('restaurado como rascunho', async () => (await send('get', `/admin/professionals/${id}`)).body.status === 'draft')
+  })
+
+  await step('link antigo do cadastro leva ao editor', async () => {
+    await page.goto(`${BASE}/admin/profissionais/${id}`)
+    await page.waitForURL(`**/admin/editor/profissionais/${id}`)
   })
 
   await step('mobile 390px: lista e formulário sem rolagem horizontal', async () => {
@@ -236,8 +258,9 @@ try {
     }
   })
 
-  await step('sem erros ou avisos de console em todo o fluxo', async () => {
-    assert.deepEqual(consoleErrors, [])
+  await step('sem erros ou avisos de console, exceto a recusa 422 de publicar com pendências (provocada de propósito)', async () => {
+    assert.equal(consoleErrors.filter((e) => e.includes('status of 422')).length, 1)
+    assert.deepEqual(consoleErrors.filter((e) => !e.includes('status of 422')), [])
   })
 
   console.log(results.join('\n'))
@@ -249,9 +272,10 @@ try {
   process.exitCode = 1
 } finally {
   try {
+    // Apaga (não só arquiva) o que o teste criou: nada de `e2e-*` sobrando na lista.
     for (const professionalId of created) {
       await send('post', `/admin/professionals/${professionalId}/unpublish`)
-      await send('post', `/admin/professionals/${professionalId}/archive`)
+      await send('delete', `/admin/professionals/${professionalId}`)
     }
   } catch (error) {
     console.error('limpeza falhou:', error)

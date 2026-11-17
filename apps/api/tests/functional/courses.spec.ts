@@ -307,8 +307,12 @@ test.group('Cursos · publicação', (group) => {
     const id = created.body().id as number
     const res = await a.post(`/admin/courses/${id}/publish`)
     res.assertStatus(422)
-    // O profissional não está publicado: a regra é a primeira a barrar.
-    assert.equal(res.body().code, 'professional_not_published')
+    // Todas as pendências vêm juntas, inclusive o profissional ainda não publicado.
+    assert.equal(res.body().code, 'not_ready')
+    assert.includeMembers(
+      res.body().errors.map((e: { field: string }) => e.field),
+      ['professionalId', 'lead', 'commercial']
+    )
 
     ;(await a.post(`/admin/professionals/${draftProfessionalId}/publish`)).assertStatus(200)
     const incomplete = await a.post(`/admin/courses/${id}/publish`)

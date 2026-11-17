@@ -231,11 +231,14 @@ export function validateCheckoutUrl(raw: string, allowedHosts: readonly string[]
 
 /* ------------------------------- Publicação ------------------------------- */
 
-/** Pendências do conteúdo do curso. O rascunho pode ser salvo incompleto; publicar exige isto. */
+/**
+ * Pendências do conteúdo do curso. O rascunho pode ser salvo incompleto; publicar exige isto.
+ * Editor único: só o que a página mostra a partir do cadastro. Público, nível, carga e garantia são textos das seções
+ * (Fatos do curso, Garantia…) e não são exigidos aqui.
+ */
 export function courseReadiness(data: CourseData): ReadinessIssue[] {
   const issues: ReadinessIssue[] = [];
   if (!data.lead) issues.push({ field: 'lead', message: 'Escreva a descrição do curso' });
-  if (!data.audience) issues.push({ field: 'audience', message: 'Informe para quem é o curso' });
   if (!data.coverSrc) issues.push({ field: 'coverSrc', message: 'Informe a imagem de capa' });
   if (!data.coverAlt) issues.push({ field: 'coverAlt', message: 'Descreva a capa (texto alternativo)' });
   if (data.benefits.length === 0) issues.push({ field: 'benefits', message: 'Informe ao menos um benefício' });

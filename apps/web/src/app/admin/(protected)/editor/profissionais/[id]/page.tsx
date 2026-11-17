@@ -26,21 +26,21 @@ export default async function ProfessionalEditorPage({ params }: { params: Promi
   if (!professional || !state) return <main><p role="alert" className="form-error">Não foi possível carregar o editor (código {status}).</p></main>
 
   const data = professionalDataSchema.parse(professional.data)
-  const back = `/admin/profissionais/${id}`
+  const back = '/admin/profissionais'
   const published = await publicGet<{ courses?: unknown }>(`/professionals/${encodeURIComponent(professional.slug)}`, ['professionals', `professional:${professional.slug}`])
   const courseCards = z.array(courseCardSchema).catch([]).parse(published?.courses ?? [])
 
   const library = resolveProfessionalDocument({ data, courseCards, templateKey: state.templateKey })
   const initial = resolveProfessionalDocument({ data, document: state.document as PageDocument | null, courseCards, templateKey: state.templateKey })
   if (!validatePageDocument(initial).ok) {
-    return <main><p role="alert" className="form-error">O documento salvo desta página está inválido. Use “Restaurar do cadastro” pelo painel ou contate o suporte.</p><Link href={back}>Voltar</Link></main>
+    return <main><p role="alert" className="form-error">O documento salvo desta página está inválido. Contate o suporte para recuperá-lo.</p><Link href={back}>Voltar</Link></main>
   }
   return (
     <Editor
       kind="professional" id={Number(id)} title={data.name} status={professional.status}
       initial={initial} library={library} documentRevision={state.documentRevision} cadastroRevision={state.revision} templateKey={state.templateKey}
       canWrite={user.permissions.includes('professionals.write')} canPublish={user.permissions.includes('professionals.publish')}
-      versions={versions?.items ?? []} dynamicTypes={['professional.courses']} backHref={back} viewHref={professional.status === 'published' ? `/profissionais/${professional.slug}` : `/admin/preview/profissionais/${id}`} registryHref={`/admin/profissionais/${id}`}
+      versions={versions?.items ?? []} dynamicTypes={['professional.courses']} backHref={back} viewHref={professional.status === 'published' ? `/profissionais/${professional.slug}` : `/admin/preview/profissionais/${id}`} cadastro={{ kind: 'professional', value: professional }}
     />
   )
 }

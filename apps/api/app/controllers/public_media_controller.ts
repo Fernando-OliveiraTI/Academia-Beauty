@@ -1,4 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import logger from '@adonisjs/core/services/logger'
 import MediaService, { mediaStorage } from '#services/media_service'
 
 const RANGE = /^bytes=(\d*)-(\d*)$/
@@ -15,6 +16,13 @@ export default class PublicMediaController {
       accept: request.header('x-original-accept'),
     })
     if (!file) return response.notFound({ message: 'Arquivo não encontrado' })
+    // Registro existe, arquivo não (armazenamento trocado, cópia incompleta): 404. Sem esta checagem a leitura falhava
+    // fora do ciclo da requisição e o erro não tratado derrubava o processo da API inteiro.
+    const stored = await mediaStorage()
+      .size(file.key)
+      .then(() => true)
+      .catch(() => false)
+    if (!stored) return response.notFound({ message: 'Arquivo não encontrado' })
 
     response.header('content-type', file.mime)
     response.header('x-content-type-options', 'nosniff')
@@ -48,10 +56,20 @@ export default class PublicMediaController {
         response.status(206)
         response.header('content-range', `bytes ${from}-${to}/${file.size}`)
         response.header('content-length', String(to - from + 1))
-        return response.stream(mediaStorage().read(file.key, { start: from, end: to }))
+        return response.stream(safeRead(file.key, { start: from, end: to }))
       }
     }
     response.header('content-length', String(file.size))
-    return response.stream(mediaStorage().read(file.key))
+    return response.stream(safeRead(file.key))
   }
+}
+
+/** Leitura com o erro sempre tratado: se o arquivo sumir no meio do envio, encerra só esta resposta. */
+function safeRead(key: string, range?: { start: number; end: number }) {
+  const stream = mediaStorage().read(key, range)
+  stream.on('error', (error) => {
+    logger.warn({ err: error, key }, 'falha ao ler arquivo de mídia')
+    stream.destroy()
+  })
+  return stream
 }

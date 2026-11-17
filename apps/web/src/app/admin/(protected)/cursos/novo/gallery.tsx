@@ -5,7 +5,6 @@ import type { AdminCourse } from '@academia/contracts'
 import { mediaSrc } from '@academia/page-renderer'
 import { apiSend } from '@/lib/api-client'
 import { TemplateGallery, type PickResult } from '@/components/template-gallery'
-import { emptyCourseData } from '../form-model'
 
 const randomSuffix = () => Math.random().toString(36).slice(2, 8).padEnd(6, '0')
 
@@ -18,7 +17,7 @@ async function createDraft(professionalId: number): Promise<PickResult> {
     const res = await apiSend<AdminCourse>('POST', '/admin/courses', {
       professionalId,
       slug: `novo-curso-${randomSuffix()}`,
-      data: { ...emptyCourseData, title: 'Novo curso' },
+      data: { title: 'Novo curso' }, // o restante usa os padrões do schema
     })
     if (res.ok && res.data) return { href: `/admin/editor/cursos/${res.data.id}` }
     if (res.status === 409) continue

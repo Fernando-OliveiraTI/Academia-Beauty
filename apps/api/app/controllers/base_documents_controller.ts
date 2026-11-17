@@ -47,13 +47,19 @@ export default abstract class BaseDocumentsController {
     const actor = ctx.auth.getUserOrFail()
     try {
       const id = Number(ctx.params.id)
-      const documentRevision = await DocumentService.save(this.kind, id, input, actor.id)
+      const { documentRevision, revision } = await DocumentService.save(
+        this.kind,
+        id,
+        input,
+        actor.id
+      )
       // Links externos ficam registrados: quem edita a página pode apontar visitantes para fora.
       await this.#audit(ctx, 'document.save', id, {
         documentRevision,
         externalHosts: externalHosts(input.document),
       })
-      return { documentRevision }
+      // `revision` = revisão do cadastro (sobe quando a página mudou um campo dele); o painel Configurações usa.
+      return { documentRevision, revision }
     } catch (error) {
       return fail(ctx, error)
     }

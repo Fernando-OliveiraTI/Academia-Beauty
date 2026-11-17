@@ -27,20 +27,20 @@ export default async function CourseEditorPage({ params }: { params: Promise<{ i
   if (!professional || !state) return <main><p role="alert" className="form-error">Não foi possível carregar o editor.</p></main>
 
   const data = courseDataSchema.parse(course.data)
-  const back = `/admin/cursos/${id}`
+  const back = '/admin/cursos'
   const pro = professionalDataSchema.parse(professional.data)
   const library = resolveCourseDocument({ data, professional: pro })
   const initial = resolveCourseDocument({ data, professional: pro, document: state.document as PageDocument | null })
   if (!validatePageDocument(initial).ok) {
-    return <main><p role="alert" className="form-error">O documento salvo desta página está inválido. Use “Restaurar do cadastro”.</p><Link href={back}>Voltar</Link></main>
+    return <main><p role="alert" className="form-error">O documento salvo desta página está inválido. Contate o suporte para recuperá-lo.</p><Link href={back}>Voltar</Link></main>
   }
   return (
     <Editor
       kind="course" id={Number(id)} title={data.title} status={course.status}
       initial={initial} library={library} documentRevision={state.documentRevision} cadastroRevision={state.revision} templateKey={state.templateKey}
       canWrite={user.permissions.includes('courses.write')} canPublish={user.permissions.includes('courses.publish')}
-      versions={versions?.items ?? []} dynamicTypes={[]} backHref={back} viewHref={course.status === 'published' ? `/cursos/${course.slug}` : `/admin/preview/cursos/${id}`} registryHref={`/admin/cursos/${id}`}
-      commerce={{ commercial: course.commercial ?? null, canManage: user.permissions.includes('commerce.manage') }}
+      versions={versions?.items ?? []} dynamicTypes={[]} backHref={back} viewHref={course.status === 'published' ? `/cursos/${course.slug}` : `/admin/preview/cursos/${id}`} cadastro={{ kind: 'course', value: course }}
+      canCommerce={user.permissions.includes('commerce.manage')}
     />
   )
 }

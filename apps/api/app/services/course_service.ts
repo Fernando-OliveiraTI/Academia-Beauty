@@ -6,6 +6,7 @@ import {
   computeOffer,
   priceDisplayOf,
   courseReadiness,
+  syncDataFromDocument,
   parseAllowedHosts,
   validateCheckoutUrl,
   type CheckoutProvider,
@@ -262,7 +263,10 @@ export default class CourseService {
         }
         current.slug = input.slug
       }
-      current.data = input.data
+      // Editor único: o que aparece na página vem do documento; o cadastro não sobrescreve esses campos.
+      current.data = current.document
+        ? syncDataFromDocument('course', input.data, current.document).data
+        : input.data
       current.title = input.data.title
       current.revision += 1
       current.updatedBy = actorId
@@ -405,30 +409,47 @@ export default class CourseService {
       const professional = await Professional.query({ client: trx })
         .where('id', current.professionalId)
         .first()
-      if (!professional || professional.status !== 'published') {
-        throw new DomainError(
-          422,
-          'professional_not_published',
-          'Publique o profissional antes de publicar o curso',
-          [{ field: 'professionalId', message: 'O profissional ainda não está publicado' }]
-        )
+      // Editor único: a página manda no conteúdo (ver ProfessionalService.publish).
+      if (current.document) {
+        const synced = syncDataFromDocument('course', current.data, current.document)
+        if (synced.changed) {
+          current.data = synced.data
+          current.revision += 1
+        }
       }
       const config = await CommercialConfig.query({ client: trx }).where('course_id', id).first()
+      // Todas as pendências de uma vez (editor único: o painel lista e leva a cada uma), inclusive o profissional.
       const issues = [
+        ...(!professional || professional.status !== 'published'
+          ? [
+              {
+                field: 'professionalId',
+                message: 'Publique o profissional antes de publicar o curso',
+              },
+            ]
+          : []),
         ...courseReadiness(current.data),
         ...commercialReadiness(config ? commercialInput(config) : null, allowedCheckoutHosts()),
+        // Oferta de teste (sandbox) não vai ao ar em produção.
+        ...(config?.environment === 'sandbox' && env.get('NODE_ENV') === 'production'
+          ? [
+              {
+                field: 'environment',
+                message: 'A oferta está em ambiente de teste (sandbox): use produção',
+              },
+            ]
+          : []),
       ]
       if (issues.length) {
-        throw new DomainError(422, 'not_ready', 'O curso está incompleto para publicar', issues)
+        throw new DomainError(
+          422,
+          'not_ready',
+          'Faltam informações na página ou na oferta para publicar',
+          issues
+        )
       }
       // O documento do editor é revalidado na publicação (o schema pode ter mudado desde o salvamento).
       if (current.document) assertValidDocument(COURSE_KIND, current.document)
-      // Oferta de teste (sandbox) não vai ao ar em produção.
-      if (config!.environment === 'sandbox' && env.get('NODE_ENV') === 'production') {
-        throw new DomainError(422, 'not_ready', 'A oferta está em ambiente de teste (sandbox)', [
-          { field: 'environment', message: 'Use o ambiente de produção para publicar' },
-        ])
-      }
 
       const last = await trx
         .from('course_versions')

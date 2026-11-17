@@ -1,6 +1,7 @@
 import db from '@adonisjs/lucid/services/db'
 import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import { validatePageDocument } from '@academia/section-schemas'
+import { syncDataFromDocument } from '@academia/contracts'
 import { DomainError } from '#services/domain_error'
 
 /** Descreve a tabela dona de um documento de página (profissional ou curso). */
@@ -46,6 +47,10 @@ export const HOME_KIND: DocumentKind = {
   templateKey: 'home-original',
   label: 'Home',
 }
+
+/** Tipos cujo cadastro recebe os campos da página (a Home não tem cadastro). */
+const syncKindOf = (kind: DocumentKind) =>
+  kind.table === 'professionals' ? 'professional' : kind.table === 'courses' ? 'course' : null
 
 /** Profissionais têm modelo próprio (coluna `template_key`); curso e Home usam o fixo do tipo. */
 const templateOf = (kind: DocumentKind, row: { template_key?: string | null }) =>
@@ -144,28 +149,37 @@ export default class DocumentService {
     }
   }
 
-  /** Grava o documento do editor com concorrência otimista. `expectedRevision` 0 = primeira personalização. */
+  /**
+   * Grava o documento do editor com concorrência otimista. `expectedRevision` 0 = primeira personalização.
+   * Editor único: os campos de conteúdo da página (frase, retrato, capa, listas…) também vão para o cadastro na
+   * mesma transação, para SEO, cartões e a regra de publicação enxergarem o que a página mostra.
+   */
   static async save(
     kind: DocumentKind,
     id: number,
     input: { document: unknown; revision: number },
     actorId: number
-  ) {
+  ): Promise<{ documentRevision: number; revision: number }> {
     return db.transaction(async (trx) => {
       const row = await lock(kind, id, trx)
       assertRevision(row.document_revision, input.revision)
       const document = assertValidDocument(kind, input.document, templateOf(kind, row))
       const next = row.document_revision + 1
+      const synced = syncKindOf(kind)
+        ? syncDataFromDocument(syncKindOf(kind)!, parse(row.data) ?? {}, document)
+        : { data: null, changed: false }
+      const revision = synced.changed ? row.revision + 1 : row.revision
       await trx
         .from(kind.table)
         .where('id', id)
         .update({
           document: JSON.stringify(document),
           document_revision: next,
+          ...(synced.changed ? { data: JSON.stringify(synced.data), revision } : {}),
           updated_by: actorId,
           updated_at: new Date(),
         })
-      return next
+      return { documentRevision: next, revision }
     })
   }
 

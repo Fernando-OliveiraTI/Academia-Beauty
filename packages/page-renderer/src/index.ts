@@ -5,7 +5,7 @@ export { PROFESSIONAL_TEMPLATES, isProfessionalTemplate } from '@academia/sectio
 export { homeOriginalTemplate, HOME_TEMPLATE_KEY } from './home/template';
 export { registerSections } from './registry';
 export { cardPriceTexts, displayFlags, formatBRL, offerTexts, type CheckoutMode, type OfferView, type RenderContext } from './offer';
-export { buildCourseDocument, professionalCourseCards, splitTitle } from './course/build';
+export { buildCourseDocument, professionalCourseCards, splitTitle, withoutTemplateSamples } from './course/build';
 export { buildProfessionalDocument, splitName } from './professional/build';
 export { buildHomeDocument, homeCourseItems, homeProfessionalItems, HOME_COURSES_MAX, HOME_SHOWCASE_MAX } from './home/build';
 /** `ctx.offer` só é lido pelo template do Curso; páginas de Home e Profissional usam este valor neutro. */

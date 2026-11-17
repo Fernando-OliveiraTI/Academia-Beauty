@@ -1,32 +1,8 @@
-import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import type { AdminProfessional, ReadinessIssue } from '@academia/contracts'
-import { adminGet, getCurrentUser } from '@/lib/api-server'
-import { progressOf, WizardHeader } from '@/components/wizard-ui'
-import { ProfessionalWizard } from '../wizard'
-import { groupIssuesByStep, STEPS } from '../form-model'
 
-export const metadata = { title: 'Editar profissional' }
-export const dynamic = 'force-dynamic'
-
-export default async function EditProfessionalPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ pendencias?: string }> }) {
-  const user = await getCurrentUser()
-  if (!user) redirect('/admin/login')
+/** Editor único: o cadastro em formulário foi removido; tudo é editado no editor visual (Configurações para o que não é página). */
+export default async function LegacyRegistryRedirect({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const pendencias = (await searchParams).pendencias === '1'
   if (!/^\d+$/.test(id)) notFound()
-  const { data, status } = await adminGet<AdminProfessional & { readiness: ReadinessIssue[] }>(`/admin/professionals/${id}`)
-  if (status === 404) notFound()
-  if (!data) return <main><p role="alert" className="form-error">Não foi possível carregar o cadastro (código {status}).</p></main>
-  return (
-    <main>
-      <WizardHeader
-        backHref="/admin/profissionais" backLabel="Profissionais" title={data.data.name}
-        subtitle="Configurações do profissional. O conteúdo da página é editado no editor visual."
-        progress={progressOf(STEPS, groupIssuesByStep(data.readiness))}
-        action={<Link className="admin-button" href={`/admin/editor/profissionais/${id}`}>Abrir no editor visual</Link>}
-      />
-      <ProfessionalWizard initial={data} permissions={user.permissions} initialStep={pendencias ? 4 : 0} showPending={pendencias} />
-    </main>
-  )
+  redirect(`/admin/editor/profissionais/${id}`)
 }

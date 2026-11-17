@@ -121,7 +121,7 @@ test.group('Concorrência real', (group) => {
     )
   })
 
-  test('salvar o cadastro e salvar o documento em paralelo não se anulam (revisões independentes)', async ({
+  test('salvar o cadastro e a página em paralelo não perde dados: a página manda nos campos dela', async ({
     client,
     assert,
   }) => {
@@ -130,15 +130,18 @@ test.group('Concorrência real', (group) => {
     const id = created.body().id as number
     const [saveData, saveDoc] = await Promise.all([
       a.put(`/admin/professionals/${id}`, {
-        data: { ...professionalData(), tagline: 'Novo' },
+        data: { ...professionalData(), specialty: 'Barber' },
         revision: 1,
       }),
       a.put(`/admin/professionals/${id}/document`, { document: doc('paralelo'), revision: 0 }),
     ])
-    assert.equal(saveData.status(), 200)
+    // Editor único: a página também grava o cadastro. Quem chega depois com a revisão velha recebe 409, nunca 500.
     assert.equal(saveDoc.status(), 200)
+    assert.include([200, 409], saveData.status())
     const row = await db.from('professionals').where('id', id).first()
-    assert.equal(row.revision, 2)
+    const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data
     assert.equal(row.document_revision, 1)
+    assert.equal(data.tagline, 'paralelo')
+    if (saveData.status() === 200) assert.equal(data.specialty, 'Barber')
   })
 })

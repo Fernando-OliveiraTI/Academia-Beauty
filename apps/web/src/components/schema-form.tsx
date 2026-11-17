@@ -164,7 +164,7 @@ function Node({ path, schema: raw, value, onChange, name, depth = 0, labelText, 
       return <button type="button" className="admin-button secondary" onClick={() => onChange(defaultFor(schema))}>Adicionar {label.toLowerCase()}</button>
     }
     return (
-      <fieldset className="sf-group" data-depth={depth}>
+      <fieldset className="sf-group" data-depth={depth} data-field-path={path || undefined}>
         <legend>{label}</legend>
         <ObjectFields schema={schema} value={value} onChange={onChange} depth={depth + 1} mediaKind={name === 'video' ? 'video' : 'image'} path={path} />
         {optional ? <button type="button" className="link-button" onClick={() => onChange(undefined)}>Remover {label.toLowerCase()}</button> : null}
@@ -189,7 +189,7 @@ function ArrayField({ path = '', schema, value, onChange, name, depth = 0 }: Nod
     set(next)
   }
   return (
-    <fieldset className="sf-group" data-depth={depth}>
+    <fieldset className="sf-group" data-depth={depth} data-field-path={path || undefined}>
       <legend>{label} <span className="sf-count">({list.length}{schema.maxItems ? `/${schema.maxItems}` : ''})</span></legend>
       {list.map((entry, i) => (
         <div className="sf-item" key={i}>

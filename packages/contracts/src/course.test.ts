@@ -98,7 +98,7 @@ describe('readiness', () => {
   it('curso vazio lista pendências; curso completo não', () => {
     const empty = courseDataSchema.parse({ title: 'Curso X' });
     expect(courseReadiness(empty).map((i) => i.field)).toEqual(
-      expect.arrayContaining(['lead', 'audience', 'coverSrc', 'coverAlt', 'benefits', 'modules', 'deliverables'])
+      expect.arrayContaining(['lead', 'coverSrc', 'coverAlt', 'benefits', 'modules', 'deliverables'])
     );
     const full = courseDataSchema.parse({
       title: 'Curso X', lead: 'Descrição.', audience: 'Cabeleireiros', coverSrc: '/site/c.png', coverAlt: 'Capa',

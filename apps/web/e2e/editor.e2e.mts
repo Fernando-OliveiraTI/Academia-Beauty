@@ -1,7 +1,7 @@
 /**
  * E2E do editor visual (Fase 5): árvore, propriedades, pré-visualização ao vivo, arrastar/reordenar,
- * ocultar, desfazer/refazer, autosave, validação, conflito de revisão, histórico, restaurar do cadastro,
- * publicação com o documento e página pública. Cria um profissional `e2e-ed-*` e o arquiva no fim.
+ * ocultar, desfazer/refazer, autosave, validação, conflito de revisão, histórico, página → cadastro (editor único),
+ * publicação com o documento e página pública. Cria um profissional `e2e-ed-*` e o apaga no fim.
  * Requer API (3333) migrada e o build de produção do web (3100).
  * Uso: E2E_ADMIN_EMAIL=... E2E_ADMIN_PASSWORD=... pnpm --filter @academia/web e2e:editor
  */
@@ -149,7 +149,9 @@ try {
 
   await step('publicar leva o documento editado ao site público (texto novo, texto do cadastro sumiu)', async () => {
     await page.getByRole('button', { name: 'Publicar', exact: true }).click()
-    await page.getByText('Publicado. O site será atualizado').waitFor()
+    // A publicação confirma num cartão ("Publicado!") que cobre o editor: espera e fecha antes de seguir.
+    await page.getByRole('dialog', { name: 'Publicado!' }).waitFor()
+    await page.getByRole('button', { name: 'Continuar editando' }).click()
     let html = ''
     for (let i = 0; i < 20; i += 1) {
       html = await (await fetch(`${BASE}/profissionais/${SLUG}`, { cache: 'no-store' })).text()
@@ -184,14 +186,13 @@ try {
     assert.doesNotMatch(JSON.stringify(server.document), /aba 2/)
   })
 
-  await step('restaurar do cadastro descarta o documento e volta ao texto do cadastro', async () => {
-    await menu(page, 'Restaurar do cadastro')
-    await page.getByRole('button', { name: 'Confirmar' }).click()
-    await page.waitForLoadState('load')
-    await page.locator('.ed-item').first().waitFor()
-    await frame(page).getByText('Parágrafo original do cadastro.').waitFor({ timeout: 15_000 })
-    const server = await (await context.request.get(`${BASE}/api/admin/professionals/${id}/document`)).json()
-    assert.equal(server.document, null)
+  await step('editor único: o texto editado na página vai para o cadastro; "Restaurar do cadastro" não existe mais', async () => {
+    const row = await (await context.request.get(`${BASE}/api/admin/professionals/${id}`)).json()
+    assert.deepEqual(row.data.bio, [`${EDITED} (aba 1)`], 'a trajetória do cadastro acompanha a página')
+    await page.getByRole('button', { name: 'Mais ações' }).click()
+    await page.getByRole('menuitem', { name: /Histórico/ }).waitFor()
+    assert.equal(await page.getByRole('menuitem', { name: /Restaurar do cadastro/ }).count(), 0)
+    await page.keyboard.press('Escape')
   })
 
   await step('painel sem horizontal overflow em 390px', async () => {
@@ -258,7 +259,9 @@ try {
 
   await step('curso publicado: texto editado no ar; preço e checkout continuam vindo do backend', async () => {
     await page.getByRole('button', { name: 'Publicar', exact: true }).click()
-    await page.getByText('Publicado. O site será atualizado').waitFor()
+    // A publicação confirma num cartão ("Publicado!") que cobre o editor: espera e fecha antes de seguir.
+    await page.getByRole('dialog', { name: 'Publicado!' }).waitFor()
+    await page.getByRole('button', { name: 'Continuar editando' }).click()
     let html = ''
     for (let i = 0; i < 20; i += 1) {
       html = await (await fetch(`${BASE}/cursos/${COURSE_SLUG}`, { cache: 'no-store' })).text()
@@ -289,7 +292,9 @@ try {
     await frame(page).locator('.instructor-portrait .monogram').waitFor({ timeout: 15_000 })
     assert.equal(await frame(page).locator('.instructor-portrait img').count(), 0)
     await page.getByRole('button', { name: 'Publicar', exact: true }).click()
-    await page.getByText('Publicado. O site será atualizado em instantes.').waitFor()
+    // A publicação confirma num cartão ("Publicado!") que cobre o editor: espera e fecha antes de seguir.
+    await page.getByRole('dialog', { name: 'Publicado!' }).waitFor()
+    await page.getByRole('button', { name: 'Continuar editando' }).click()
     let html = ''
     for (let i = 0; i < 30; i++) {
       html = await (await fetch(`${BASE}/cursos/${COURSE_SLUG}`, { cache: 'no-store' })).text()
@@ -314,7 +319,9 @@ try {
     assert.ok([409, 422].includes(bad.status), `status ${bad.status}`)
   })
 
-  await send(context, 'post', `/admin/courses/${courseId}/archive`)
+  // Limpeza: apagar exige despublicar antes.
+  await send(context, 'post', `/admin/courses/${courseId}/unpublish`)
+  await send(context, 'delete', `/admin/courses/${courseId}`)
 } catch (error) {
   console.error('FALHA:', error)
   console.log(results.join('\n'))
@@ -322,7 +329,10 @@ try {
   process.exitCode = 1
   throw error
 }
-if (id) await send(context, 'post', `/admin/professionals/${id}/archive`)
+if (id) {
+  await send(context, 'post', `/admin/professionals/${id}/unpublish`)
+  await send(context, 'delete', `/admin/professionals/${id}`)
+}
 const unexpected = consoleErrors.filter((e) => !/status of 409|status of 422|status of 403|Failed to load resource/.test(e))
 console.log(results.join('\n'))
 console.log('Erros de console inesperados:', unexpected.length ? unexpected : 'nenhum')

@@ -14,6 +14,37 @@ export const EDITOR_FOCUS = 'academia-editor-focus'
 export const EDITOR_INTERACTIVE = 'academia-editor-interactive'
 /** Quadro → editor: o usuário clicou num elemento da página. */
 export const EDITOR_PICK = 'academia-editor-pick'
+/** Editor → quadro: mostra onde fica o campo focado no formulário (moldura com rótulo e rolagem até ele). */
+export const EDITOR_FIELD = 'academia-editor-field'
+
+const normText = (value: string) => value.replace(/\s+/g, ' ').trim().toLowerCase()
+
+/** Elemento da seção que mostra um dos arquivos ou textos pedidos (o menor que contém o texto). */
+function findFieldElement(section: HTMLElement, texts: readonly string[], srcs: readonly string[]): Element | null {
+  for (const src of srcs) {
+    const path = new URL(src, window.location.href).pathname
+    const mediaId = /\/media\/([0-9a-f]+)/.exec(src)?.[1]
+    const hit = Array.from(section.querySelectorAll('img, video, source')).find((el) => {
+      const value = el.getAttribute('src') ?? ''
+      if (!value) return false
+      return value === src || new URL(value, window.location.href).pathname === path || Boolean(mediaId && value.includes(mediaId))
+    })
+    if (hit) return hit.tagName === 'SOURCE' ? hit.parentElement : hit
+  }
+  for (const text of texts.map(normText).filter(Boolean)) {
+    let best: Element | null = null
+    let bestArea = Infinity
+    section.querySelectorAll('*').forEach((el) => {
+      if (el.closest('svg') || !normText(el.textContent ?? '').includes(text)) return
+      const r = el.getBoundingClientRect()
+      if (r.width < 2 || r.height < 2) return
+      const area = r.width * r.height
+      if (area < bestArea) { best = el; bestArea = area }
+    })
+    if (best) return best
+  }
+  return null
+}
 
 const BRIDGE_CSS = `
 [data-ed-section][data-ed-selected]{outline:1px solid #e3c98a !important;outline-offset:-1px}
@@ -194,7 +225,26 @@ export function LivePreview(props: Props) {
     }
     const onMessage = (e: MessageEvent) => {
       if (e.origin !== window.location.origin || e.source !== window.parent) return
-      const msg = e.data as { type?: string; sectionId?: string | null; scroll?: boolean; on?: boolean }
+      const msg = e.data as { type?: string; sectionId?: string | null; scroll?: boolean; on?: boolean; texts?: string[]; srcs?: string[]; label?: string; container?: boolean }
+      if (msg?.type === EDITOR_FIELD && msg.sectionId) {
+        // A seção pode ter acabado de aparecer (mostrar/adicionar): tenta de novo enquanto a página redesenha.
+        const sectionId = msg.sectionId
+        const tryFind = (attempt: number) => {
+          const node = nodeMap.current?.get(sectionId)
+          const el = node ? findFieldElement(node, msg.texts ?? [], msg.srcs ?? []) : null
+          if (!node || !el) { if (attempt < 4) window.setTimeout(() => tryFind(attempt + 1), 300); return }
+          // Campo vazio: marca o bloco onde o valor vai aparecer (o que envolve os vizinhos).
+          const parent = el.parentElement
+          const target = msg.container && parent && parent !== node && node.contains(parent) ? parent : el
+          selected.current = sectionId
+          if (interactive.current) applySelected()
+          picked = { el: target, label: msg.label || 'Campo' }
+          target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+          updateBadge()
+        }
+        tryFind(0)
+        return
+      }
       if (msg?.type === EDITOR_INTERACTIVE) {
         interactive.current = Boolean(msg.on)
         window.document.documentElement.toggleAttribute('data-ed-on', interactive.current)

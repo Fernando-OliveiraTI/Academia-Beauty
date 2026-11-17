@@ -2,6 +2,7 @@ import db from '@adonisjs/lucid/services/db'
 import { DateTime } from 'luxon'
 import {
   publishReadiness,
+  syncDataFromDocument,
   type AdminProfessional,
   type ProfessionalData,
   type PublicProfessional,
@@ -140,7 +141,10 @@ export default class ProfessionalService {
         }
         current.templateKey = input.templateKey
       }
-      current.data = input.data
+      // Editor único: o que aparece na página vem do documento; o cadastro não sobrescreve esses campos.
+      current.data = current.document
+        ? syncDataFromDocument('professional', input.data, current.document).data
+        : input.data
       current.name = input.data.name
       current.revision += 1
       current.updatedBy = actorId
@@ -158,9 +162,23 @@ export default class ProfessionalService {
       if (current.status === 'archived') {
         throw new DomainError(422, 'archived', 'Restaure o profissional antes de publicar')
       }
+      // Editor único: a página manda no conteúdo. Documentos salvos antes da sincronização (ou nunca regravados)
+      // são aplicados ao cadastro aqui, para a checagem e o snapshot refletirem o que a página mostra.
+      if (current.document) {
+        const synced = syncDataFromDocument('professional', current.data, current.document)
+        if (synced.changed) {
+          current.data = synced.data
+          current.revision += 1
+        }
+      }
       const issues = publishReadiness(current.data)
       if (issues.length) {
-        throw new DomainError(422, 'not_ready', 'O cadastro está incompleto para publicar', issues)
+        throw new DomainError(
+          422,
+          'not_ready',
+          'Faltam informações na página para publicar',
+          issues
+        )
       }
       // O documento do editor é revalidado na publicação (o schema pode ter mudado desde o salvamento).
       if (current.document) {

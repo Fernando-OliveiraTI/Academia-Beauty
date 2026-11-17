@@ -4,7 +4,6 @@ import type { AdminProfessional } from '@academia/contracts'
 import { PROFESSIONAL_TEMPLATES } from '@academia/section-schemas'
 import { apiSend } from '@/lib/api-client'
 import { TemplateGallery, type PickResult } from '@/components/template-gallery'
-import { emptyProfessionalData } from '../form-model'
 
 const randomSuffix = () => Math.random().toString(36).slice(2, 8).padEnd(6, '0')
 
@@ -13,7 +12,7 @@ async function createDraft(templateKey: string): Promise<PickResult> {
   for (let attempt = 0; attempt < 3; attempt++) {
     const res = await apiSend<AdminProfessional>('POST', '/admin/professionals', {
       slug: `novo-profissional-${randomSuffix()}`,
-      data: { ...emptyProfessionalData, name: 'Novo profissional', specialty: 'Especialidade' },
+      data: { name: 'Novo profissional', specialty: 'Especialidade' }, // o restante usa os padrões do schema
       templateKey,
     })
     if (res.ok && res.data) return { href: `/admin/editor/profissionais/${res.data.id}` }

@@ -79,7 +79,7 @@ export default async function ProfessionalsPage({ searchParams }: { searchParams
                   <th scope="row">
                     <div className="admin-person">
                       {p.data.cardPhotoSrc ? <img className="admin-avatar" src={mediaSrc(p.data.cardPhotoSrc, 96)} alt="" width={52} height={52} loading="lazy" /> : <span className="admin-avatar" aria-hidden="true" />}
-                      <div><Link href={`/admin/profissionais/${p.id}`}>{p.data.name}</Link><small>/{p.slug}</small></div>
+                      <div><Link href={`/admin/editor/profissionais/${p.id}`}>{p.data.name}</Link><small>/{p.slug}</small></div>
                     </div>
                   </th>
                   <td>

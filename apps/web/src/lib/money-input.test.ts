@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { centsToInput, emptyLines, groupIssuesByStep, maskBRL, maskPercent, parseBRLToCents, stepForField } from './form-model'
+import { centsToInput, maskBRL, maskPercent, parseBRLToCents } from './money-input'
 
 describe('parseBRLToCents', () => {
   it.each([
@@ -19,19 +19,6 @@ describe('parseBRLToCents', () => {
     for (const cents of [1, 99, 100, 12345, 99999999]) expect(parseBRLToCents(centsToInput(cents))).toBe(cents)
     expect(parseBRLToCents('19,90')).toBe(1990)
     expect(parseBRLToCents('0,29')).toBe(29)
-  })
-})
-
-describe('etapas e linhas', () => {
-  it('mapeia pendências para a etapa certa', () => {
-    expect(stepForField('title')).toBe(0)
-    expect(stepForField('coverSrc')).toBe(1)
-    expect(stepForField('checkoutUrl')).toBe(3)
-    expect(stepForField('professionalId')).toBe(0)
-    expect(groupIssuesByStep([{ field: 'modules', message: 'x' }])[0]!.step).toBe(1)
-  })
-  it('emptyLines ignora linhas vazias', () => {
-    expect(emptyLines('a\n\n  b  \n')).toEqual(['a', 'b'])
   })
 })
 
