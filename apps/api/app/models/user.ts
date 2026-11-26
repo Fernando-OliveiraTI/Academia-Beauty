@@ -63,6 +63,13 @@ export default class User extends compose(BaseModel, AuthFinder) {
     return this.totpEnabledAt !== null && this.totpSecret !== null
   }
 
+  /** Aceite dos Termos de Uso e da Política de Privacidade (D-041): versão aceita e quando. */
+  @column()
+  declare termsVersion: string | null
+
+  @column.dateTime()
+  declare termsAcceptedAt: DateTime | null
+
   /** Papel `professional`: o profissional a que o login pertence (os Insights ficam restritos a ele). */
   @column()
   declare professionalId: number | null

@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Política de Privacidade · Academia Beauty</title>
+<meta name="description" content="Como a Academia Beauty coleta, usa, compartilha e protege seus dados pessoais, conforme a LGPD.">
+<link rel="canonical" href="https://academiabeauty.com.br/politica-de-privacidade">
+<style>
+:root{--bg:#0b0a09;--surface:#151311;--surface2:#1d1a17;--text:#f6f2ea;--text2:#aaa194;--muted:#7c7468;--gold:#e3c98a;--gold2:#f3dea6;--line:rgba(246,242,234,.10);--line2:rgba(246,242,234,.22)}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:96px}
+body{margin:0;background:var(--bg);color:var(--text2);font-family:"Geist","Helvetica Neue",Arial,sans-serif;font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:var(--gold);text-underline-offset:3px}
+.lg-header{position:sticky;top:0;z-index:20;background:rgba(11,10,9,.86);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.lg-header__in{max-width:1180px;margin:0 auto;padding:16px clamp(16px,4vw,40px);display:flex;align-items:center;justify-content:space-between;gap:16px}
+.lg-logo{font-family:Arial,Helvetica,sans-serif;font-weight:700;font-size:20px;letter-spacing:-.035em;color:#fff;text-decoration:none;white-space:nowrap}
+.lg-logo span{color:var(--gold)}
+.lg-back{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(227,201,138,.45);border-radius:999px;padding:9px 16px;color:var(--text);text-decoration:none;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.lg-back:hover{background:var(--gold);color:#17130c}
+.lg-hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+.lg-hero::before{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:56px 56px;opacity:.5;mask-image:radial-gradient(ellipse at 30% 0%,#000 10%,transparent 70%)}
+.lg-hero::after{content:"";position:absolute;right:-10%;top:-60%;width:60%;height:200%;background:radial-gradient(closest-side,rgba(207,168,108,.16),transparent)}
+.lg-hero__in{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:64px clamp(16px,4vw,40px) 48px}
+.lg-eyebrow{display:inline-flex;align-items:center;gap:10px;border:1px solid rgba(227,201,138,.5);border-radius:999px;padding:7px 14px;font-family:"Geist Mono",ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--text)}
+.lg-eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px var(--gold)}
+.lg-hero h1{margin:20px 0 14px;font-weight:800;text-transform:uppercase;letter-spacing:-.04em;line-height:.95;font-size:clamp(2.4rem,1.4rem + 4.5vw,4.6rem);color:#fff}
+.lg-hero h1 span{background:linear-gradient(90deg,#cfa86c,#f3dea6 55%,#e3c98a);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lg-hero p{margin:0;max-width:640px;font-size:17px}
+.lg-meta{margin-top:22px;display:flex;flex-wrap:wrap;gap:8px 20px;font-family:"Geist Mono",ui-monospace,Menlo,monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lg-tabs{display:flex;gap:8px;margin-top:28px;flex-wrap:wrap}
+.lg-tabs a{border-radius:999px;padding:10px 18px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;border:1px solid var(--line2);color:var(--text)}
+.lg-tabs a[aria-current]{background:var(--gold);border-color:var(--gold);color:#17130c}
+.lg-body{max-width:1180px;margin:0 auto;padding:48px clamp(16px,4vw,40px) 80px;display:grid;grid-template-columns:260px minmax(0,1fr);gap:56px}
+.lg-toc{position:sticky;top:96px;align-self:start;max-height:calc(100vh - 120px);overflow:auto}
+.lg-toc h2{margin:0 0 12px;font-family:"Geist Mono",ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600}
+.lg-toc ol{list-style:none;margin:0;padding:0;border-left:1px solid var(--line)}
+.lg-toc a{display:block;padding:6px 0 6px 14px;margin-left:-1px;border-left:1px solid transparent;color:var(--text2);text-decoration:none;font-size:13.5px;line-height:1.4}
+.lg-toc a:hover,.lg-toc a.on{color:var(--text);border-left-color:var(--gold)}
+.lg-content{max-width:760px;min-width:0;overflow-wrap:anywhere}
+.lg-toc,.lg-content{min-width:0}
+@media (max-width:480px){.lg-back b{display:none}.lg-logo{font-size:18px}}
+.lg-content>p:first-child{font-size:18px;color:var(--text)}
+.lg-content h2{margin:48px 0 14px;padding-top:24px;border-top:1px solid var(--line);color:#fff;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.25}
+.lg-content h2:first-child{margin-top:0;border-top:0;padding-top:0}
+.lg-content strong{color:var(--text);font-weight:600}
+.lg-content ul,.lg-content ol{padding-left:22px}
+.lg-content li{margin:6px 0}
+.lg-content li::marker{color:var(--gold)}
+.lg-table{overflow-x:auto;margin:20px 0;border:1px solid var(--line2);border-radius:14px;background:var(--surface)}
+.lg-content table{width:100%;border-collapse:collapse;font-size:14.5px;line-height:1.5}
+.lg-content th{text-align:left;font-family:"Geist Mono",ui-monospace,Menlo,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:600;background:var(--surface2);padding:12px 16px}
+.lg-content td{padding:12px 16px;border-top:1px solid var(--line);vertical-align:top}
+.lg-content td:first-child{color:var(--text);font-weight:500}
+.lg-totop{display:inline-block;margin-top:48px;font-size:13px;font-weight:600;text-decoration:none}
+@media (max-width:900px){.lg-body{grid-template-columns:minmax(0,1fr);gap:28px;padding-top:32px}.lg-toc{position:static;max-height:none;border:1px solid var(--line2);border-radius:14px;padding:16px 18px;background:var(--surface)}.lg-toc ol{columns:1}}
+@media print{.lg-header,.lg-toc,.lg-tabs,.ab-footer,.lg-totop{display:none}body{background:#fff;color:#222}.lg-hero{border:0}.lg-hero h1,.lg-content h2,.lg-content td:first-child,.lg-content strong{color:#000}.lg-hero h1 span{-webkit-text-fill-color:#8a6a3a}.lg-body{display:block}}
+
+
+/* ============================================================
+   FOOTER — ACADEMIA BEAUTY
+   Copie o bloco <style> abaixo (ou mova para seu CSS) e o <footer>.
+   Usa as mesmas cores do site; todas as classes começam com "ab-".
+   ============================================================ */
+.ab-footer{
+  --ab-bg:#0b0a09; --ab-surface:#151311; --ab-text:#f6f2ea; --ab-text-2:#aaa194;
+  --ab-muted:#7c7468; --ab-gold:#e3c98a; --ab-gold-2:#f3dea6; --ab-line:rgba(246,242,234,.10);
+  position:relative; overflow:hidden;
+  background:var(--ab-bg); color:var(--ab-text-2);
+  font-family:"Geist","Helvetica Neue",Arial,sans-serif; font-size:14px; line-height:1.6;
+  border-top:1px solid var(--ab-line);
+}
+.ab-footer::before{ /* linha dourada no topo, como o horizonte do site */
+  content:""; position:absolute; left:0; right:0; top:0; height:1px;
+  background:linear-gradient(90deg,transparent,rgba(227,201,138,.25) 20%,var(--ab-gold-2) 50%,rgba(227,201,138,.25) 80%,transparent);
+}
+.ab-footer *{box-sizing:border-box}
+.ab-footer a{color:var(--ab-text); text-decoration:none; transition:color .18s}
+.ab-footer a:hover,.ab-footer a:focus-visible{color:var(--ab-gold)}
+.ab-footer__inner{max-width:1180px; margin:0 auto; padding:56px clamp(16px,4vw,40px) 28px}
+.ab-footer__top{display:grid; grid-template-columns:minmax(220px,1fr) 2fr; gap:48px}
+.ab-footer__logo{
+  font-family:Arial,Helvetica,sans-serif; font-weight:700; font-size:22px;
+  letter-spacing:-.035em; color:#fff; line-height:1; white-space:nowrap;
+}
+.ab-footer__logo span{color:var(--ab-gold)}
+.ab-footer__tagline{margin:12px 0 20px; color:var(--ab-text-2)}
+.ab-footer__badges{display:flex; flex-wrap:wrap; gap:8px; margin:0; padding:0; list-style:none}
+.ab-footer__badges li{
+  font-family:"Geist Mono",ui-monospace,Menlo,monospace; font-size:10.5px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--ab-text);
+  border:1px solid rgba(227,201,138,.45); border-radius:999px; padding:6px 11px;
+}
+.ab-footer__legal{display:grid; grid-template-columns:repeat(3,1fr); gap:28px}
+.ab-footer__legal h4{
+  margin:0 0 8px; font-family:"Geist Mono",ui-monospace,Menlo,monospace; font-weight:600;
+  font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--ab-gold);
+}
+.ab-footer__legal p{margin:0; font-size:13px}
+.ab-footer__links{
+  display:flex; flex-wrap:wrap; align-items:center; gap:10px 24px;
+  margin-top:40px; padding-top:22px; border-top:1px solid var(--ab-line);
+  font-weight:600; font-size:13px;
+}
+.ab-footer__links .ab-footer__mail{margin-left:auto; color:var(--ab-gold)}
+.ab-footer__company{margin-top:14px; font-size:12px; color:var(--ab-muted)}
+@media (max-width:860px){
+  .ab-footer__top{grid-template-columns:1fr; gap:32px}
+  .ab-footer__legal{grid-template-columns:1fr; gap:20px}
+  .ab-footer__links .ab-footer__mail{margin-left:0}
+}
+</style>
+</head>
+<body>
+<header class="lg-header"><div class="lg-header__in">
+  <a class="lg-logo" href="/">ACADEMIA <span>BEAUTY</span></a>
+  <a class="lg-back" href="/">← <b>Voltar ao</b> site</a>
+</div></header>
+
+<section class="lg-hero"><div class="lg-hero__in">
+  <span class="lg-eyebrow"><i></i>Documento legal</span>
+  <h1>Política de<br><span>Privacidade.</span></h1>
+  <p>Como a Academia Beauty coleta, usa, compartilha e protege seus dados pessoais, conforme a LGPD.</p>
+  <div class="lg-meta"><span>Última atualização: 17/11/2026</span><span>Academia Beauty LTDA. · CNPJ 69.111.867/0001-10</span></div>
+  <nav class="lg-tabs" aria-label="Documentos legais"><a href="/termos-de-uso">Termos de Uso</a><a href="/politica-de-privacidade" aria-current="page">Política de Privacidade</a></nav>
+</div></section>
+
+<main class="lg-body" id="topo">
+  <nav class="lg-toc" aria-label="Sumário"><h2>Sumário</h2><ol>
+    <li><a href="#sec-1">1. Controlador</a></li><li><a href="#sec-2">2. Dados que coletamos</a></li><li><a href="#sec-3">3. Finalidades e bases legais</a></li><li><a href="#sec-4">4. Com quem compartilhamos</a></li><li><a href="#sec-5">5. Transferência internacional</a></li><li><a href="#sec-6">6. Cookies e tecnologias semelhantes</a></li><li><a href="#sec-7">7. Por quanto tempo guardamos</a></li><li><a href="#sec-8">8. Segurança</a></li><li><a href="#sec-9">9. Seus direitos</a></li><li><a href="#sec-10">10. Dados de crianças e adolescentes</a></li><li><a href="#sec-11">11. Canal de atendimento e ANPD</a></li><li><a href="#sec-12">12. Alterações desta Política</a></li>
+  </ol></nav>
+  <article class="lg-content">
+<p>A Academia Beauty trata apenas os dados necessários para oferecer os cursos, processar compras e cumprir a lei, conforme a Lei Geral de Proteção de Dados (Lei 13.709/2018). Não vendemos dados pessoais.</p>
+<h2 id="sec-1">1. Controlador</h2>
+<p>O controlador dos dados é Academia Beauty LTDA., CNPJ 69.111.867/0001-10, com sede na Rua Manuel da Nóbrega, 1088, apto 15, Paraíso, São Paulo/SP, CEP 04001-003. O canal para assuntos de privacidade e proteção de dados é o e-mail <a href="mailto:suporte@academiabeauty.com.br">suporte@academiabeauty.com.br</a>.</p>
+<h2 id="sec-2">2. Dados que coletamos</h2>
+<div class="lg-table"><table>
+<thead>
+<tr>
+<th>Categoria</th>
+<th>Exemplos</th>
+<th>Origem</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cadastro</td>
+<td>Nome, e-mail, senha (criptografada), telefone</td>
+<td>Você</td>
+</tr>
+<tr>
+<td>Compra e faturamento</td>
+<td>CPF, endereço de cobrança, histórico de pedidos, forma de pagamento (sem o número completo do cartão)</td>
+<td>Você e o processador de pagamentos</td>
+</tr>
+<tr>
+<td>Uso da plataforma</td>
+<td>Cursos acessados, progresso nas aulas, comentários e participação em transmissões ao vivo</td>
+<td>Uso da plataforma</td>
+</tr>
+<tr>
+<td>Dados técnicos</td>
+<td>IP, tipo de dispositivo, sistema operacional, versão do app, logs de acesso, identificadores de cookies</td>
+<td>Coleta automática</td>
+</tr>
+<tr>
+<td>Comunicação</td>
+<td>Mensagens ao suporte, preferências de e-mail</td>
+<td>Você</td>
+</tr>
+<tr>
+<td>Menores (16 e 17 anos)</td>
+<td>Nome e e-mail do responsável e registro da autorização</td>
+<td>Responsável legal</td>
+</tr>
+</tbody>
+</table></div>
+<p>Não coletamos dados pessoais sensíveis, como saúde, origem racial ou biometria. Também não pedimos fotos de clientes atendidos por você.</p>
+<h2 id="sec-3">3. Finalidades e bases legais</h2>
+<div class="lg-table"><table>
+<thead>
+<tr>
+<th>Finalidade</th>
+<th>Base legal (LGPD, art. 7º)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Criar e manter sua conta e liberar os cursos comprados</td>
+<td>Execução de contrato (V)</td>
+</tr>
+<tr>
+<td>Processar pagamentos, emitir nota fiscal e prevenir fraude</td>
+<td>Execução de contrato (V) e obrigação legal (II)</td>
+</tr>
+<tr>
+<td>Guardar registros de acesso por 6 meses (Marco Civil da Internet, art. 15)</td>
+<td>Obrigação legal (II)</td>
+</tr>
+<tr>
+<td>Atendimento, suporte e reembolsos</td>
+<td>Execução de contrato (V)</td>
+</tr>
+<tr>
+<td>Medir uso, corrigir erros e melhorar a plataforma</td>
+<td>Legítimo interesse (IX)</td>
+</tr>
+<tr>
+<td>Enviar novidades, promoções e conteúdos por e-mail ou push</td>
+<td>Consentimento (I), revogável a qualquer momento</td>
+</tr>
+<tr>
+<td>Cookies e SDKs de análise e publicidade</td>
+<td>Consentimento (I)</td>
+</tr>
+<tr>
+<td>Defender direitos em processos</td>
+<td>Exercício regular de direitos (VI)</td>
+</tr>
+<tr>
+<td>Autorização do responsável para adolescentes</td>
+<td>Consentimento específico do responsável e melhor interesse do adolescente (art. 14)</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="sec-4">4. Com quem compartilhamos</h2>
+<p>Compartilhamos dados apenas com quem precisa deles para prestar o serviço, sob contrato e com obrigação de confidencialidade.</p>
+<div class="lg-table"><table>
+<thead>
+<tr>
+<th>Destinatário</th>
+<th>Para quê</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Parceiro de pagamentos (Pagar.me)</td>
+<td>Cobrança, parcelamento e antifraude</td>
+</tr>
+<tr>
+<td>Apple e Google</td>
+<td>Compras e assinaturas feitas nos aplicativos</td>
+</tr>
+<tr>
+<td>Hospedagem em nuvem (Microsoft Azure)</td>
+<td>Armazenamento da plataforma e dos dados</td>
+</tr>
+<tr>
+<td>Envio de e-mails e notificações</td>
+<td>Comunicações da conta e, com consentimento, de marketing</td>
+</tr>
+<tr>
+<td>Ferramentas de análise</td>
+<td>Estatísticas de uso, com consentimento</td>
+</tr>
+<tr>
+<td>Profissionais da plataforma</td>
+<td>Somente nome e comentários públicos que você fizer em aulas e transmissões</td>
+</tr>
+<tr>
+<td>Autoridades</td>
+<td>Quando houver ordem judicial ou obrigação legal</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="sec-5">5. Transferência internacional</h2>
+<p>Alguns fornecedores, como provedores de nuvem e as lojas de aplicativos, podem armazenar dados fora do Brasil. Nesses casos, adotamos as garantias do art. 33 da LGPD, como cláusulas contratuais padrão e fornecedores com nível adequado de proteção.</p>
+<h2 id="sec-6">6. Cookies e tecnologias semelhantes</h2>
+<ul>
+<li><strong>Essenciais:</strong> mantêm você conectado e protegem a conta. Não podem ser desativados.</li>
+<li><strong>Análise e marketing:</strong> só são ativados com seu consentimento, pelo banner de cookies no site ou pelas permissões do app. Você pode mudar a escolha a qualquer momento.</li>
+</ul>
+<h2 id="sec-7">7. Por quanto tempo guardamos</h2>
+<div class="lg-table"><table>
+<thead>
+<tr>
+<th>Dado</th>
+<th>Prazo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Conta e progresso nos cursos</td>
+<td>Enquanto a conta estiver ativa</td>
+</tr>
+<tr>
+<td>Registros de acesso</td>
+<td>6 meses (Marco Civil da Internet)</td>
+</tr>
+<tr>
+<td>Dados fiscais e de compra</td>
+<td>5 anos (legislação tributária)</td>
+</tr>
+<tr>
+<td>Marketing</td>
+<td>Até você revogar o consentimento</td>
+</tr>
+<tr>
+<td>Após o encerramento da conta</td>
+<td>Excluídos ou anonimizados, salvo o que a lei exigir guardar</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="sec-8">8. Segurança</h2>
+<p>Usamos conexão criptografada (HTTPS/TLS), senhas com hash, controle de acesso restrito e monitoramento. Nenhum sistema é 100% seguro. Em caso de incidente com risco relevante, avisaremos você e a ANPD, conforme o art. 48 da LGPD.</p>
+<h2 id="sec-9">9. Seus direitos</h2>
+<p>Pelo art. 18 da LGPD, você pode, a qualquer momento e sem custo:</p>
+<ul>
+<li>confirmar se tratamos seus dados e acessá-los;</li>
+<li>corrigir dados incompletos ou desatualizados;</li>
+<li>pedir anonimização, bloqueio ou exclusão de dados desnecessários;</li>
+<li>pedir a portabilidade dos dados;</li>
+<li>saber com quem compartilhamos seus dados;</li>
+<li>revogar o consentimento e pedir a exclusão dos dados tratados com base nele;</li>
+<li>se opor a tratamentos feitos com base no legítimo interesse.</li>
+</ul>
+<p>Envie o pedido para <a href="mailto:suporte@academiabeauty.com.br">suporte@academiabeauty.com.br</a>. Podemos pedir uma confirmação de identidade e respondemos em até 15 dias. Você também pode excluir sua conta pelo app ou pelo site, conforme as regras da App Store e do Google Play.</p>
+<h2 id="sec-10">10. Dados de crianças e adolescentes</h2>
+<p>Não coletamos intencionalmente dados de menores de 16 anos. Se identificarmos uma conta nessa faixa, ela será encerrada e os dados excluídos. Dados de adolescentes de 16 e 17 anos são tratados só com autorização do responsável, no melhor interesse do adolescente (art. 14 da LGPD e ECA Digital), sem publicidade direcionada ou perfilamento comercial.</p>
+<h2 id="sec-11">11. Canal de atendimento e ANPD</h2>
+<p>Pedidos e dúvidas sobre seus dados pessoais são atendidos pelo e-mail <a href="mailto:suporte@academiabeauty.com.br">suporte@academiabeauty.com.br</a>. Se o seu pedido não for resolvido, você pode reclamar à Autoridade Nacional de Proteção de Dados (ANPD), em gov.br/anpd.</p>
+<h2 id="sec-12">12. Alterações desta Política</h2>
+<p>Podemos atualizar esta Política. A data no topo indica a versão vigente. Mudanças relevantes serão avisadas por e-mail ou na plataforma antes de entrarem em vigor.</p>
+  <a class="lg-totop" href="#">↑ Voltar ao topo</a>
+  </article>
+</main>
+
+<footer class="ab-footer" role="contentinfo">
+  <div class="ab-footer__inner">
+    <div class="ab-footer__top">
+      <div>
+        <div class="ab-footer__logo">ACADEMIA <span>BEAUTY</span></div>
+        <p class="ab-footer__tagline">Educação profissional para o mercado da beleza. Aprenda e cresça com os melhores.</p>
+        <ul class="ab-footer__badges" aria-label="Resumo">
+          <li>Maiores de 18</li>
+          <li>LGPD</li>
+          <li>Pagamento seguro</li>
+        </ul>
+      </div>
+
+      <div class="ab-footer__legal">
+        <div>
+          <h4>Faixa etária</h4>
+          <p>Cursos para maiores de 18 anos. Adolescentes de 16 e 17 anos com autorização do responsável legal. Conteúdo com classificação indicativa Livre.</p>
+        </div>
+        <div>
+          <h4>Seus dados</h4>
+          <p>Tratamos seus dados conforme a LGPD (Lei 13.709/2018) apenas para oferecer os cursos, processar compras e cumprir a lei. Não vendemos seus dados.</p>
+        </div>
+        <div>
+          <h4>Compras</h4>
+          <p>Pagamentos por gateway parceiro; não armazenamos os dados do seu cartão. Desistência em até 7 dias com reembolso integral (CDC, art. 49).</p>
+        </div>
+      </div>
+    </div>
+
+    <nav class="ab-footer__links" aria-label="Links legais">
+      <a href="/termos-de-uso">Termos de Uso</a>
+      <a href="/politica-de-privacidade">Política de Privacidade</a>
+      <a class="ab-footer__mail" href="mailto:suporte@academiabeauty.com.br">suporte@academiabeauty.com.br</a>
+    </nav>
+
+    <p class="ab-footer__company">
+      © <span class="ab-year">2026</span> Academia Beauty LTDA. · CNPJ 69.111.867/0001-10 ·
+      Rua Manuel da Nóbrega, 1088, apto 15, Paraíso, São Paulo/SP, CEP 04001-003
+    </p>
+  </div>
+</footer>
+<script>
+document.querySelectorAll('.ab-year').forEach(e=>e.textContent=new Date().getFullYear());
+(function(){var l=[].slice.call(document.querySelectorAll('.lg-toc a'));if(!('IntersectionObserver' in window))return;
+var o=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){l.forEach(function(a){a.classList.toggle('on',a.getAttribute('href')==='#'+e.target.id)})}})},{rootMargin:'-20% 0px -70% 0px'});
+document.querySelectorAll('.lg-content h2[id]').forEach(function(h){o.observe(h)})})();
+</script>
+</body>
+</html>

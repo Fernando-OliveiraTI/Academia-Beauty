@@ -48,6 +48,7 @@ router
     router.get('/me', [AuthController, 'me']).use(middleware.auth())
     // Conta do próprio usuário: acessível mesmo com troca de senha ou 2FA pendentes.
     router.post('/password', [AccountController, 'changePassword']).use(middleware.auth())
+    router.post('/terms', [AccountController, 'acceptTerms']).use(middleware.auth())
     router.post('/2fa/setup', [AccountController, 'setupTwoFactor']).use(middleware.auth())
     router.post('/2fa/enable', [AccountController, 'enableTwoFactor']).use(middleware.auth())
     router.post('/2fa/disable', [AccountController, 'disableTwoFactor']).use(middleware.auth())

@@ -2,6 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import hash from '@adonisjs/core/services/hash'
 import limiter from '@adonisjs/limiter/services/main'
 import { DateTime } from 'luxon'
+import { LEGAL_VERSION } from '@academia/contracts'
 import AuditService from '#services/audit_service'
 import TotpService from '#services/totp_service'
 import { passwordIssues } from '#services/password_policy'
@@ -17,6 +18,31 @@ const sensitive = { requests: 5, duration: '15 mins', blockDuration: '15 mins' }
 
 /** Conta do próprio usuário: troca de senha e verificação em duas etapas (2FA). Exige sessão; não exige estar liberado. */
 export default class AccountController {
+  /**
+   * Aceite dos Termos de Uso e da Política de Privacidade (D-041). Só a versão vigente é aceita; fica registrado no
+   * usuário e na auditoria. Vale também com troca de senha ou 2FA pendentes (é a primeira tela depois do login).
+   */
+  async acceptTerms(ctx: HttpContext) {
+    const { request, response, auth } = ctx
+    const user = auth.getUserOrFail()
+    const version = String(request.input('version') ?? '')
+    if (version !== LEGAL_VERSION) {
+      return response.unprocessableEntity({
+        message: 'Versão dos termos desatualizada. Recarregue a página e leia a versão atual.',
+        code: 'terms_outdated',
+      })
+    }
+    user.termsVersion = LEGAL_VERSION
+    user.termsAcceptedAt = DateTime.now()
+    await user.save()
+    await AuditService.record(ctx, {
+      action: 'auth.terms_accepted',
+      actorId: user.id,
+      metadata: { version: LEGAL_VERSION },
+    })
+    return response.noContent()
+  }
+
   async changePassword(ctx: HttpContext) {
     const { request, response, auth, session } = ctx
     const user = auth.getUserOrFail()

@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import './fonts.css'
 import './globals.css'
+import '@academia/page-renderer/legal.css'
+import { CookieConsent } from '@/components/cookie-consent'
 import { indexingEnabled, siteUrl } from '@/lib/site'
 
 // Avaliado a cada requisição das rotas dinâmicas (Home, ISR, painel): `SITE_URL`/`SITE_INDEXING` vêm do ambiente
@@ -18,7 +20,10 @@ export function generateMetadata(): Metadata {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body>
+        {children}
+        <CookieConsent />
+      </body>
     </html>
   )
 }

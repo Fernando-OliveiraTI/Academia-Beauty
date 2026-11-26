@@ -1,0 +1,77 @@
+/* Informações legais no fim dos rodapés públicos (D-041). Cores do site, como no footer do jurídico; classes "ab-legal".
+   Os modelos das páginas estilizam h3/p/a do rodapé com !important (letter-spacing, cor, margem): aqui as mesmas
+   propriedades são fixadas com !important e seletores mais específicos, só dentro de .ab-legal. */
+.ab-legal {
+  --ab-text: #f6f2ea; --ab-text-2: #aaa194; --ab-muted: #7c7468; --ab-gold: #e3c98a; --ab-line: rgba(246, 242, 234, .10);
+  position: relative !important; z-index: 3; width: 100%; margin-top: 40px !important; color: var(--ab-text-2) !important;
+  font-family: "Geist", "Helvetica Neue", Arial, sans-serif !important; font-size: 14px !important; line-height: 1.6 !important;
+  letter-spacing: normal !important; text-align: left !important; text-transform: none !important;
+  border-top: 1px solid var(--ab-line);
+}
+.ab-legal::before {
+  content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(227, 201, 138, .25) 20%, #f3dea6 50%, rgba(227, 201, 138, .25) 80%, transparent);
+}
+.ab-legal *, .ab-legal *::before, .ab-legal *::after { box-sizing: border-box; letter-spacing: inherit; }
+.ab-legal .ab-legal__inner { max-width: 1180px; margin: 0 auto !important; padding: 32px clamp(16px, 4vw, 40px) 8px !important; }
+.ab-legal .ab-legal__badges { display: flex !important; flex-wrap: wrap; gap: 8px; margin: 0 0 24px !important; padding: 0 !important; list-style: none !important; }
+.ab-legal .ab-legal__badges li {
+  margin: 0 !important; font-family: "Geist Mono", ui-monospace, Menlo, monospace !important; font-size: 10.5px !important; line-height: 1.4 !important;
+  letter-spacing: .12em !important; text-transform: uppercase !important; color: var(--ab-text) !important;
+  border: 1px solid rgba(227, 201, 138, .45); border-radius: 999px; padding: 6px 11px !important;
+}
+.ab-legal .ab-legal__cols { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+.ab-legal .ab-legal__cols h3 {
+  margin: 0 0 8px !important; font-family: "Geist Mono", ui-monospace, Menlo, monospace !important; font-weight: 600 !important;
+  font-size: 11px !important; line-height: 1.6 !important; letter-spacing: .16em !important; text-transform: uppercase !important;
+  color: var(--ab-gold) !important;
+}
+.ab-legal .ab-legal__cols p { margin: 0 !important; font-size: 13px !important; line-height: 1.6 !important; letter-spacing: normal !important; color: var(--ab-text-2) !important; }
+.ab-legal .ab-legal__links {
+  display: flex !important; flex-wrap: wrap; align-items: center; gap: 10px 24px; margin: 28px 0 0 !important; padding: 20px 0 0 !important;
+  border-top: 1px solid var(--ab-line); font-weight: 600 !important; font-size: 13px !important; letter-spacing: normal !important;
+}
+.ab-legal .ab-legal__links a {
+  margin: 0 !important; padding: 0 !important; color: var(--ab-text) !important; text-decoration: none !important;
+  font-size: 13px !important; font-weight: 600 !important; letter-spacing: normal !important; text-transform: none !important; transition: color .18s;
+}
+.ab-legal .ab-legal__links a:hover, .ab-legal .ab-legal__links a:focus-visible { color: var(--ab-gold) !important; }
+.ab-legal .ab-legal__links .ab-legal__mail { margin-left: auto !important; color: var(--ab-gold) !important; }
+.ab-legal .ab-legal__company { margin: 14px 0 0 !important; font-size: 12px !important; line-height: 1.6 !important; letter-spacing: normal !important; color: var(--ab-muted) !important; overflow-wrap: anywhere; }
+@media (max-width: 860px) {
+  .ab-legal .ab-legal__cols { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .ab-legal .ab-legal__links .ab-legal__mail { margin-left: 0 !important; }
+}
+
+/* Banner de cookies (D-041): cartão fixo no rodapé da tela, sem bloquear a página. */
+.ab-cookie {
+  position: fixed; z-index: 2147483000; left: 16px; right: 16px; bottom: 16px; margin: 0 auto; max-width: 760px;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px 20px;
+  padding: 18px 20px; border: 1px solid rgba(227, 201, 138, .35); border-radius: 14px;
+  background: rgba(21, 19, 17, .97); color: #aaa194; box-shadow: 0 18px 50px rgba(0, 0, 0, .55);
+  font-family: "Geist", "Helvetica Neue", Arial, sans-serif; font-size: 13px; line-height: 1.55; text-align: left;
+}
+.ab-cookie *, .ab-cookie *::before, .ab-cookie *::after { box-sizing: border-box; }
+.ab-cookie__text strong { display: block; margin-bottom: 4px; color: #f6f2ea; font-size: 14px; }
+.ab-cookie__text p { margin: 0; }
+.ab-cookie a { color: #e3c98a; text-decoration: underline; text-underline-offset: 2px; }
+.ab-cookie__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; justify-content: flex-end; }
+.ab-cookie__btn {
+  min-height: 40px; padding: 0 16px; border: 1px solid rgba(227, 201, 138, .55); border-radius: 999px; background: transparent;
+  color: #e3c98a; font: 600 13px/1 "Geist", "Helvetica Neue", Arial, sans-serif; cursor: pointer; white-space: nowrap;
+}
+.ab-cookie__btn--primary { background: #e3c98a; color: #17130c; border-color: #e3c98a; }
+.ab-cookie__btn:hover { filter: brightness(1.08); }
+.ab-cookie__btn:focus-visible, .ab-cookie__link:focus-visible { outline: 2px solid #e3c98a; outline-offset: 2px; }
+.ab-cookie__link { padding: 0 6px; border: 0; background: none; color: #aaa194; font: 500 13px/1 "Geist", "Helvetica Neue", Arial, sans-serif; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.ab-cookie__prefs { grid-column: 1 / -1; display: grid; gap: 10px; margin: 0; padding: 12px 0 0; border: 0; border-top: 1px solid rgba(246, 242, 234, .10); min-width: 0; }
+.ab-cookie__prefs label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.ab-cookie__prefs input { margin-top: 3px; accent-color: #e3c98a; }
+.ab-cookie__prefs span { display: grid; gap: 2px; }
+.ab-cookie__prefs b { color: #f6f2ea; font-weight: 600; }
+.ab-cookie__prefs small { color: #7c7468; font-size: 12px; }
+.ab-cookie .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 640px) {
+  .ab-cookie { grid-template-columns: minmax(0, 1fr); left: 10px; right: 10px; bottom: 10px; padding: 16px; }
+  .ab-cookie__actions { justify-content: flex-start; }
+}

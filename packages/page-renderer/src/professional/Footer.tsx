@@ -1,4 +1,5 @@
 import type { RenderContext } from '../offer';
+import { LegalFooter } from '../legal';
 import type { ProfessionalFooterContent } from './footer-schema';
 
 type IconName = ProfessionalFooterContent['socials'][number]['icon'];
@@ -32,6 +33,7 @@ export function ProfessionalFooter({ content: c, ctx }: { content: ProfessionalF
         <div className="cb-footer-divider" />
         <p className="cb-copyright">{c.copyright.replace('{year}', String(ctx.year))}</p>
       </div>
+      <LegalFooter year={ctx.year} />
     </footer>
   );
 }

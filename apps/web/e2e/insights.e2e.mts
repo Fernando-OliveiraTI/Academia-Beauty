@@ -120,7 +120,11 @@ try {
     await login(p, `e2e-ins-${stamp}@local.test`, created.body.temporaryPassword)
     const newPass = `Painel-Seguro-${stamp}-Forte!` // sem nome nem e-mail (política de senha)
     assert.equal((await send(ctx, 'post', '/auth/password', { currentPassword: created.body.temporaryPassword, newPassword: newPass })).status, 204)
+    // Primeiro acesso ao painel: aceite dos Termos e da Política (D-041).
     await p.goto(`${BASE}/admin`)
+    await p.locator('.terms-gate').waitFor()
+    await p.locator('.terms-gate-check input').check()
+    await p.getByRole('button', { name: 'Aceitar e continuar' }).click()
     await p.waitForURL('**/admin/insights')
     assert.deepEqual(await p.locator('.admin-nav a').allInnerTexts(), ['Insights'])
     assert.equal(await p.locator('.ins-filters .pf-chip').count(), 0, 'sem filtro de profissional')

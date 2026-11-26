@@ -13,6 +13,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entry = (path: string, lastModified?: string) => ({ url: absoluteUrl(path)!, lastModified })
   return [
     entry('/'),
+    entry('/termos-de-uso'),
+    entry('/politica-de-privacidade'),
     ...(data?.professionals ?? []).map((p) => entry(`/profissionais/${p.slug}`, p.lastmod)),
     ...(data?.courses ?? []).map((c) => entry(`/cursos/${c.slug}`, c.lastmod)),
   ]
