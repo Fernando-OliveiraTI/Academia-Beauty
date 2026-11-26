@@ -58,6 +58,8 @@ export const meSchema = z.object({
   twoFactorRequired: z.boolean().default(false),
   /** Papel `professional`: o profissional a que o login pertence (os Insights ficam restritos a ele). */
   professionalId: z.number().int().positive().nullable().default(null),
+  /** Versão dos Termos/Política aceita no painel (D-041); diferente de `LEGAL_VERSION` → pedir o aceite. */
+  termsAcceptedVersion: z.string().nullable().default(null),
 });
 export type Me = z.infer<typeof meSchema>;
 
@@ -75,3 +77,9 @@ export * from './home.js';
 export * from './payments.js';
 export * from './document-sync.js';
 export * from './insights.js';
+
+/**
+ * Versão vigente dos Termos de Uso e da Política de Privacidade (data da "Última atualização" dos documentos em
+ * `apps/web/public/legal`). Mudou a data → banner de cookies e aceite do painel aparecem de novo (D-041).
+ */
+export const LEGAL_VERSION = '2026-11-17';

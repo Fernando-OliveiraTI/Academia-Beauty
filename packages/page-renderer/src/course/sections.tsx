@@ -11,6 +11,7 @@ import type {
   StickyCtaContent,
 } from './schemas';
 import { mediaSrc } from '../media';
+import { LegalFooter } from '../legal';
 
 type Props<C> = { content: C; ctx: RenderContext; idSuffix?: string };
 
@@ -382,6 +383,7 @@ export function Footer({ content: c, ctx }: Props<FooterContent>): ReactNode {
           ))}
         </ul>
       </div>
+      <LegalFooter year={ctx.year} />
     </footer>
   );
 }

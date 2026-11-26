@@ -9,7 +9,8 @@
     ".": "./src/index.ts",
     "./course.css": "./src/course/course.css",
     "./professional.css": "./src/professional/professional.css",
-    "./home.css": "./src/home/home.css"
+    "./home.css": "./src/home/home.css",
+    "./legal.css": "./src/legal.css"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

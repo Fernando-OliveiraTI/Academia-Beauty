@@ -5,6 +5,7 @@ import type {
   BenefitsContent, BrandsContent, CoursesContent, CtaContent, FooterContent, HeroContent, NavContent, ProfessionalsContent,
 } from './schemas';
 import { mediaSrc } from '../media';
+import { LegalFooter } from '../legal';
 
 type Props<C> = { content: C; ctx: RenderContext; idSuffix?: string };
 
@@ -194,6 +195,7 @@ export function Footer({ content: c, ctx }: Props<FooterContent>) {
         </div>
         <div className="cb-footer-copyright">{c.copyright.replace('{year}', String(ctx.year))}</div>
       </div>
+      <LegalFooter year={ctx.year} />
     </footer>
   );
 }

@@ -36,6 +36,9 @@ const nextConfig: NextConfig = {
       { source: '/api/:path*', destination: `${apiOrigin}/:path*` },
       // Biblioteca de mídia: entrega pública pela API (cache imutável, Range para vídeo).
       { source: '/media/:id', destination: `${apiOrigin}/media/:id` },
+      // Documentos legais (D-041): servidos como vieram do jurídico (HTML próprio, com sumário e rodapé).
+      { source: '/termos-de-uso', destination: '/legal/termos-de-uso.html' },
+      { source: '/politica-de-privacidade', destination: '/legal/politica-de-privacidade.html' },
     ]
   },
   async headers() {

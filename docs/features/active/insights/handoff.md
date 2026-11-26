@@ -16,3 +16,6 @@
 - Produção: rodar as 2 migrações no deploy; o tempo na página só começa a contar depois disso.
 - Política de privacidade: citar a medição de tempo (anônima, sem cookie).
 - Futuro (não feito): comparação com o período anterior, exportar CSV, convite por e-mail do login do profissional.
+
+## Adendo (2026-11-18) — termos, política e cookies
+Ver D-041. Aceite no painel passou a vir antes de qualquer tela: o E2E `insights` aceita os termos no primeiro acesso do login de profissional.
